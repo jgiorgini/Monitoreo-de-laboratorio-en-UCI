@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Monitor de Laboratorios UCI</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PDF.js para leer PDF con texto (no OCR) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    :root{
+      --bg:#f4f5f7;
+      --card-bg:#ffffff;
+      --accent:#0056b3;
+      --accent-soft:#e1ecff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --radius:16px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding:16px;
+    }
+    h1{
+      font-size:1.6rem;
+      margin-bottom:4px;
+    }
+    h2{
+      font-size:1.2rem;
+      margin:16px 0 8px;
+    }
+    p{margin:4px 0;}
+    .layout{
+      display:grid;
+      grid-template-columns: minmax(0,1.2fr) minmax(0,1fr);
+      gap:16px;
+    }
+    @media (max-width:900px){
+      .layout{
+        grid-template-columns:1fr;
+      }
+    }
+    .card{
+      background:var(--card-bg);
+      border-radius:var(--radius);
+      padding:14px 16px;
+      box-shadow:0 10px 30px rgba(15,23,42,0.06);
+      border:1px solid var(--border);
+    }
+    .card-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:8px;
+      gap:8px;
+    }
+    .badge{
+      background:var(--accent-soft);
+      color:var(--accent);
+      border-radius:999px;
+      padding:2px 10px;
+      font-size:0.75rem;
+    }
+    textarea{
+      width:100%;
+      min-height:200px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      padding:8px 10px;
+      font-family:monospace;
+      resize:vertical;
+    }
+    textarea:focus, select:focus, input:focus{
+      outline:none;
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px var(--accent-soft);
+    }
+    .btn{
+      border:none;
+      border-radius:999px;
+      padding:8px 14px;
+      font-size:0.9rem;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      background:var(--accent);
+      color:white;
+    }
+    .btn.secondary{
+      background:#111827;
+    }
+    .btn:disabled{
+      opacity:0.5;
+      cursor:default;
+    }
+    .btn-outline{
+      border-radius:999px;
+      padding:6px 12px;
+      font-size:0.8rem;
+      border:1px solid var(--border);
+      background:white;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+    }
+    .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      margin-top:8px;
+      margin-bottom:6px;
+    }
+    label{
+      font-size:0.85rem;
+      color:var(--muted);
+    }
+    input[type="text"], input[type="date"], select{
+      border-radius:999px;
+      border:1px solid var(--border);
+      padding:6px 10px;
+      font-size:0.85rem;
+    }
+    .pill{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-size:0.75rem;
+      color:var(--muted);
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:0.85rem;
+      margin-top:8px;
+    }
+    th, td{
+      border-bottom:1px solid var(--border);
+      padding:4px 6px;
+      text-align:left;
+    }
+    th{
+      font-weight:600;
+      background:#f9fafb;
+    }
+    .small{
+      font-size:0.75rem;
+      color:var(--muted);
+    }
+    .tag-ok{
+      background:#e0f7e9;
+      color:#166534;
+      border-radius:999px;
+      padding:2px 8px;
+      font-size:0.75rem;
+    }
+    .tag-warn{
+      background:#fef3c7;
+      color:#92400e;
+      border-radius:999px;
+      padding:2px 8px;
+      font-size:0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:12px;">
+    <h1>Monitor de Laboratorios UCI</h1>
+    <p class="small">
+      Pegá el informe de laboratorio (o subí el PDF), el sistema detecta fecha, paciente y valores clave,
+      y arma el historial con gráficos por parámetro.
+    </p>
+  </header>
+
+  <div class="layout">
+    <!-- PANEL IZQUIERDO: Carga y parsing -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2>Ingreso de laboratorio</h2>
+          <p class="small">Usá copiar/pegar desde el sistema o desde el PDF.</p>
+        </div>
+        <span class="badge">Carga diaria</span>
+      </div>
+
+      <label for="labText">Texto del informe:</label>
+      <textarea id="labText" placeholder="Pegá aquí el laboratorio completo (incluyendo Paciente, Toma de muestra, etc.)"></textarea>
+
+      <div class="row">
+        <div>
+          <label for="pdfInput">o subir PDF:</label>
+          <input id="pdfInput" type="file" accept="application/pdf" />
+        </div>
+        <button id="btnParse" class="btn">
+          ➜ Analizar laboratorio
+        </button>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="pacienteNombre">Paciente:</label>
+          <input type="text" id="pacienteNombre" placeholder="(autodetectado si es posible)" />
+        </div>
+        <div>
+          <label for="fechaMuestra">Fecha de muestra:</label>
+          <input type="date" id="fechaMuestra" />
+        </div>
+        <span id="parseStatus" class="small"></span>
+      </div>
+
+      <div id="ultimoResultado" style="margin-top:12px; display:none;">
+        <h2>Laboratorio cargado</h2>
+        <p class="small" id="resumenPaciente"></p>
+        <table id="tablaUltimo">
+          <thead>
+            <tr>
+              <th>Parámetro</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PANEL DERECHO: Historial y gráficos -->
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2>Historial y gráficos</h2>
+          <p class="small">Serie de laboratorios por paciente.</p>
+        </div>
+        <button id="btnLimpiar" class="btn-outline" title="Borra todos los datos del navegador">
+          🗑 Limpiar datos locales
+        </button>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="selectPaciente">Paciente:</label>
+          <select id="selectPaciente"></select>
+        </div>
+        <div>
+          <label for="selectParametro">Parámetro:</label>
+          <select id="selectParametro"></select>
+        </div>
+      </div>
+
+      <div id="resumenHistorial" class="small" style="margin-bottom:6px;"></div>
+
+      <table id="tablaHistorial">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Parámetro</th>
+            <th>Valor</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div style="margin-top:10px;">
+        <div class="row">
+          <span class="pill">Gráfico de tendencia</span>
+        </div>
+        <canvas id="grafico" height="220"></canvas>
+      </div>
+    </section>
+  </div>
+
+<script>
+  // ============================
+  //  Almacenamiento en localStorage
+  // ============================
+  const STORAGE_KEY = "uci_labs_registros_v1";
+
+  function loadRegistros(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return [];
+      return JSON.parse(raw);
+    }catch(e){
+      console.error("Error leyendo localStorage", e);
+      return [];
+    }
+  }
+
+  function saveRegistros(registros){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+    }catch(e){
+      console.error("Error guardando localStorage", e);
+    }
+  }
+
+  let registros = loadRegistros(); // {id, paciente, fechaISO, fechaTexto, parametros:{...}, raw}
+
+  // ============================
+  //  Utilidades
+  // ============================
+  function normalizarFecha(texto){
+    // Convierte dd/mm/aaaa o dd-mm-aaaa a aaaa-mm-dd
+    if(!texto) return "";
+    texto = texto.trim();
+    const m = texto.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if(!m) return "";
+    let d = m[1].padStart(2,"0");
+    let M = m[2].padStart(2,"0");
+    let y = m[3];
+    if(y.length === 2){
+      y = (parseInt(y,10) > 50 ? "19" : "20") + y;
+    }
+    return `${y}-${M}-${d}`;
+  }
+
+  function extraerFecha(texto){
+    // Busca línea tipo "Toma de muestra: 14/11/2025 ..."
+    const m = texto.match(/Toma de Muestra:?[\s]*([0-9\/\-.]+)/i) || 
+              texto.match(/Toma de muestra:?[\s]*([0-9\/\-.]+)/i);
+    if(!m) return {iso:"", original:""};
+    const original = m[1].trim();
+    return {iso:normalizarFecha(original), original};
+  }
+
+  function extraerPaciente(texto){
+    // Busca "Paciente: APELLIDO NOMBRE"
+    const m = texto.match(/Paciente:\s*([^\n\r]+)/i);
+    if(!m) return "";
+    // Quitar basura tipo "F. Nac:" si viene todo en la misma línea
+    let nombre = m[1].replace(/F\.\s*Nac:.+$/i,"").trim();
+    return nombre;
+  }
+
+  // Lista básica de parámetros a detectar (podés ampliar a gusto)
+  const PARAM_PATTERNS = [
+    {key:"Hemoglobina", regex:/HEMOGLOBINA/i},
+    {key:"Hematocrito", regex:/HEMATOCRITO/i},
+    {key:"Urea", regex:/UREA(?!.*CREA)/i},
+    {key:"Creatinina", regex:/CREATININA/i},
+    {key:"Sodio", regex:/SODIO/i},
+    {key:"Potasio", regex:/POTASIO/i},
+    {key:"Cloro", regex:/CLORO/i},
+    {key:"Glucosa", regex:/GLUCOSA/i},
+    {key:"HbA1c", regex:/HEMOGLOBINA GLICOSILADA|HBA1C/i},
+    {key:"Colesterol total", regex:/COLESTEROL(?!.*HDL)(?!.*LDL)(?!.*NO HDL)/i},
+    {key:"Colesterol LDL", regex:/COLESTEROL LDL/i},
+    {key:"Colesterol HDL", regex:/COLESTEROL HDL/i},
+    {key:"Triglicéridos", regex:/TRIGLICERID/i},
+    {key:"proBNP", regex:/PROBNP|NT[-\s]*PROBNP/i},
+    {key:"TGO/AST", regex:/ASPARTATO AMINOTRANSFERASA|TGO\b|AST\b/i},
+    {key:"TGP/ALT", regex:/ALANINA AMINOTRANSFERASA|TGP\b|ALT\b/i},
+    {key:"Bilirrubina total", regex:/BILIRRUBINA TOTAL/i},
+    {key:"Bilirrubina directa", regex:/BILIRRUBINA DIRECTA/i},
+    {key:"Bilirrubina indirecta", regex:/BILIRRUBINA INDIRECTA/i},
+  ];
+
+  function parseValorDesdeLinea(linea){
+    // Busca el primer número tipo 12,3 o 12.3 o 123
+    const m = linea.replace(",",".").match(/(-?\d+(\.\d+)?)/);
+    return m ? parseFloat(m[1]) : null;
+  }
+
+  function parseParametros(texto){
+    const lineas = texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length>0);
+    const params = {};
+    for(let i=0;i<lineas.length;i++){
+      const linea = lineas[i];
+      for(const def of PARAM_PATTERNS){
+        if(def.regex.test(linea)){
+          // Intentar valor en la misma línea
+          let valor = parseValorDesdeLinea(linea);
+          // Si no hay, buscar en la siguiente línea
+          if(valor===null && i+1<lineas.length){
+            valor = parseValorDesdeLinea(lineas[i+1]);
+          }
+          if(valor!==null){
+            params[def.key] = valor;
+          }
+        }
+      }
+    }
+    return params;
+  }
+
+  // ============================
+  //  Manejo de PDF con PDF.js
+  // ============================
+  const pdfInput = document.getElementById("pdfInput");
+  const labText = document.getElementById("labText");
+  const parseStatus = document.getElementById("parseStatus");
+
+  pdfInput.addEventListener("change", async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    parseStatus.textContent = "Leyendo PDF...";
+    try{
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({data: arrayBuffer});
+      const pdf = await loadingTask.promise;
+      let fullText = "";
+      for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        const strings = content.items.map(it => it.str);
+        fullText += strings.join(" ") + "\n";
+      }
+      labText.value = fullText;
+      parseStatus.textContent = "PDF convertido a texto. Revisá y luego presioná 'Analizar laboratorio'.";
+    }catch(err){
+      console.error(err);
+      parseStatus.textContent = "Error al leer el PDF (debe ser PDF con texto, no una imagen escaneada).";
+    }
+  });
+
+  // ============================
+  //  Interfaz: Parsing desde textarea
+  // ============================
+  const btnParse = document.getElementById("btnParse");
+  const inputPaciente = document.getElementById("pacienteNombre");
+  const inputFecha = document.getElementById("fechaMuestra");
+  const ultimoResultadoDiv = document.getElementById("ultimoResultado");
+  const resumenPaciente = document.getElementById("resumenPaciente");
+  const tablaUltimoBody = document.querySelector("#tablaUltimo tbody");
+
+  btnParse.addEventListener("click", ()=>{
+    const texto = labText.value.trim();
+    if(!texto){
+      parseStatus.textContent = "Pegá primero el laboratorio o cargá un PDF.";
+      return;
+    }
+    parseStatus.textContent = "Analizando...";
+    const pacienteAut = extraerPaciente(texto);
+    if(pacienteAut && !inputPaciente.value){
+      inputPaciente.value = pacienteAut;
+    }
+    const fechaInfo = extraerFecha(texto);
+    if(fechaInfo.iso && !inputFecha.value){
+      inputFecha.value = fechaInfo.iso;
+    }
+    const parametros = parseParametros(texto);
+
+    const paciente = inputPaciente.value.trim() || "Paciente sin nombre";
+    const fechaISO = inputFecha.value || fechaInfo.iso || "";
+    const fechaTexto = fechaInfo.original || fechaISO || "(sin fecha detectable)";
+
+    if(!fechaISO){
+      parseStatus.textContent = "Atención: no se detectó fecha clara. Podés cargarla manualmente.";
+    }else{
+      parseStatus.textContent = "Laboratorio analizado.";
+    }
+
+    // Crear registro y guardar
+    const registro = {
+      id: Date.now(),
+      paciente,
+      fechaISO,
+      fechaTexto,
+      parametros,
+      raw: texto
+    };
+    registros.push(registro);
+    saveRegistros(registros);
+
+    // Mostrar resultados en panel
+    renderUltimo(registro);
+    actualizarSelects();
+    renderHistorial();
+    renderGrafico();
+  });
+
+  function renderUltimo(reg){
+    ultimoResultadoDiv.style.display = "block";
+    resumenPaciente.textContent = `${reg.paciente} – muestra: ${reg.fechaTexto}`;
+    tablaUltimoBody.innerHTML = "";
+    const entries = Object.entries(reg.parametros);
+    if(entries.length===0){
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 2;
+      td.textContent = "No se detectaron parámetros conocidos en el texto. Podés ampliar la lista de patrones en el código.";
+      tr.appendChild(td);
+      tablaUltimoBody.appendChild(tr);
+      return;
+    }
+    for(const [param, val] of entries){
+      const tr = document.createElement("tr");
+      const td1 = document.createElement("td");
+      const td2 = document.createElement("td");
+      td1.textContent = param;
+      td2.textContent = val;
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      tablaUltimoBody.appendChild(tr);
+    }
+  }
+
+  // ============================
+  //  Historial y selects
+  // ============================
+  const selectPaciente = document.getElementById("selectPaciente");
+  const selectParametro = document.getElementById("selectParametro");
+  const tablaHistorialBody = document.querySelector("#tablaHistorial tbody");
+  const resumenHistorial = document.getElementById("resumenHistorial");
+  const btnLimpiar = document.getElementById("btnLimpiar");
+
+  function getPacientesUnicos(){
+    const set = new Set(registros.map(r => r.paciente));
+    return Array.from(set).sort((a,b) => a.localeCompare(b));
+  }
+
+  function getParametrosDisponibles(pacienteSelec){
+    const set = new Set();
+    for(const r of registros){
+      if(!pacienteSelec || r.paciente === pacienteSelec){
+        Object.keys(r.parametros).forEach(k => set.add(k));
+      }
+    }
+    return Array.from(set).sort((a,b)=>a.localeCompare(b));
+  }
+
+  function actualizarSelects(){
+    const pacientes = getPacientesUnicos();
+    // Pacientes
+    const currentPaciente = selectPaciente.value;
+    selectPaciente.innerHTML = "";
+    if(pacientes.length===0){
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "Sin datos";
+      selectPaciente.appendChild(opt);
+    }else{
+      for(const p of pacientes){
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        selectPaciente.appendChild(opt);
+      }
+      // Mantener selección si es posible
+      if(currentPaciente && pacientes.includes(currentPaciente)){
+        selectPaciente.value = currentPaciente;
+      }
+    }
+
+    // Parámetros
+    const pacActivo = selectPaciente.value || "";
+    const params = getParametrosDisponibles(pacActivo);
+    const currentParam = selectParametro.value;
+    selectParametro.innerHTML = "";
+    if(params.length===0){
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "Sin parámetros";
+      selectParametro.appendChild(opt);
+    }else{
+      for(const p of params){
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        selectParametro.appendChild(opt);
+      }
+      if(currentParam && params.includes(currentParam)){
+        selectParametro.value = currentParam;
+      }
+    }
+  }
+
+  function renderHistorial(){
+    const pac = selectPaciente.value;
+    const param = selectParametro.value;
+    tablaHistorialBody.innerHTML = "";
+    if(!pac){
+      resumenHistorial.textContent = "No hay registros aún.";
+      return;
+    }
+    const filtrados = registros
+      .filter(r => r.paciente === pac && (!param || r.parametros.hasOwnProperty(param)))
+      .slice()
+      .sort((a,b) => (a.fechaISO||"") > (b.fechaISO||"") ? 1 : -1);
+
+    resumenHistorial.textContent = `${filtrados.length} registros para ${pac}${param ? " – " + param : ""}.`;
+    for(const r of filtrados){
+      if(param){
+        const valor = r.parametros[param];
+        if(valor===undefined) continue;
+        const tr = document.createElement("tr");
+        const tdF = document.createElement("td");
+        const tdP = document.createElement("td");
+        const tdV = document.createElement("td");
+        tdF.textContent = r.fechaISO || r.fechaTexto;
+        tdP.textContent = param;
+        tdV.textContent = valor;
+        tr.appendChild(tdF);
+        tr.appendChild(tdP);
+        tr.appendChild(tdV);
+        tablaHistorialBody.appendChild(tr);
+      }else{
+        // mostrar todos
+        for(const [p, v] of Object.entries(r.parametros)){
+          const tr = document.createElement("tr");
+          const tdF = document.createElement("td");
+          const tdP = document.createElement("td");
+          const tdV = document.createElement("td");
+          tdF.textContent = r.fechaISO || r.fechaTexto;
+          tdP.textContent = p;
+          tdV.textContent = v;
+          tr.appendChild(tdF);
+          tr.appendChild(tdP);
+          tr.appendChild(tdV);
+          tablaHistorialBody.appendChild(tr);
+        }
+      }
+    }
+  }
+
+  selectPaciente.addEventListener("change", ()=>{
+    actualizarSelects(); // para refrescar parámetros disponibles
+    renderHistorial();
+    renderGrafico();
+  });
+
+  selectParametro.addEventListener("change", ()=>{
+    renderHistorial();
+    renderGrafico();
+  });
+
+  btnLimpiar.addEventListener("click", ()=>{
+    if(!confirm("Esto borrará todos los registros guardados en este navegador. ¿Continuar?")) return;
+    registros = [];
+    saveRegistros(registros);
+    actualizarSelects();
+    renderHistorial();
+    renderGrafico();
+  });
+
+  // ============================
+  //  Gráfico con Chart.js
+  // ============================
+  let chart = null;
+  const ctx = document.getElementById("grafico").getContext("2d");
+
+  function renderGrafico(){
+    const pac = selectPaciente.value;
+    const param = selectParametro.value;
+    if(chart){
+      chart.destroy();
+      chart = null;
+    }
+    if(!pac || !param){
+      return;
+    }
+    const datos = registros
+      .filter(r => r.paciente === pac && r.parametros.hasOwnProperty(param))
+      .filter(r => r.fechaISO) // sólo los que tienen fecha bien parseada
+      .sort((a,b) => a.fechaISO > b.fechaISO ? 1 : -1)
+      .map(r => ({
+        x: r.fechaISO,
+        y: r.parametros[param]
+      }));
+    if(datos.length===0){
+      return;
+    }
+    chart = new Chart(ctx,{
+      type:"line",
+      data:{
+        labels: datos.map(d => d.x),
+        datasets:[{
+          label: `${param} – ${pac}`,
+          data: datos.map(d => d.y),
+          fill:false,
+          tension:0.2
+        }]
+      },
+      options:{
+        responsive:true,
+        scales:{
+          x:{
+            title:{display:true,text:"Fecha"},
+          },
+          y:{
+            title:{display:true,text:param}
+          }
+        },
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              label:(ctx)=> `${ctx.parsed.y}`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ============================
+  //  Inicialización
+  // ============================
+  (function init(){
+    actualizarSelects();
+    renderHistorial();
+    renderGrafico();
+  })();
+</script>
+</body>
+</html>
