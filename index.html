@@ -279,7 +279,7 @@
   // ============================
   //  Almacenamiento en localStorage
   // ============================
-  const STORAGE_KEY = "uci_labs_registros_v1";
+  const STORAGE_KEY = "uci_labs_registros_v2";
 
   function loadRegistros(){
     try{
@@ -321,72 +321,136 @@
   }
 
   function extraerFecha(texto){
-    // Busca línea tipo "Toma de muestra: 14/11/2025 ..."
-    const m = texto.match(/Toma de Muestra:?[\s]*([0-9\/\-.]+)/i) || 
-              texto.match(/Toma de muestra:?[\s]*([0-9\/\-.]+)/i);
-    if(!m) return {iso:"", original:""};
-    const original = m[1].trim();
-    return {iso:normalizarFecha(original), original};
+    // 1) Toma de muestra (otros labs)
+    let m = texto.match(/Toma de Muestra:?[\s]*([0-9\/\-.]+)/i) ||
+            texto.match(/Toma de muestra:?[\s]*([0-9\/\-.]+)/i);
+    if(m){
+      const original = m[1].trim();
+      return {iso:normalizarFecha(original), original};
+    }
+    // 2) Formato CEMIC: "Fecha: 28/08/2025 Validado: ..."
+    m = texto.match(/Fecha:\s*([0-9\/\-.]+)/i);
+    if(m){
+      const original = m[1].trim();
+      return {iso:normalizarFecha(original), original};
+    }
+    return {iso:"", original:""};
   }
 
   function extraerPaciente(texto){
-    // Busca "Paciente: APELLIDO NOMBRE"
     const m = texto.match(/Paciente:\s*([^\n\r]+)/i);
     if(!m) return "";
-    // Quitar basura tipo "F. Nac:" si viene todo en la misma línea
-    let nombre = m[1].replace(/F\.\s*Nac:.+$/i,"").trim();
+    let nombre = m[1].replace(/Cobertura:.+$/i,"").trim();
     return nombre;
   }
 
-  // Lista básica de parámetros a detectar (podés ampliar a gusto)
-  const PARAM_PATTERNS = [
-    {key:"Hemoglobina", regex:/HEMOGLOBINA/i},
-    {key:"Hematocrito", regex:/HEMATOCRITO/i},
-    {key:"Urea", regex:/UREA(?!.*CREA)/i},
-    {key:"Creatinina", regex:/CREATININA/i},
-    {key:"Sodio", regex:/SODIO/i},
-    {key:"Potasio", regex:/POTASIO/i},
-    {key:"Cloro", regex:/CLORO/i},
-    {key:"Glucosa", regex:/GLUCOSA/i},
-    {key:"HbA1c", regex:/HEMOGLOBINA GLICOSILADA|HBA1C/i},
-    {key:"Colesterol total", regex:/COLESTEROL(?!.*HDL)(?!.*LDL)(?!.*NO HDL)/i},
-    {key:"Colesterol LDL", regex:/COLESTEROL LDL/i},
-    {key:"Colesterol HDL", regex:/COLESTEROL HDL/i},
-    {key:"Triglicéridos", regex:/TRIGLICERID/i},
-    {key:"proBNP", regex:/PROBNP|NT[-\s]*PROBNP/i},
-    {key:"TGO/AST", regex:/ASPARTATO AMINOTRANSFERASA|TGO\b|AST\b/i},
-    {key:"TGP/ALT", regex:/ALANINA AMINOTRANSFERASA|TGP\b|ALT\b/i},
-    {key:"Bilirrubina total", regex:/BILIRRUBINA TOTAL/i},
-    {key:"Bilirrubina directa", regex:/BILIRRUBINA DIRECTA/i},
-    {key:"Bilirrubina indirecta", regex:/BILIRRUBINA INDIRECTA/i},
-  ];
-
-  function parseValorDesdeLinea(linea){
-    // Busca el primer número tipo 12,3 o 12.3 o 123
-    const m = linea.replace(",",".").match(/(-?\d+(\.\d+)?)/);
-    return m ? parseFloat(m[1]) : null;
+  function limpiarNumero(str){
+    if(!str) return null;
+    // 12,4 -> 12.4 ; 1.234,5 -> 1234.5
+    str = String(str).trim();
+    // Si hay coma y punto, asumimos que la coma es decimal y el punto separador de miles
+    if(str.includes(",") && str.includes(".")){
+      str = str.replace(/\./g,"").replace(",",".");
+    }else{
+      // si solo hay coma, la usamos como decimal
+      str = str.replace(",",".");
+    }
+    const v = parseFloat(str);
+    return isNaN(v) ? null : v;
   }
 
-  function parseParametros(texto){
-    const lineas = texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length>0);
+  // ============================
+  //  Parser "fino" por parámetro (CEMIC & similares)
+  // ============================
+  function parseParametrosDetallado(texto){
     const params = {};
-    for(let i=0;i<lineas.length;i++){
-      const linea = lineas[i];
-      for(const def of PARAM_PATTERNS){
-        if(def.regex.test(linea)){
-          // Intentar valor en la misma línea
-          let valor = parseValorDesdeLinea(linea);
-          // Si no hay, buscar en la siguiente línea
-          if(valor===null && i+1<lineas.length){
-            valor = parseValorDesdeLinea(lineas[i+1]);
-          }
-          if(valor!==null){
-            params[def.key] = valor;
-          }
+    const T = texto;
+
+    const definiciones = [
+      ["Hemoglobina", /HEMOGLOBINA(?! GLICOSILADA)[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Hematocrito", /HEMATOCRITO[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Glucosa", /GLUCEMIA[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["HbA1c", /HEMOGLOBINA GLICOSILADA[^0-9]*:?[\s]*([\d.,]+)/i],
+      ["Colesterol total", /COLESTEROL TOTAL[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Colesterol HDL", /COLESTEROL HDL[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Colesterol LDL", /COLESTEROL LDL[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Colesterol no HDL", /COLESTEROL NO HDL[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Triglicéridos", /TRIGLICERIDOS?[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Urea", /UREMIA[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Ácido úrico", /URICEMIA[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Creatinina", /CREATININA[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Sodio", /SODIO[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Potasio", /POTASIO[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Cloro", /CLORO[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Calcio", /CALCEMIA TOTAL[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Magnesio", /MAGNESIO EN SANGRE[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["TSH", /TIROTROFINA TSH[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["T4L", /TIROXINA TOTAL LIBRE T4L[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Índice HOMA", /INDICE HOMA[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Insulina", /INSULINA[^0-9\-]*:?[\s]*([\d.,]+)/i],
+      ["Proteínas totales", /PROTEINAS TOTALES[^0-9\-]*:?[\s]*([\d.,]+)/i]
+    ];
+
+    for(const [nombre, regex] of definiciones){
+      const m = T.match(regex);
+      if(m && m[1]){
+        const v = limpiarNumero(m[1]);
+        if(v !== null){
+          params[nombre] = v;
         }
       }
     }
     return params;
+  }
+
+  // ============================
+  //  Parser "simple" estilo lista / HCLAB
+  // ============================
+  function parseParametrosSimple(texto){
+    const params = {};
+    const lineas = texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length>0);
+
+    for(const linea of lineas){
+      // ej: "Colesterol Total 242 mg/dl ..."
+      const m = linea.match(/^([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\/()%\.\- ]*?[A-Za-zÁÉÍÓÚÜÑáéíóúüñ])\s+(-?\d+[.,]?\d*)\b/);
+      if(!m) continue;
+      let nombre = m[1].trim();
+      const valor = limpiarNumero(m[2]);
+      if(valor === null) continue;
+
+      // Normalizar nombres comunes
+      const nombreLow = nombre.toLowerCase();
+      if(nombreLow.includes("colesterol total")) nombre = "Colesterol total";
+      else if(nombreLow.includes("hdl")) nombre = "Colesterol HDL";
+      else if(nombreLow.includes("ldl")) nombre = "Colesterol LDL";
+      else if(nombreLow.includes("no hdl")) nombre = "Colesterol no HDL";
+      else if(nombreLow.includes("trig")) nombre = "Triglicéridos";
+      else if(nombreLow.includes("hba1c") || nombreLow.includes("glicosilada")) nombre = "HbA1c";
+      else if(nombreLow.includes("gluc")) nombre = "Glucosa";
+      else if(nombreLow.includes("sodio")) nombre = "Sodio";
+      else if(nombreLow.includes("potasio")) nombre = "Potasio";
+      else if(nombreLow.includes("cloro")) nombre = "Cloro";
+      else if(nombreLow.includes("creatinina")) nombre = "Creatinina";
+      else if(nombreLow.includes("urea")) nombre = "Urea";
+      else if(nombreLow.includes("acido urico") || nombreLow.includes("úrico")) nombre = "Ácido úrico";
+
+      if(!(nombre in params)){
+        params[nombre] = valor;
+      }
+    }
+    return params;
+  }
+
+  // ============================
+  //  Parser combinado
+  // ============================
+  function parseParametros(texto){
+    // 1) parser detallado (CEMIC / labs grandes)
+    const a = parseParametrosDetallado(texto);
+    // 2) parser simple para listas sueltas
+    const b = parseParametrosSimple(texto);
+
+    return {...b, ...a}; // lo detallado pisa al simple si coincide nombre
   }
 
   // ============================
@@ -436,6 +500,7 @@
       return;
     }
     parseStatus.textContent = "Analizando...";
+
     const pacienteAut = extraerPaciente(texto);
     if(pacienteAut && !inputPaciente.value){
       inputPaciente.value = pacienteAut;
@@ -444,6 +509,7 @@
     if(fechaInfo.iso && !inputFecha.value){
       inputFecha.value = fechaInfo.iso;
     }
+
     const parametros = parseParametros(texto);
 
     const paciente = inputPaciente.value.trim() || "Paciente sin nombre";
@@ -456,7 +522,6 @@
       parseStatus.textContent = "Laboratorio analizado.";
     }
 
-    // Crear registro y guardar
     const registro = {
       id: Date.now(),
       paciente,
@@ -468,7 +533,6 @@
     registros.push(registro);
     saveRegistros(registros);
 
-    // Mostrar resultados en panel
     renderUltimo(registro);
     actualizarSelects();
     renderHistorial();
@@ -494,7 +558,13 @@
       const td1 = document.createElement("td");
       const td2 = document.createElement("td");
       td1.textContent = param;
-      td2.textContent = val;
+      // Mostrar con hasta 2 decimales si hace falta
+      const vStr = (Math.abs(val) < 10 && val !== Math.round(val))
+        ? val.toFixed(2)
+        : (Math.abs(val) < 100 && val !== Math.round(val))
+          ? val.toFixed(1)
+          : String(val);
+      td2.textContent = vStr;
       tr.appendChild(td1);
       tr.appendChild(td2);
       tablaUltimoBody.appendChild(tr);
@@ -527,7 +597,6 @@
 
   function actualizarSelects(){
     const pacientes = getPacientesUnicos();
-    // Pacientes
     const currentPaciente = selectPaciente.value;
     selectPaciente.innerHTML = "";
     if(pacientes.length===0){
@@ -542,13 +611,11 @@
         opt.textContent = p;
         selectPaciente.appendChild(opt);
       }
-      // Mantener selección si es posible
       if(currentPaciente && pacientes.includes(currentPaciente)){
         selectPaciente.value = currentPaciente;
       }
     }
 
-    // Parámetros
     const pacActivo = selectPaciente.value || "";
     const params = getParametrosDisponibles(pacActivo);
     const currentParam = selectParametro.value;
@@ -601,7 +668,6 @@
         tr.appendChild(tdV);
         tablaHistorialBody.appendChild(tr);
       }else{
-        // mostrar todos
         for(const [p, v] of Object.entries(r.parametros)){
           const tr = document.createElement("tr");
           const tdF = document.createElement("td");
@@ -620,7 +686,7 @@
   }
 
   selectPaciente.addEventListener("change", ()=>{
-    actualizarSelects(); // para refrescar parámetros disponibles
+    actualizarSelects();
     renderHistorial();
     renderGrafico();
   });
@@ -657,7 +723,7 @@
     }
     const datos = registros
       .filter(r => r.paciente === pac && r.parametros.hasOwnProperty(param))
-      .filter(r => r.fechaISO) // sólo los que tienen fecha bien parseada
+      .filter(r => r.fechaISO)
       .sort((a,b) => a.fechaISO > b.fechaISO ? 1 : -1)
       .map(r => ({
         x: r.fechaISO,
@@ -680,12 +746,8 @@
       options:{
         responsive:true,
         scales:{
-          x:{
-            title:{display:true,text:"Fecha"},
-          },
-          y:{
-            title:{display:true,text:param}
-          }
+          x:{ title:{display:true,text:"Fecha"} },
+          y:{ title:{display:true,text:param} }
         },
         plugins:{
           legend:{display:false},
@@ -710,3 +772,4 @@
 </script>
 </body>
 </html>
+
