@@ -9,55 +9,35 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
-       .lab-input { min-height: 200px; resize: vertical; font-family: monospace; }
-       .data-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
-       .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); z-index: 10; display: flex; justify-content: center; align-items: center; }
+        .lab-input { min-height: 200px; resize: vertical; font-family: monospace; }
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); z-index: 10; display: flex; justify-content: center; align-items: center; }
+        .uci-table-fixed th { position: sticky; top: 0; background-color: #bfdbfe; z-index: 5; } /* Estilo para sticky header */
     </style>
 </head>
 <body class="p-4">
 
 <div id="app" class="max-w-7xl mx-auto bg-white p-6 rounded-xl shadow-2xl">
     <header class="mb-6 border-b pb-4">
-        <h1 class="text-3xl font-bold text-blue-800">Monitor de Laboratorios UCI <span class="text-sm bg-blue-300 px-2 py-0.5 rounded">V12 (Final)</span></h1>
-        <p class="text-sm text-gray-500">Carga, Parsing Robusto y Seguimiento Diario de Pacientes Críticos. (Tolerancia a errores de OCR y Texto Intermedio).</p>
+        <h1 class="text-3xl font-bold text-blue-800">Monitor de Laboratorios UCI <span class="text-sm bg-blue-300 px-2 py-0.5 rounded">V12 (Estable)</span></h1>
+        <p class="text-sm text-gray-500">Carga, Parsing Robusto y Seguimiento Diario por Paciente Crítico.</p>
     </header>
 
+    <!-- CARGA DE DATOS -->
     <section class="mb-8 p-4 border rounded-lg bg-gray-50">
         <h2 class="text-xl font-semibold mb-3 text-gray-700">1. Carga de Laboratorio (Texto o PDF)</h2>
         <textarea id="labInput" class="lab-input w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Pegue aquí el texto del laboratorio o arrastre un PDF..."></textarea>
         <div class="flex space-x-4 mt-3">
             <input type="file" id="pdfInput" accept="application/pdf" class="hidden">
             <label for="pdfInput" class="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg cursor-pointer hover:bg-blue-700 transition duration-150">Cargar PDF (OCR/Digital)</label>
-            <button onclick="processInput(document.getElementById('labInput').value)" class="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition duration-150">Procesar Texto</button>
-            <button onclick="clearData()" class="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition duration-150">Limpiar TODOS los Datos</button>
+            <button onclick="processInput(document.getElementById('labInput').value)" class="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition duration-150">Procesar Texto y Guardar</button>
+            <button onclick="clearInput()" class="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition duration-150">Limpiar Entrada</button>
         </div>
     </section>
-    
-    <section class="mb-8 p-4 border rounded-lg bg-yellow-50">
-        <h2 class="text-xl font-semibold mb-3 text-gray-700">2. Metadata y Cálculos Clínicos (TFG)</h2>
-        <div class="data-grid mb-4">
-            <div>
-                <label for="patientNameManual" class="block text-sm font-medium text-gray-700 mb-1">Paciente Detectado:</label>
-                <input type="text" id="patientNameManual" class="w-full p-2 border rounded-lg" placeholder="Nombre (Verificado)">
-            </div>
-             <div>
-                <label for="patientAgeManual" class="block text-sm font-medium text-gray-700 mb-1">Edad (para TFG):</label>
-                <input type="number" id="patientAgeManual" class="w-full p-2 border rounded-lg" placeholder="Años (Requerido para TFG)">
-            </div>
-            <div>
-                <label for="patientSexManual" class="block text-sm font-medium text-gray-700 mb-1">Sexo (para TFG):</label>
-                <select id="patientSexManual" class="w-full p-2 border rounded-lg">
-                    <option value="male">Masculino</option>
-                    <option value="female">Femenino</option>
-                </select>
-            </div>
-        </div>
-        <p class="text-xs text-gray-600 mt-2">La Edad y el Sexo son necesarios para calcular la Tasa de Filtrado Glomerular (TFG) usando CKD-EPI, si la Creatinina es detectada.</p>
-    </section>
 
-
+    <!-- SELECCIÓN Y RESULTADOS -->
     <section class="mb-8 p-4 border rounded-lg">
-        <h2 class="text-xl font-semibold mb-3 text-gray-700">3. Exploración y Salida</h2>
+        <h2 class="text-xl font-semibold mb-3 text-gray-700">2. Exploración y Salida</h2>
         <div class="data-grid mb-4">
             <div>
                 <label for="patientSelector" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Paciente:</label>
@@ -76,17 +56,22 @@
         <div id="hclabOutput" class="p-3 bg-blue-50 border border-blue-200 rounded-lg hidden"></div>
     </section>
 
+    <!-- GRÁFICO DE EVOLUCIÓN -->
     <section class="mb-8 p-4 border rounded-lg">
-        <h2 class="text-xl font-semibold mb-3 text-gray-700">4. Gráfico de Evolución Temporal</h2>
+        <h2 class="text-xl font-semibold mb-3 text-gray-700">3. Gráfico de Evolución Temporal</h2>
         <div class="bg-gray-100 p-4 rounded-lg">
             <canvas id="evolutionChart" width="800" height="300"></canvas>
         </div>
     </section>
 
+    <!-- TABLA UCI -->
     <section class="p-4 border rounded-lg">
-        <h2 class="text-xl font-semibold mb-3 text-gray-700">5. Tabla UCI (Todas las Variables por Muestra)</h2>
-        <div id="uciTableContainer" class="overflow-x-auto">
-            <p class="text-gray-500">Seleccione un paciente para ver la tabla.</p>
+        <h2 class="text-xl font-semibold mb-3 text-gray-700">4. Tabla UCI (Todas las Variables por Muestra)</h2>
+        <div id="uciTableContainer" class="overflow-x-auto max-h-96 border border-gray-300 rounded-lg">
+            <table id="uciTable" class="min-w-full divide-y divide-gray-200 uci-table-fixed">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
         </div>
     </section>
 
@@ -101,69 +86,69 @@
 <script>
     // ====================================================================
     // CONFIGURACIÓN DE PARÁMETROS (Requerimiento 4.2 y JSON)
-    // Se define la lista de parámetros, sinónimos (regex) y unidades estándar.
     // ====================================================================
     const PARAMETERS = {
         // Hematología
-        "Hemoglobina": { synonyms: /(Hgb|Hemoglobina|HB|Hemog)/i, unit: 'g/dL', hclab: 'Hb', round: 1 },
-        "Hematocrito": { synonyms: /(Hct|Hematocrito|Hto)/i, unit: '%', hclab: 'Hto', round: 0 },
+        "Hemoglobina": { synonyms: /(Hgb|Hemoglobina|HB|Hemog)/i, unit: 'g/dL', hclab: 'Hb' },
+        "Hematocrito": { synonyms: /(Hct|Hematocrito|Hto)/i, unit: '%', hclab: 'Hto' },
         // Iones / electrolitos
-        "Na": { synonyms: /(Na|Sodio|natremia)/i, unit: 'mEq/L', hclab: 'Na', round: 0 },
-        "K": { synonyms: /(K|Potasio|kalemia)/i, unit: 'mEq/L', hclab: 'K', round: 1 },
-        "Cl": { synonyms: /(Cl|Cloro|cloremia)/i, unit: 'mEq/L', hclab: 'Cl', round: 0 },
-        "Mg": { synonyms: /(Mg|Magnesio)/i, unit: 'mg/dL', hclab: 'Mg', round: 1 },
-        "Ca_Total": { synonyms: /(Ca\s*Total|Calcio\s*Total)/i, unit: 'mg/dL', hclab: 'CaT', round: 1 },
-        "Ca_Ionizado": { synonyms: /(Ca\s*Ionizado|Calcio\s*Ionizado)/i, unit: 'mmol/L', hclab: 'CaI', round: 2 },
+        "Na": { synonyms: /(Na|Sodio|natremia)/i, unit: 'mEq/L', hclab: 'Na' },
+        "K": { synonyms: /(K|Potasio|kalemia)/i, unit: 'mEq/L', hclab: 'K' },
+        "Cl": { synonyms: /(Cl|Cloro|cloro|cloremia)/i, unit: 'mEq/L', hclab: 'Cl' },
+        "Mg": { synonyms: /(Mg|Magnesio)/i, unit: 'mg/dL', hclab: 'Mg' },
+        "Ca_Total": { synonyms: /(Ca\s*Total|Calcio\s*Total)/i, unit: 'mg/dL', hclab: 'CaT' },
+        "Ca_Ionizado": { synonyms: /(Ca\s*Ionizado|Calcio\s*Ionizado)/i, unit: 'mmol/L', hclab: 'CaI' },
         // Metabolismo / Renal
-        "Glucosa": { synonyms: /(Glucosa|Glu|Glicemia|Glc)/i, unit: 'mg/dL', hclab: 'Glu', round: 0 },
-        "Urea": { synonyms: /(Urea|Ureico|BUN)/i, unit: 'mg/dL', hclab: 'Urea', round: 0 },
-        "Creatinina": { synonyms: /(Creatinina|Cr|Crea)/i, unit: 'mg/dL', hclab: 'Cr', round: 2 },
-        "Acido_Urico": { synonyms: /(Ácido\s*Úrico|Acido\s*Urico)/i, unit: 'mg/dL', hclab: 'AU', round: 1 },
-        "Osmolalidad": { synonyms: /(Osmolalidad|Osmol)/i, unit: 'mOsm/Kg', hclab: 'Osm', round: 0 },
-        "eGFR": { synonyms: /(eGFR|TFG|Filtrado\s*Glomerular)/i, unit: 'ml/min', hclab: 'TFG', round: 0 }, // TFG detectada
+        "Glucosa": { synonyms: /(Glucosa|Glu|Glicemia|Glc)/i, unit: 'mg/dL', hclab: 'Glu' },
+        "Urea": { synonyms: /(Urea|Ureico|BUN)/i, unit: 'mg/dL', hclab: 'Urea' },
+        "Creatinina": { synonyms: /(Creatinina|Cr|Crea)/i, unit: 'mg/dL', hclab: 'Cr' },
+        "Acido_Urico": { synonyms: /(Ácido\s*Úrico|Acido\s*Urico)/i, unit: 'mg/dL', hclab: 'AU' },
+        "Osmolalidad": { synonyms: /(Osmolalidad|Osmol)/i, unit: 'mOsm/Kg', hclab: 'Osm' },
         // Hepatograma
-        "BT": { synonyms: /(Bilirrubina\s*Total|BT)/i, unit: 'mg/dL', hclab: 'BT', round: 1 },
-        "BD": { synonyms: /(Bilirrubina\s*Directa|BD)/i, unit: 'mg/dL', hclab: 'BD', round: 1 },
-        "AST_TGO": { synonyms: /(AST|TGO|Aspartato)/i, unit: 'U/L', hclab: 'AST', round: 0 },
-        "ALT_TGP": { synonyms: /(ALT|TGP|Alanina)/i, unit: 'U/L', hclab: 'ALT', round: 0 },
-        "Fosfatasa_Alcalina": { synonyms: /(Fosfatasa\s*Alcalina|FAL)/i, unit: 'U/L', hclab: 'FA', round: 0 },
-        "GGT": { synonyms: /(GGT|Gamma\s*Glutamil|GammaGT)/i, unit: 'U/L', hclab: 'GGT', round: 0 },
-        "Albúmina": { synonyms: /(Albumin|Albúmina)/i, unit: 'g/dL', hclab: 'Alb', round: 1 },
-        "Proteínas_Totales": { synonyms: /(Proteínas\s*Total|Prot\s*Total)/i, unit: 'g/dL', hclab: 'Prot', round: 1 },
+        "BT": { synonyms: /(Bilirrubina\s*Total|BT)/i, unit: 'mg/dL', hclab: 'BT' },
+        "BD": { synonyms: /(Bilirrubina\s*Directa|BD)/i, unit: 'mg/dL', hclab: 'BD' },
+        "AST_TGO": { synonyms: /(AST|TGO|Aspartato)/i, unit: 'U/L', hclab: 'AST' },
+        "ALT_TGP": { synonyms: /(ALT|TGP|Alanina)/i, unit: 'U/L', hclab: 'ALT' },
+        "Fosfatasa_Alcalina": { synonyms: /(Fosfatasa\s*Alcalina|FAL)/i, unit: 'U/L', hclab: 'FA' },
+        "GGT": { synonyms: /(GGT|Gamma\s*Glutamil|GammaGT)/i, unit: 'U/L', hclab: 'GGT' },
+        "Albúmina": { synonyms: /(Albumin|Albúmina)/i, unit: 'g/dL', hclab: 'Alb' },
+        "Proteínas_Totales": { synonyms: /(Proteínas\s*Total|Prot\s*Total)/i, unit: 'g/dL', hclab: 'Prot' },
         // Perfil Lipídico
-        "Colesterol_Total": { synonyms: /(Colesterol\s*Total|CT)/i, unit: 'mg/dL', hclab: 'CT', round: 0 },
-        "LDL": { synonyms: /(LDL|C\s*LDL)/i, unit: 'mg/dL', hclab: 'LDL', round: 0 },
-        "HDL": { synonyms: /(HDL|C\s*HDL)/i, unit: 'mg/dL', hclab: 'HDL', round: 0 },
-        "Triglicéridos": { synonyms: /(Triglicéridos|TGL|TG)/i, unit: 'mg/dL', hclab: 'TGL', round: 0 },
-        "ApoB": { synonyms: /(ApoB|Apolipoproteína\s*B)/i, unit: 'mg/dL', hclab: 'ApoB', round: 0 },
+        "Colesterol_Total": { synonyms: /(Colesterol\s*Total|CT)/i, unit: 'mg/dL', hclab: 'CT' },
+        "LDL": { synonyms: /(LDL|C\s*LDL)/i, unit: 'mg/dL', hclab: 'LDL' },
+        "HDL": { synonyms: /(HDL|C\s*HDL)/i, unit: 'mg/dL', hclab: 'HDL' },
+        "Triglicéridos": { synonyms: /(Triglicéridos|TGL|TG)/i, unit: 'mg/dL', hclab: 'TGL' },
+        "Lipoproteína_a": { synonyms: /(Lipoproteína\s*\(a\)|Lp\(a\))/i, unit: 'mg/dL', hclab: 'Lpa' },
+        "ApoB": { synonyms: /(ApoB|Apolipoproteína\s*B)/i, unit: 'mg/dL', hclab: 'ApoB' },
         // Marcadores de Inflamación
-        "PCR": { synonyms: /(PCR|Proteína\s*C\s*Reactiva)/i, unit: 'mg/L', hclab: 'PCR', round: 1 },
-        "Procalcitonina": { synonyms: /(Procalcitonina|PCT)/i, unit: 'ng/ml', hclab: 'PCT', round: 2 },
-        "Ferritina": { synonyms: /(Ferritina)/i, unit: 'ng/ml', hclab: 'Ferr', round: 0 },
+        "PCR": { synonyms: /(PCR|Proteína\s*C\s*Reactiva)/i, unit: 'mg/L', hclab: 'PCR' },
+        "Procalcitonina": { synonyms: /(Procalcitonina|PCT)/i, unit: 'ng/ml', hclab: 'PCT' },
+        "VSG": { synonyms: /(VSG|Velocidad\s*Sedimentación)/i, unit: 'mm/h', hclab: 'VSG' },
+        "Ferritina": { synonyms: /(Ferritina)/i, unit: 'ng/ml', hclab: 'Ferr' },
         // Marcadores Cardíacos
-        "CPK": { synonyms: /(CK|CPK|Creatinkinasa)/i, unit: 'U/L', hclab: 'CPK', round: 0 },
-        "CK_MB": { synonyms: /(CK\s*MB)/i, unit: 'ng/ml', hclab: 'CKMB', round: 1 },
-        "Troponina": { synonyms: /(Troponina\s*)/i, unit: 'ng/ml', hclab: 'Trop', round: 2 },
-        "NT_proBNP": { synonyms: /(NT-proBNP|BNP)/i, unit: 'pg/ml', hclab: 'BNP', round: 0 },
+        "CPK": { synonyms: /(CK|CPK|Creatinkinasa)/i, unit: 'U/L', hclab: 'CPK' },
+        "CK_MB": { synonyms: /(CK\s*MB)/i, unit: 'ng/ml', hclab: 'CKMB' },
+        "Troponina": { synonyms: /(Troponina\s*[TIi])/i, unit: 'ng/ml', hclab: 'Trop' },
+        "NT_proBNP": { synonyms: /(NT-proBNP|BNP)/i, unit: 'pg/ml', hclab: 'BNP' },
         // Vitaminas / Hormonas
-        "Vitamina_B12": { synonyms: /(Vitamina\s*B12|Cianocobalamina)/i, unit: 'pg/ml', hclab: 'B12', round: 0 },
-        "Acido_Fólico": { synonyms: /(Ácido\s*Fólico|Folato)/i, unit: 'ng/ml', hclab: 'Fol', round: 1 },
-        "TSH": { synonyms: /(TSH)/i, unit: 'uUI/ml', hclab: 'TSH', round: 2 },
-        "Cortisol": { synonyms: /(Cortisol)/i, unit: 'mcg/dL', hclab: 'Cort', round: 1 },
+        "Vitamina_B12": { synonyms: /(Vitamina\s*B12|Cianocobalamina)/i, unit: 'pg/ml', hclab: 'B12' },
+        "Acido_Fólico": { synonyms: /(Ácido\s*Fólico|Folato)/i, unit: 'ng/ml', hclab: 'Fol' },
+        "TSH": { synonyms: /(TSH)/i, unit: 'uUI/ml', hclab: 'TSH' },
+        "Cortisol": { synonyms: /(Cortisol)/i, unit: 'mcg/dL', hclab: 'Cort' },
         // Coagulación
-        "TP": { synonyms: /(TP|Tiempo\s*Protrombina)/i, unit: '%', hclab: 'TP', round: 0 },
-        "INR": { synonyms: /(INR)/i, unit: 'factor', hclab: 'INR', round: 2 }, 
-        "TTPA": { synonyms: /(TTPA|TTP)/i, unit: 's', hclab: 'TTPA', round: 1 },
-        "Fibrinógeno": { synonyms: /(Fibrinógeno|Fibrinogeno)/i, unit: 'mg/dL', hclab: 'Fib', round: 0 },
+        "TP": { synonyms: /(TP|Tiempo\s*Protrombina)/i, unit: '%', hclab: 'TP' },
+        "INR": { synonyms: /(INR)/i, unit: 's', hclab: 'INR' }, 
+        "TTPA": { synonyms: /(TTPA|TTP)/i, unit: 's', hclab: 'TTPA' },
+        "Fibrinógeno": { synonyms: /(Fibrinógeno|Fibrinogeno)/i, unit: 'mg/dL', hclab: 'Fib' },
         // Otros
-        "Lactato": { synonyms: /(Lactato|Ácido\s*Láctico)/i, unit: 'mmol/L', hclab: 'Lact', round: 1 },
+        "Lactato": { synonyms: /(Lactato|Ácido\s*Láctico)/i, unit: 'mmol/L', hclab: 'Lact' },
     };
 
     // ====================================================================
-    // REGEX DE UNIDADES FLEXIBLES (Robustez)
+    // REGEX DE UNIDADES FLEXIBLES (Requerimiento 4.3 - Tolerancia a OCR)
     // ====================================================================
     const UNIT_REGEX = {
-        'U/L': '(U|UI)\\s*\\/?\\s*[L|l|1]|UI/l|U\\/l', // Tolerancia a '1' y espacios
+        'U/L': '(U|UI)\\s*\\/?\\s*[L|l|1]|UI/l|U\\/L', // Tolerancia a UI/1 y espacios
         'mg/dL': 'mg\\/dl',
         'g/dL': 'g\\/dl',
         '%': '%',
@@ -177,62 +162,57 @@
         'uUI/ml': 'uUI\\/ml',
         'mcg/dL': 'mcg\\/dl',
         's': 's',
-        'factor': 'factor|ratio', // Para INR (sin unidad común)
+        '': '\\s*$', // Para valores sin unidad (ej. INR, si no se encuentra 's')
     };
 
     // ====================================================================
-    // ALMACENAMIENTO GLOBAL
+    // ALMACENAMIENTO GLOBAL Y FUNCIONES DE PERSISTENCIA
     // ====================================================================
-    let labData = {};
+    let labData = {}; 
     let chartInstance = null;
     const LOCAL_STORAGE_KEY = 'uciLabMonitorData_V12';
 
-    // ====================================================================
-    // CÁLCULO DE TFG (CKD-EPI)
-    // ====================================================================
-    function calculateEGFRCKD_EPI(scr, age, gender) {
-        if (!scr ||!age ||!gender) return null;
-        if (scr <= 0) return 0;
+    function saveData() {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(labData));
+    }
 
-        const isFemale = gender === 'female';
-        let kappa = isFemale? 0.7 : 0.9;
-        let alpha = isFemale? -0.329 : -0.411;
-        let factor = isFemale? 1.018 : 1;
-
-        let egfr = 141 * 
-            Math.pow(Math.min(scr / kappa, 1), alpha) *
-            Math.pow(Math.max(scr / kappa, 1), -1.209) *
-            Math.pow(0.993, age) * factor;
-
-        return Math.round(egfr);
+    function loadData() {
+        const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (storedData) {
+            labData = JSON.parse(storedData);
+        }
+        loadPatientSelector();
     }
 
     // ====================================================================
-    // FUNCIÓN CENTRAL DE PARSING ROBUSTO (Regex de Anclaje y Ventana)
+    // FUNCIÓN CENTRAL DE PARSING ROBUSTO (Requerimiento 4.3 y 9)
     // ====================================================================
-
+    
+    /**
+     * Captura un valor numérico asociado a un parámetro.
+     * Patrón robusto: (Nombre del test)[\s\S]{0,200}? (El valor) \s* [Flecha]? \s* (Unidad)
+     */
     function parseLabValue(text, paramName, unitKey) {
-        const unitPattern = UNIT_REGEX[unitKey] |
-
-| 'mg\\/dl'; 
+        const unitPattern = UNIT_REGEX[unitKey] || 'mg\\/dl';
         
-        // El anclaje usa el sinónimo del parámetro, pero limpiando los paréntesis de regex
-        const paramRegexSource = PARAMETERS[paramName].synonyms.source.replace(/[()]/g, ''); 
+        // 1. Obtener el patrón de sinónimos
+        const paramRegexSource = PARAMETERS[paramName].synonyms.source.replace(/\\/g, ''); 
         
-        // Regex Maestra:
-        // (Anclaje){0,100}? (Valor numérico) \s* [↑↓]? \s* (Unidad flexible)
-        //{0,100}? : Permite hasta 100 caracteres de texto, rangos, etc. (Texto Intermedio)
-        // ([\d\.,]+) : Captura el valor (puede tener punto o coma decimal)
+        // 2. Construir la REGEX MAESTRA:
+        // Grupo 1: El nombre o sinónimo del parámetro
+        // [\s\S]{0,250}?: Permite hasta 250 caracteres de texto basura/rango/fecha entre el nombre y el valor.
+        // ([\d\\.,]+): Captura el valor numérico (incluye punto/coma para decimales).
+        // [↑↓]? : Captura la flecha opcional.
+        // (${unitPattern}): Captura la unidad flexible.
         const masterRegex = new RegExp(
-            `(${paramRegexSource}){0,100}?\s*([\\d\\.,]+)\\s*[↑↓]?\\s*(${unitPattern})`, 
-            'im'
+            `(${paramRegexSource})[\\s\\S]{0,250}?\s*([\\d\\.,]+)\\s*[↑↓]?\\s*(${unitPattern})`, 
+            'im' // Flags: i=case-insensitive, m=multi-line
         );
         
         const match = text.match(masterRegex);
 
         if (match) {
-            // El valor capturado está en el grupo 2
-            let value = match.replace(',', '.'); // Normalizar coma decimal a punto
+            let value = match[2].replace(',', '.'); // Normalizar coma decimal a punto
             return parseFloat(value);
         }
         return null;
@@ -249,160 +229,115 @@
 
         const normalizedText = text.replace(/(\n|\r)/g, ' ').toUpperCase();
         
+        // 1. Extraer Metadata (Nombre, Protocolo, Fecha, Hora)
         const metadata = extractMetadata(normalizedText);
-        let patientName = document.getElementById('patientNameManual').value.trim() |
-
-| metadata.paciente;
-        
-        if (!patientName) {
-            alert('No se pudo identificar el Nombre del Paciente. Por favor, ingréselo manualmente en la sección 2.');
+        if (!metadata.paciente) {
+            alert('No se pudo identificar el Nombre del Paciente. La muestra no será guardada.');
             return;
         }
-        
-        // Actualizar el nombre detectado/verificado
-        document.getElementById('patientNameManual').value = patientName;
 
         let newSample = {
-            paciente: patientName,
-            protocolo: metadata.protocolo,
-            fecha: metadata.fecha,
-            hora: metadata.hora,
+            ...metadata,
             parametros: {},
-            timestamp: new Date(`${metadata.fecha}T${metadata.hora}`).getTime()
+            // Crear timestamp para ordenamiento. Si falta la hora, asume 00:00:00
+            timestamp: new Date(`${metadata.fecha}T${metadata.hora}`).getTime() 
         };
 
-        // 1. Detección de Parámetros
+        // 2. Detección de Parámetros
         let detectedCount = 0;
         for (const paramName in PARAMETERS) {
             const { unit } = PARAMETERS[paramName];
             const value = parseLabValue(text, paramName, unit);
             
-            if (value!== null &&!isNaN(value)) {
-                // Aplicar redondeo para limpieza
-                newSample.parametros[paramName] = parseFloat(value.toFixed(PARAMETERS[paramName].round));
+            if (value !== null && !isNaN(value)) {
+                newSample.parametros[paramName] = value;
                 detectedCount++;
             }
         }
-        
-        // 2. TFG (Cálculo Clínico Adicional si Creatinina existe)
-        if (newSample.parametros['Creatinina']) {
-            const age = parseInt(document.getElementById('patientAgeManual').value);
-            const gender = document.getElementById('patientSexManual').value;
-            
-            if (age > 0) {
-                const egfr = calculateEGFRCKD_EPI(newSample.parametros['Creatinina'], age, gender);
-                if (egfr!== null) {
-                    newSample.parametros = egfr; // Usar una clave diferente para la TFG calculada
-                }
-            }
-        }
-
 
         if (detectedCount === 0) {
-            alert('Advertencia: No se detectó ningún parámetro válido en el texto.');
+            alert('Advertencia: No se detectó ningún parámetro válido en el texto. Revise el formato.');
             return;
         }
 
         // 3. Almacenamiento
+        const patientName = newSample.paciente;
         if (!labData[patientName]) {
-            labData[patientName] =;
+            labData[patientName] = [];
         }
         
-        // Prevenir duplicados (por protocolo o fecha/hora)
-        const exists = labData[patientName].some(sample => 
-            (sample.protocolo && sample.protocolo === newSample.protocolo) |
-
-| (sample.fecha === newSample.fecha && sample.hora === newSample.hora)
+        // Verificar duplicados (misma fecha, hora, protocolo)
+        const isDuplicate = labData[patientName].some(sample => 
+            sample.protocolo === newSample.protocolo && sample.fecha === newSample.fecha
         );
 
-        if (!exists) {
+        if (!isDuplicate) {
             labData[patientName].push(newSample);
-            labData[patientName].sort((a, b) => a.timestamp - b.timestamp);
+            labData[patientName].sort((a, b) => a.timestamp - b.timestamp); // Ordenar cronológicamente
             saveData();
-            alert(`Muestra cargada exitosamente para ${patientName}. Parámetros detectados: ${detectedCount}`);
+            alert(`Muestra de ${newSample.fecha} (${newSample.protocolo}) cargada exitosamente para ${patientName}. Parámetros detectados: ${detectedCount}`);
         } else {
-            alert(`Muestra ya existe para ${patientName}. No se cargó.`);
+            alert(`Muestra de ${newSample.fecha} (${newSample.protocolo}) ya existe o es duplicada. No se cargó.`);
         }
         
-        loadPatientSelector();
-        document.getElementById('patientSelector').value = patientName;
+        loadPatientSelector(patientName); // Recarga y selecciona al paciente recién cargado
         loadPatientData();
+        clearInput();
     }
 
+    /**
+     * Extrae Nombre, Protocolo, Fecha, y Hora del texto.
+     */
     function extractMetadata(text) {
         const result = { paciente: null, protocolo: null, fecha: null, hora: '00:00:00' };
 
-        // 1. Nombre del Paciente (Regex más simple para capturar nombre antes de cualquier parámetro o encabezado)
+        // Regex para Nombre del Paciente (asume MAYÚSCULAS y palabras clave comunes)
         const patientRegex = /(PACIENTE|NOMBRE|PT)\s*[:]?\s*([A-Z\s\.,]{5,})/i;
         let match = text.match(patientRegex);
         if (match) {
-            result.paciente = match.trim().replace(/\s{2,}/g, ' ');
+            result.paciente = match[2].trim().replace(/\s{2,}/g, ' ');
         }
         
-        // 2. Protocolo
+        // Regex para Protocolo (asume alfanumérico)
         const protocolRegex = /(PROTOCOLO|ACCESSION|SOLICITUD)\s*[:]?\s*([A-Z0-9-]{4,})/i;
         match = text.match(protocolRegex);
         if (match) {
-            result.protocolo = match.trim();
+            result.protocolo = match[2].trim();
         }
 
-        // 3. Fecha
+        // Regex para Fecha (DD/MM/YYYY, DD.MM.YYYY, YYYY-MM-DD)
         const dateRegex = /(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/;
         match = text.match(dateRegex);
         if (match) {
-            const parts = match.[1]split(/[\/\.-]/);
+            const parts = match[1].split(/[\/\.-]/);
             if (parts.length === 3) {
-                let day = parts.padStart(2, '0');
-                let month = parts.[1]padStart(2, '0');
-                let year = parts.length === 2? `20${parts}` : parts;
-                result.fecha = `${year}-${month}-${day}`;
+                let day = parts[0].padStart(2, '0');
+                let month = parts[1].padStart(2, '0');
+                let year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+                result.fecha = `${year}-${month}-${day}`; // Formato ISO
             }
         }
         
-        // 4. Hora
+        // Regex para Hora (HH:MM)
         const timeRegex = /(\d{1,2}:\d{2})/;
         match = text.match(timeRegex);
         if (match) {
             result.hora = match[1] + ':00';
+        } else {
+            // Si no se encuentra hora, usar la hora actual (menos preferido)
+             result.hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
         }
 
         return result;
     }
 
     // ====================================================================
-    // PERSISTENCIA Y CARGA
+    // FUNCIONALIDAD DE UI
     // ====================================================================
 
-    function saveData() {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(labData));
-    }
-
-    function loadData() {
-        const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (storedData) {
-            labData = JSON.parse(storedData);
-        }
-        loadPatientSelector();
-    }
-    
-    function clearData() {
-        if(confirm('¿Está seguro que desea ELIMINAR TODOS los datos de laboratorio guardados? Esta acción es irreversible.')) {
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-            labData = {};
-            loadPatientSelector();
-            if (chartInstance) chartInstance.destroy();
-            document.getElementById('uciTableContainer').innerHTML = '<p class="text-gray-500">Seleccione un paciente para ver la tabla.</p>';
-            alert('Datos eliminados exitosamente.');
-        }
-    }
-
-    // ====================================================================
-    // FUNCIONALIDAD DE UI Y TABLA UCI
-    // ====================================================================
-
-    function loadPatientSelector() {
+    function loadPatientSelector(selectPatient = null) {
         const selector = document.getElementById('patientSelector');
-        selector.innerHTML = '<option value="">-- Seleccionar --</option>';
+        selector.innerHTML = '<option value="">-- Seleccionar Paciente --</option>';
         const patientNames = Object.keys(labData).sort();
         patientNames.forEach(name => {
             const option = document.createElement('option');
@@ -411,19 +346,28 @@
             selector.appendChild(option);
         });
         
+        if (selectPatient && patientNames.includes(selectPatient)) {
+            selector.value = selectPatient;
+        }
+
         if (patientNames.length > 0) {
             loadParamSelector();
-        } 
+        } else {
+            document.getElementById('paramSelector').innerHTML = '<option>-- No hay datos --</option>';
+            document.getElementById('uciTableContainer').querySelector('table tbody').innerHTML = '<tr><td colspan="100" class="text-center py-4 text-gray-500">No hay datos cargados para este paciente.</td></tr>';
+        }
     }
 
     function loadParamSelector() {
+        const patientName = document.getElementById('patientSelector').value;
         const allParams = new Set();
-        Object.values(labData).forEach(patientSamples => {
-            patientSamples.forEach(sample => {
+        
+        if (patientName && labData[patientName]) {
+            labData[patientName].forEach(sample => {
                 Object.keys(sample.parametros).forEach(param => allParams.add(param));
             });
-        });
-        
+        }
+
         const selector = document.getElementById('paramSelector');
         selector.innerHTML = '';
         const sortedParams = Array.from(allParams).sort();
@@ -436,72 +380,133 @@
         });
         
         if (sortedParams.length > 0) {
-            updateGraph();
+            // updateGraph() se llama dentro de loadPatientData, pero lo aseguramos
+            updateGraph(); 
+        } else if (chartInstance) {
+            chartInstance.destroy();
         }
     }
 
     function loadPatientData() {
         const patientName = document.getElementById('patientSelector').value;
+        const tableBody = document.getElementById('uciTable').querySelector('tbody');
+        const tableHead = document.getElementById('uciTable').querySelector('thead');
+        
         if (!patientName) {
-            document.getElementById('uciTableContainer').innerHTML = '<p class="text-gray-500">Seleccione un paciente para ver la tabla.</p>';
+            tableBody.innerHTML = '<tr><td colspan="100" class="text-center py-4 text-gray-500">Seleccione un paciente para ver el historial.</td></tr>';
+            tableHead.innerHTML = '';
             if (chartInstance) chartInstance.destroy();
             return;
         }
 
         const samples = labData[patientName];
-        if (!samples |
+        if (!samples || samples.length === 0) return;
 
-| samples.length === 0) return;
-
+        // 1. Identificar todos los parámetros detectados
         const allParams = new Set();
         samples.forEach(sample => {
             Object.keys(sample.parametros).forEach(param => allParams.add(param));
         });
         const sortedParams = Array.from(allParams).sort();
 
-        let tableHTML = `<table id="uciTable" class="min-w-full divide-y divide-gray-300">
-            <thead class="bg-blue-100">
-                <tr>
-                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Fecha/Hora</th>
-                    <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Protocolo</th>`;
-        
+        // 2. Generar Cabecera
+        let headHTML = `
+            <tr>
+                <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Fecha/Hora</th>
+                <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Protocolo</th>
+        `;
         sortedParams.forEach(param => {
-            let unitDisplay = PARAMETERS[param]?.unit |
-
-| 'un';
-            if (param === 'eGFR_Calc') unitDisplay = 'ml/min';
-            tableHTML += `<th class="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase">${param.replace(/_/g, ' ')} (${unitDisplay})</th>`;
+            const unit = PARAMETERS[param]?.unit || 'un';
+            headHTML += `<th class="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase">${param.replace(/_/g, ' ')} (${unit})</th>`;
         });
-        tableHTML += `</tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
+        headHTML += `</tr>`;
+        tableHead.innerHTML = headHTML;
 
+
+        // 3. Generar Filas
+        let bodyHTML = '';
         samples.forEach(sample => {
-            const displayDate = new Date(sample.fecha).toLocaleDateString('es-AR', {day: '2-digit', month: 'short'});
-            tableHTML += `<tr>
+            const dateObj = new Date(sample.fecha);
+            const displayDate = dateObj.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+            bodyHTML += `<tr class="hover:bg-gray-50">
                 <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-900">${displayDate} ${sample.hora.substring(0, 5)}</td>
-                <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-500">${sample.protocolo |
-
-| 'N/A'}</td>`;
+                <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-500">${sample.protocolo || 'N/A'}</td>`;
             
             sortedParams.forEach(param => {
-                const value = sample.parametros[param]!== undefined? sample.parametros[param] : '-';
-                tableHTML += `<td class="px-3 py-2 text-sm text-center">${value}</td>`;
+                const value = sample.parametros[param] !== undefined ? sample.parametros[param] : '-';
+                bodyHTML += `<td class="px-3 py-2 text-sm text-center">${value}</td>`;
             });
-            tableHTML += `</tr>`;
+            bodyHTML += `</tr>`;
         });
 
-        tableHTML += `</tbody></table>`;
-        document.getElementById('uciTableContainer').innerHTML = tableHTML;
+        tableBody.innerHTML = bodyHTML;
         
+        // 4. Actualizar Selectores y Gráfico
         loadParamSelector();
+        updateGraph();
     }
 
+    // ARREGLO CRÍTICO: Asegurarse de que el canvas exista antes de llamar a getContext
     function updateGraph() {
-        // Lógica del gráfico omitida por brevedad, se mantiene la estructura de Chart.js
+        const patientName = document.getElementById('patientSelector').value;
+        const param = document.getElementById('paramSelector').value;
+        const ctx = document.getElementById('evolutionChart')?.getContext('2d');
+        
+        if (!patientName || !param || !ctx) {
+            if (chartInstance) chartInstance.destroy();
+            return;
+        }
+
+        const samples = labData[patientName];
+        if (!samples) return;
+
+        const dataPoints = samples
+            .filter(s => s.parametros[param] !== undefined)
+            .map(s => ({
+                x: new Date(s.fecha + 'T' + s.hora).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                y: s.parametros[param]
+            }));
+
+        const labels = dataPoints.map(dp => dp.x);
+        const data = dataPoints.map(dp => dp.y);
+        const unit = PARAMETERS[param]?.unit || '';
+
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: `${param.replace(/_/g, ' ')} (${unit})`,
+                    data: data,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: `Evolución de ${param.replace(/_/g, ' ')}` }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: `Valor (${unit})` }
+                    },
+                    x: {
+                        title: { display: true, text: 'Fecha y Hora de Muestra' }
+                    }
+                }
+            }
+        });
     }
 
     /**
-     * Genera la salida abreviada tipo HCLAB (Requerimiento 5.4 y Perfil del Usuario)
-     * Utiliza las variables clave sin unidades ni flechas.
+     * Genera la salida abreviada tipo HCLAB (Requerimiento 5.4)
      */
     function generateHCLAB() {
         const patientName = document.getElementById('patientSelector').value;
@@ -511,24 +516,22 @@
         }
 
         const samples = labData[patientName];
-        if (!samples |
-
-| samples.length === 0) return;
+        if (!samples || samples.length === 0) return;
         
         const lastSample = samples[samples.length - 1];
 
-        const hclabParts =;
-        const hclabKeysOrder =;
+        const hclabParts = [];
+        const hclabKeysOrder = [
+            'Na', 'K', 'Cl', 'Hemoglobina', 'Hematocrito', 'Glucosa', 'Urea', 'Creatinina', 
+            'ALT_TGP', 'AST_TGO', 'BT', 'BD', 'Albúmina', 'Proteínas_Totales', 'CPK', 'PCR', 'INR', 'Lactato'
+        ];
 
         hclabKeysOrder.forEach(paramName => {
-            let hclabKey = PARAMETERS[paramName]?.hclab;
-            
-            // Usar 'TFG' para el eGFR calculado
-            if (paramName === 'eGFR_Calc') hclabKey = 'TFG';
-            
+            const hclabKey = PARAMETERS[paramName]?.hclab;
             const value = lastSample.parametros[paramName];
             
-            if (hclabKey && value!== undefined) {
+            if (hclabKey && value !== undefined) {
+                // Formato: Key (abreviada) + valor (sin unidades ni flechas)
                 hclabParts.push(`${hclabKey} ${value}`);
             }
         });
@@ -538,10 +541,15 @@
         
         outputDiv.innerHTML = `
             <p class="font-bold text-gray-800 mb-1">Salida HCLAB para Historia Clínica (Última Muestra):</p>
-            <textarea class="w-full p-2 border rounded" rows="3" readonly>${hclabString}</textarea>
-            <button onclick="copyToClipboard('${hclabString}')" class="mt-2 text-sm text-blue-600 hover:underline">Copiar al Portapapeles</button>
+            <textarea id="hclabTextarea" class="w-full p-2 border rounded" rows="3" readonly>${hclabString}</textarea>
+            <button onclick="copyToClipboard(document.getElementById('hclabTextarea').value)" class="mt-2 text-sm text-blue-600 hover:underline">Copiar al Portapapeles</button>
         `;
         outputDiv.classList.remove('hidden');
+    }
+
+    function clearInput() {
+        document.getElementById('labInput').value = '';
+        document.getElementById('hclabOutput').classList.add('hidden');
     }
 
     function copyToClipboard(text) {
@@ -557,14 +565,61 @@
         document.body.removeChild(textarea);
     }
     
-    // Función de limpieza de datos omitida por brevedad
-    function downloadCSV() { /*... */ } 
-    function clearInput() { document.getElementById('labInput').value = ''; document.getElementById('hclabOutput').classList.add('hidden'); }
-    
-    // Inicialización
-    document.addEventListener('DOMContentLoaded', loadData);
+    // ====================================================================
+    // MANEJO DE PDF (Usando pdf.js) - Se requiere la librería cargada.
+    // ====================================================================
+
+    function setupPdfHandling() {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        if (pdfjsLib) {
+            // Aseguramos que el worker se cargue correctamente
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js';
+        } else {
+             console.error("PDF.js no está disponible. La carga de PDF no funcionará.");
+             return; // Salir si la librería no está cargada
+        }
+        
+        document.getElementById('pdfInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function() {
+                document.getElementById('loading').classList.remove('hidden');
+                const pdfData = new Uint8Array(this.result);
+                try {
+                    const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        // Unir items con espacio para preservar la estructura si es posible
+                        fullText += textContent.items.map(item => item.str).join(' ') + '\n\n';
+                    }
+                    document.getElementById('labInput').value = fullText;
+                    processInput(fullText);
+                } catch (error) {
+                    alert('Error al procesar el PDF. Revise la consola. Detalle: ' + error.message);
+                } finally {
+                    document.getElementById('loading').classList.add('hidden');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // ====================================================================
+    // INICIALIZACIÓN
+    // ====================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        loadData();
+        setupPdfHandling();
+        // Inicializar la tabla vacía
+        loadPatientData(); 
+    });
 </script>
 
+<!-- Scripts de librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.min.js"></script>
 
 </body>
