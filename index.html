@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor de Laboratorios UCI (V13)</title>
+    <title>Monitor de Laboratorios UCI (V14)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <style>
@@ -19,7 +19,7 @@
 
 <div id="app" class="max-w-7xl mx-auto bg-white p-6 rounded-xl shadow-2xl">
     <header class="mb-6 border-b pb-4">
-        <h1 class="text-3xl font-bold text-blue-800">Monitor de Laboratorios UCI <span class="text-sm bg-indigo-300 px-2 py-0.5 rounded">V13 (Estabilidad Máxima)</span></h1>
+        <h1 class="text-3xl font-bold text-blue-800">Monitor de Laboratorios UCI <span class="text-sm bg-indigo-300 px-2 py-0.5 rounded">V14 (Producción)</span></h1>
         <p class="text-sm text-gray-500">Carga, Parsing Robusto y Seguimiento Diario por Paciente Crítico.</p>
     </header>
 
@@ -41,7 +41,7 @@
         <div class="data-grid mb-4">
             <div>
                 <label for="patientSelector" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Paciente:</label>
-                <select id="patientSelector" onchange="loadPatientData()" class="w-full p-2 border border-gray-300 rounded-lg"></select>
+                <select id="patientSelector" onchange="loadPatientData(true)" class="w-full p-2 border border-gray-300 rounded-lg"></select>
             </div>
             <div>
                 <label for="paramSelector" class="block text-sm font-medium text-gray-700 mb-1">Parámetro a Graficar:</label>
@@ -181,7 +181,6 @@
         if (storedData) {
             labData = JSON.parse(storedData);
         }
-        loadPatientSelector();
     }
 
     // ====================================================================
@@ -193,7 +192,10 @@
      */
     function parseLabValue(text, paramName, unitKey) {
         const unitPattern = UNIT_REGEX[unitKey] || 'mg\\/dl';
-        const paramRegexSource = PARAMETERS[paramName].synonyms.source.source.replace(/\\/g, ''); 
+        
+        // El patrón para los sinónimos debe ser extraído de la propiedad .source de la regex
+        // Dado que la propiedad synonyms ya es una RegExp, usamos .source
+        const paramRegexSource = PARAMETERS[paramName].synonyms.source; 
         
         // La regex clave: Captura el valor que puede tener punto o coma, antes de la unidad.
         const masterRegex = new RegExp(
@@ -219,7 +221,8 @@
             return;
         }
         
-        // Reemplazar coma decimal por punto en TODO el texto antes de normalizar
+        // **CORRECCIÓN DE COMA DECIMAL:** Reemplazar coma decimal por punto en todo el texto.
+        // Esto soluciona el problema de BT 1,60 -> 1.60
         text = text.replace(/(\d),(\d)/g, '$1.$2'); 
 
         const normalizedText = text.replace(/(\n|\r)/g, ' ').toUpperCase();
@@ -274,7 +277,7 @@
         }
         
         loadPatientSelector(patientName); 
-        loadPatientData();
+        // No llamamos a loadPatientData aquí, se hará después de la carga para asegurar el DOM.
         clearInput();
     }
 
@@ -327,6 +330,9 @@
         const selector = document.getElementById('patientSelector');
         selector.innerHTML = '<option value="">-- Seleccionar Paciente --</option>';
         const patientNames = Object.keys(labData).sort();
+        
+        const currentSelected = selector.value;
+
         patientNames.forEach(name => {
             const option = document.createElement('option');
             option.value = name;
@@ -334,16 +340,11 @@
             selector.appendChild(option);
         });
         
+        // Mantener la selección después de la recarga
         if (selectPatient && patientNames.includes(selectPatient)) {
             selector.value = selectPatient;
-        }
-
-        if (patientNames.length === 0) {
-            document.getElementById('paramSelector').innerHTML = '<option>-- No hay datos --</option>';
-            document.getElementById('uciTable').querySelector('tbody').innerHTML = '<tr><td colspan="100" class="text-center py-4 text-gray-500">No hay datos cargados.</td></tr>';
-        } else if (!selectPatient && selector.value) {
-            // Si hay pacientes pero no se seleccionó uno nuevo, forzar la carga del paciente actual
-            loadPatientData(); 
+        } else if (patientNames.includes(currentSelected)) {
+            selector.value = currentSelected;
         }
     }
 
@@ -369,7 +370,7 @@
             selector.appendChild(option);
         });
         
-        // Mantener el parámetro seleccionado o seleccionar el primero
+        // Mantener la selección del parámetro
         if (sortedParams.length > 0) {
             if (currentParam && sortedParams.includes(currentParam)) {
                 selector.value = currentParam;
@@ -379,7 +380,7 @@
         }
     }
 
-    function loadPatientData() {
+    function loadPatientData(resetGraph = false) {
         const patientName = document.getElementById('patientSelector').value;
         const tableBody = document.getElementById('uciTable').querySelector('tbody');
         const tableHead = document.getElementById('uciTable').querySelector('thead');
@@ -436,6 +437,7 @@
 
         tableBody.innerHTML = bodyHTML;
         
+        // Llamar a updateGraph siempre después de cargar la tabla
         updateGraph();
     }
 
@@ -444,9 +446,10 @@
         const patientName = document.getElementById('patientSelector').value;
         const param = document.getElementById('paramSelector').value;
         const canvas = document.getElementById('evolutionChart');
-        const ctx = canvas ? canvas.getContext('2d') : null; // Si el canvas es null, ctx será null
+        // Usar opcional chaining para asegurar que getContext solo se llame si canvas existe
+        const ctx = canvas ? canvas.getContext('2d') : null; 
         
-        // Destruir cualquier instancia previa si no hay un paciente válido o contexto.
+        // Si no hay paciente, parámetro, o contexto de dibujo válido, destruir la instancia
         if (!patientName || !param || !ctx) {
             if (chartInstance) chartInstance.destroy();
             return;
@@ -458,6 +461,7 @@
         const dataPoints = samples
             .filter(s => s.parametros[param] !== undefined)
             .map(s => ({
+                // Formatear la fecha para el eje X
                 x: new Date(s.fecha + 'T' + s.hora).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
                 y: s.parametros[param]
             }));
@@ -466,7 +470,7 @@
         const data = dataPoints.map(dp => dp.y);
         const unit = PARAMETERS[param]?.unit || '';
 
-        if (chartInstance) chartInstance.destroy();
+        if (chartInstance) chartInstance.destroy(); // Destruir instancia anterior antes de crear la nueva
 
         chartInstance = new Chart(ctx, {
             type: 'line',
@@ -640,10 +644,12 @@
     document.addEventListener('DOMContentLoaded', () => {
         loadData();
         setupPdfHandling();
-        // Carga inicial de datos (selecciona el primero si existe)
+        
+        // Seleccionar el primer paciente si existe después de la carga de datos
         const patientSelector = document.getElementById('patientSelector');
         if (patientSelector.options.length > 1) {
-            patientSelector.value = patientSelector.options[1].value;
+            // Seleccionar el primer paciente después de "-- Seleccionar --"
+            patientSelector.value = patientSelector.options[1].value; 
             loadPatientData();
         }
     });
