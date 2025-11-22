@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor de Laboratorios UCI (V12)</title>
+    <title>Monitor de Laboratorios UCI (V13)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <style>
@@ -12,14 +12,14 @@
         .lab-input { min-height: 200px; resize: vertical; font-family: monospace; }
         .data-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); z-index: 10; display: flex; justify-content: center; align-items: center; }
-        .uci-table-fixed th { position: sticky; top: 0; background-color: #bfdbfe; z-index: 5; } /* Estilo para sticky header */
+        .uci-table-fixed th { position: sticky; top: 0; background-color: #bfdbfe; z-index: 5; }
     </style>
 </head>
 <body class="p-4">
 
 <div id="app" class="max-w-7xl mx-auto bg-white p-6 rounded-xl shadow-2xl">
     <header class="mb-6 border-b pb-4">
-        <h1 class="text-3xl font-bold text-blue-800">Monitor de Laboratorios UCI <span class="text-sm bg-blue-300 px-2 py-0.5 rounded">V12 (Estable)</span></h1>
+        <h1 class="text-3xl font-bold text-blue-800">Monitor de Laboratorios UCI <span class="text-sm bg-indigo-300 px-2 py-0.5 rounded">V13 (Estabilidad Máxima)</span></h1>
         <p class="text-sm text-gray-500">Carga, Parsing Robusto y Seguimiento Diario por Paciente Crítico.</p>
     </header>
 
@@ -170,7 +170,7 @@
     // ====================================================================
     let labData = {}; 
     let chartInstance = null;
-    const LOCAL_STORAGE_KEY = 'uciLabMonitorData_V12';
+    const LOCAL_STORAGE_KEY = 'uciLabMonitorData_V13';
 
     function saveData() {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(labData));
@@ -193,9 +193,9 @@
      */
     function parseLabValue(text, paramName, unitKey) {
         const unitPattern = UNIT_REGEX[unitKey] || 'mg\\/dl';
-        const paramRegexSource = PARAMETERS[paramName].synonyms.source.replace(/\\/g, ''); 
+        const paramRegexSource = PARAMETERS[paramName].synonyms.source.source.replace(/\\/g, ''); 
         
-        // La regex clave: Permite texto intermedio, valores con punto o coma, flechas y unidades flexibles.
+        // La regex clave: Captura el valor que puede tener punto o coma, antes de la unidad.
         const masterRegex = new RegExp(
             `(${paramRegexSource})[\\s\\S]{0,250}?\s*([\\d\\.,]+)\\s*[↑↓]?\\s*(${unitPattern})`, 
             'im'
@@ -218,6 +218,9 @@
             alert('Por favor, pegue el texto del laboratorio o cargue un PDF.');
             return;
         }
+        
+        // Reemplazar coma decimal por punto en TODO el texto antes de normalizar
+        text = text.replace(/(\d),(\d)/g, '$1.$2'); 
 
         const normalizedText = text.replace(/(\n|\r)/g, ' ').toUpperCase();
         
@@ -310,7 +313,6 @@
         if (match) {
             result.hora = match[1] + ':00';
         } else if (result.fecha) {
-            // Si hay fecha pero no hora, usa una hora dummy para asegurar el timestamp
             result.hora = '12:00:00'; 
         }
 
@@ -338,7 +340,10 @@
 
         if (patientNames.length === 0) {
             document.getElementById('paramSelector').innerHTML = '<option>-- No hay datos --</option>';
-            document.getElementById('uciTableContainer').querySelector('table tbody').innerHTML = '<tr><td colspan="100" class="text-center py-4 text-gray-500">No hay datos cargados.</td></tr>';
+            document.getElementById('uciTable').querySelector('tbody').innerHTML = '<tr><td colspan="100" class="text-center py-4 text-gray-500">No hay datos cargados.</td></tr>';
+        } else if (!selectPatient && selector.value) {
+            // Si hay pacientes pero no se seleccionó uno nuevo, forzar la carga del paciente actual
+            loadPatientData(); 
         }
     }
 
@@ -353,6 +358,7 @@
         }
 
         const selector = document.getElementById('paramSelector');
+        const currentParam = selector.value;
         selector.innerHTML = '';
         const sortedParams = Array.from(allParams).sort();
 
@@ -363,8 +369,13 @@
             selector.appendChild(option);
         });
         
-        if (sortedParams.length > 0 && !selector.value) {
-            selector.value = sortedParams[0]; 
+        // Mantener el parámetro seleccionado o seleccionar el primero
+        if (sortedParams.length > 0) {
+            if (currentParam && sortedParams.includes(currentParam)) {
+                selector.value = currentParam;
+            } else {
+                selector.value = sortedParams[0];
+            }
         }
     }
 
@@ -381,7 +392,12 @@
         }
 
         const samples = labData[patientName];
-        if (!samples || samples.length === 0) return;
+        if (!samples || samples.length === 0) {
+             tableBody.innerHTML = '<tr><td colspan="100" class="text-center py-4 text-gray-500">No hay muestras cargadas para este paciente.</td></tr>';
+             tableHead.innerHTML = '';
+             if (chartInstance) chartInstance.destroy();
+             return;
+        }
 
         loadParamSelector();
 
@@ -423,14 +439,14 @@
         updateGraph();
     }
 
-    // ARREGLO CRÍTICO: Asegurarse de que el canvas exista antes de llamar a getContext
+    // ARREGLO CRÍTICO: Eliminar el error 'getContext'
     function updateGraph() {
         const patientName = document.getElementById('patientSelector').value;
         const param = document.getElementById('paramSelector').value;
-        // La validación del canvas es la clave para evitar el error 'getContext'
         const canvas = document.getElementById('evolutionChart');
-        const ctx = canvas ? canvas.getContext('2d') : null;
+        const ctx = canvas ? canvas.getContext('2d') : null; // Si el canvas es null, ctx será null
         
+        // Destruir cualquier instancia previa si no hay un paciente válido o contexto.
         if (!patientName || !param || !ctx) {
             if (chartInstance) chartInstance.destroy();
             return;
@@ -582,7 +598,6 @@
     // ====================================================================
 
     function setupPdfHandling() {
-        // Asumimos que pdf.js está cargado desde el script tag en el body
         const pdfjsLib = window['pdfjs-dist/build/pdf'];
         if (pdfjsLib) {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js';
@@ -625,7 +640,12 @@
     document.addEventListener('DOMContentLoaded', () => {
         loadData();
         setupPdfHandling();
-        loadPatientData(); 
+        // Carga inicial de datos (selecciona el primero si existe)
+        const patientSelector = document.getElementById('patientSelector');
+        if (patientSelector.options.length > 1) {
+            patientSelector.value = patientSelector.options[1].value;
+            loadPatientData();
+        }
     });
 </script>
 
