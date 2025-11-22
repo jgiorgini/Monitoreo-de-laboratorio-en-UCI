@@ -2,17 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Monitor de Laboratorios UCI</title>
+  <title>Monitor de Laboratorios UCI – V10b</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- Chart.js para gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- PDF.js para leer PDF con texto (no OCR) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     :root{
       --bg:#f4f5f7;
       --card-bg:#ffffff;
-      --accent:#0056b3;
+      --accent:#0b5ed7;
       --accent-soft:#e1ecff;
       --text:#111827;
       --muted:#6b7280;
@@ -26,24 +24,16 @@
       color:var(--text);
       padding:16px;
     }
-    h1{
-      font-size:1.6rem;
-      margin-bottom:4px;
-    }
-    h2{
-      font-size:1.2rem;
-      margin:16px 0 8px;
-    }
-    p{margin:4px 0;}
+    h1{font-size:1.6rem;margin-bottom:4px;}
+    h2{font-size:1.1rem;margin:10px 0 6px;}
+    p{margin:3px 0;}
     .layout{
       display:grid;
-      grid-template-columns: minmax(0,1.2fr) minmax(0,1fr);
+      grid-template-columns:minmax(0,1.25fr) minmax(0,1.1fr);
       gap:16px;
     }
-    @media (max-width:900px){
-      .layout{
-        grid-template-columns:1fr;
-      }
+    @media(max-width:900px){
+      .layout{grid-template-columns:1fr;}
     }
     .card{
       background:var(--card-bg);
@@ -65,10 +55,11 @@
       border-radius:999px;
       padding:2px 10px;
       font-size:0.75rem;
+      white-space:nowrap;
     }
     textarea{
       width:100%;
-      min-height:200px;
+      min-height:180px;
       border-radius:12px;
       border:1px solid var(--border);
       padding:8px 10px;
@@ -92,13 +83,6 @@
       background:var(--accent);
       color:white;
     }
-    .btn.secondary{
-      background:#111827;
-    }
-    .btn:disabled{
-      opacity:0.5;
-      cursor:default;
-    }
     .btn-outline{
       border-radius:999px;
       padding:6px 12px;
@@ -115,18 +99,44 @@
       flex-wrap:wrap;
       gap:8px;
       align-items:center;
-      margin-top:8px;
-      margin-bottom:6px;
+      margin-top:6px;
+      margin-bottom:4px;
     }
-    label{
-      font-size:0.85rem;
-      color:var(--muted);
-    }
-    input[type="text"], input[type="date"], select{
+    label{font-size:0.8rem;color:var(--muted);}
+    input[type="text"],input[type="date"],select{
       border-radius:999px;
       border:1px solid var(--border);
       padding:6px 10px;
       font-size:0.85rem;
+      background:white;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:0.8rem;
+      margin-top:6px;
+    }
+    th,td{
+      border-bottom:1px solid var(--border);
+      padding:4px 6px;
+      text-align:left;
+    }
+    th{font-weight:600;background:#f9fafb;}
+    .small{font-size:0.75rem;color:var(--muted);}
+    .section-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-top:8px;
+    }
+    #hclabOutput{
+      width:100%;
+      border-radius:10px;
+      border:1px dashed var(--border);
+      padding:6px 8px;
+      font-size:0.8rem;
+      margin-top:4px;
+      background:#f9fafb;
     }
     .pill{
       padding:3px 8px;
@@ -135,641 +145,115 @@
       font-size:0.75rem;
       color:var(--muted);
     }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:0.85rem;
-      margin-top:8px;
-    }
-    th, td{
-      border-bottom:1px solid var(--border);
-      padding:4px 6px;
-      text-align:left;
-    }
-    th{
-      font-weight:600;
-      background:#f9fafb;
-    }
-    .small{
-      font-size:0.75rem;
-      color:var(--muted);
-    }
-    .tag-ok{
-      background:#e0f7e9;
-      color:#166534;
-      border-radius:999px;
-      padding:2px 8px;
-      font-size:0.75rem;
-    }
-    .tag-warn{
-      background:#fef3c7;
-      color:#92400e;
-      border-radius:999px;
-      padding:2px 8px;
-      font-size:0.75rem;
-    }
   </style>
 </head>
 <body>
   <header style="margin-bottom:12px;">
-    <h1>Monitor de Laboratorios UCI</h1>
-    <p class="small">
-      Pegá el informe de laboratorio (o subí el PDF), el sistema detecta fecha, paciente y valores clave,
-      y arma el historial con gráficos por parámetro.
-    </p>
+    <h1>Monitor de Laboratorios UCI – V10b</h1>
+    <p class="small">Cargar PDF o texto, interpretar resultados, seguir evolución diaria por paciente y exportar (HCLAB / CSV).</p>
   </header>
 
   <div class="layout">
-    <!-- PANEL IZQUIERDO: Carga y parsing -->
     <section class="card">
       <div class="card-header">
         <div>
           <h2>Ingreso de laboratorio</h2>
-          <p class="small">Usá copiar/pegar desde el sistema o desde el PDF.</p>
+          <p class="small">Copiar/pegar desde el sistema o subir PDF.</p>
         </div>
         <span class="badge">Carga diaria</span>
       </div>
 
       <label for="labText">Texto del informe:</label>
-      <textarea id="labText" placeholder="Pegá aquí el laboratorio completo (incluyendo Paciente, Toma de muestra, etc.)"></textarea>
+      <textarea id="labText" placeholder="Pegá aquí el laboratorio completo o solo los parámetros."></textarea>
 
       <div class="row">
         <div>
-          <label for="pdfInput">o subir PDF:</label>
+          <label for="pdfInput">o subir PDF:</label><br>
           <input id="pdfInput" type="file" accept="application/pdf" />
         </div>
-        <button id="btnParse" class="btn">
-          ➜ Analizar laboratorio
-        </button>
+        <button id="btnParse" class="btn">➜ Analizar laboratorio</button>
       </div>
 
       <div class="row">
         <div>
-          <label for="pacienteNombre">Paciente:</label>
+          <label for="pacienteNombre">Paciente:</label><br>
           <input type="text" id="pacienteNombre" placeholder="(autodetectado si es posible)" />
         </div>
         <div>
-          <label for="fechaMuestra">Fecha de muestra:</label>
+          <label for="fechaMuestra">Fecha de muestra:</label><br>
           <input type="date" id="fechaMuestra" />
         </div>
         <span id="parseStatus" class="small"></span>
       </div>
 
-      <div id="ultimoResultado" style="margin-top:12px; display:none;">
-        <h2>Laboratorio cargado</h2>
+      <div id="ultimoResultado" style="margin-top:10px;display:none;">
+        <div class="section-title">
+          <h2>Último laboratorio cargado</h2>
+          <button id="btnHCLAB" class="btn-outline">HCLAB</button>
+        </div>
         <p class="small" id="resumenPaciente"></p>
         <table id="tablaUltimo">
-          <thead>
-            <tr>
-              <th>Parámetro</th>
-              <th>Valor</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Parámetro</th><th>Valor</th></tr></thead>
           <tbody></tbody>
         </table>
+        <div style="margin-top:6px;">
+          <label class="small">Salida HCLAB:</label>
+          <div class="row" style="align-items:flex-start;margin-top:4px;">
+            <textarea id="hclabOutput" rows="2" readonly></textarea>
+            <button id="btnCopiarHCLAB" class="btn-outline">Copiar</button>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- PANEL DERECHO: Historial y gráficos -->
     <section class="card">
       <div class="card-header">
         <div>
-          <h2>Historial y gráficos</h2>
-          <p class="small">Serie de laboratorios por paciente.</p>
+          <h2>Historial y evolución</h2>
+          <p class="small">Serie de labs por paciente, tabla UCI y gráficos.</p>
         </div>
-        <button id="btnLimpiar" class="btn-outline" title="Borra todos los datos del navegador">
-          🗑 Limpiar datos locales
-        </button>
+        <button id="btnLimpiar" class="btn-outline">🗑 Limpiar datos</button>
       </div>
 
       <div class="row">
         <div>
-          <label for="selectPaciente">Paciente:</label>
+          <label for="selectPaciente">Paciente:</label><br>
           <select id="selectPaciente"></select>
         </div>
         <div>
-          <label for="selectParametro">Parámetro:</label>
+          <label for="selectParametro">Parámetro:</label><br>
           <select id="selectParametro"></select>
         </div>
       </div>
 
-      <div id="resumenHistorial" class="small" style="margin-bottom:6px;"></div>
+      <div id="resumenHistorial" class="small"></div>
 
+      <h2>Tabla simple (parámetro seleccionado)</h2>
       <table id="tablaHistorial">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Parámetro</th>
-            <th>Valor</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Fecha</th><th>Hora</th><th>Protocolo</th><th>Parámetro</th><th>Valor</th></tr></thead>
         <tbody></tbody>
       </table>
 
       <div style="margin-top:10px;">
-        <div class="row">
-          <span class="pill">Gráfico de tendencia</span>
+        <div class="row"><span class="pill">Gráfico de tendencia</span></div>
+        <canvas id="grafico" height="180"></canvas>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="section-title">
+          <h2>Tabla UCI (todas las variables por muestra)</h2>
+          <button id="btnCSV" class="btn-outline">Descargar CSV</button>
         </div>
-        <canvas id="grafico" height="220"></canvas>
+        <div style="max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:#f9fafb;margin-top:4px;">
+          <table id="tablaUCI">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </section>
   </div>
 
-<script>
-  // ============================
-  //  Almacenamiento en localStorage
-  // ============================
-  const STORAGE_KEY = "uci_labs_registros_v2";
-
-  function loadRegistros(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return [];
-      return JSON.parse(raw);
-    }catch(e){
-      console.error("Error leyendo localStorage", e);
-      return [];
-    }
-  }
-
-  function saveRegistros(registros){
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
-    }catch(e){
-      console.error("Error guardando localStorage", e);
-    }
-  }
-
-  let registros = loadRegistros(); // {id, paciente, fechaISO, fechaTexto, parametros:{...}, raw}
-
-  // ============================
-  //  Utilidades
-  // ============================
-  function normalizarFecha(texto){
-    // Convierte dd/mm/aaaa o dd-mm-aaaa a aaaa-mm-dd
-    if(!texto) return "";
-    texto = texto.trim();
-    const m = texto.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-    if(!m) return "";
-    let d = m[1].padStart(2,"0");
-    let M = m[2].padStart(2,"0");
-    let y = m[3];
-    if(y.length === 2){
-      y = (parseInt(y,10) > 50 ? "19" : "20") + y;
-    }
-    return `${y}-${M}-${d}`;
-  }
-
-  function extraerFecha(texto){
-    // 1) Toma de muestra (otros labs)
-    let m = texto.match(/Toma de Muestra:?[\s]*([0-9\/\-.]+)/i) ||
-            texto.match(/Toma de muestra:?[\s]*([0-9\/\-.]+)/i);
-    if(m){
-      const original = m[1].trim();
-      return {iso:normalizarFecha(original), original};
-    }
-    // 2) Formato CEMIC: "Fecha: 28/08/2025 Validado: ..."
-    m = texto.match(/Fecha:\s*([0-9\/\-.]+)/i);
-    if(m){
-      const original = m[1].trim();
-      return {iso:normalizarFecha(original), original};
-    }
-    return {iso:"", original:""};
-  }
-
-  function extraerPaciente(texto){
-    const m = texto.match(/Paciente:\s*([^\n\r]+)/i);
-    if(!m) return "";
-    let nombre = m[1].replace(/Cobertura:.+$/i,"").trim();
-    return nombre;
-  }
-
-  function limpiarNumero(str){
-    if(!str) return null;
-    // 12,4 -> 12.4 ; 1.234,5 -> 1234.5
-    str = String(str).trim();
-    // Si hay coma y punto, asumimos que la coma es decimal y el punto separador de miles
-    if(str.includes(",") && str.includes(".")){
-      str = str.replace(/\./g,"").replace(",",".");
-    }else{
-      // si solo hay coma, la usamos como decimal
-      str = str.replace(",",".");
-    }
-    const v = parseFloat(str);
-    return isNaN(v) ? null : v;
-  }
-
-  // ============================
-  //  Parser "fino" por parámetro (CEMIC & similares)
-  // ============================
-  function parseParametrosDetallado(texto){
-    const params = {};
-    const T = texto;
-
-    const definiciones = [
-      ["Hemoglobina", /HEMOGLOBINA(?! GLICOSILADA)[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Hematocrito", /HEMATOCRITO[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Glucosa", /GLUCEMIA[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["HbA1c", /HEMOGLOBINA GLICOSILADA[^0-9]*:?[\s]*([\d.,]+)/i],
-      ["Colesterol total", /COLESTEROL TOTAL[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Colesterol HDL", /COLESTEROL HDL[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Colesterol LDL", /COLESTEROL LDL[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Colesterol no HDL", /COLESTEROL NO HDL[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Triglicéridos", /TRIGLICERIDOS?[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Urea", /UREMIA[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Ácido úrico", /URICEMIA[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Creatinina", /CREATININA[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Sodio", /SODIO[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Potasio", /POTASIO[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Cloro", /CLORO[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Calcio", /CALCEMIA TOTAL[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Magnesio", /MAGNESIO EN SANGRE[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["TSH", /TIROTROFINA TSH[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["T4L", /TIROXINA TOTAL LIBRE T4L[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Índice HOMA", /INDICE HOMA[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Insulina", /INSULINA[^0-9\-]*:?[\s]*([\d.,]+)/i],
-      ["Proteínas totales", /PROTEINAS TOTALES[^0-9\-]*:?[\s]*([\d.,]+)/i]
-    ];
-
-    for(const [nombre, regex] of definiciones){
-      const m = T.match(regex);
-      if(m && m[1]){
-        const v = limpiarNumero(m[1]);
-        if(v !== null){
-          params[nombre] = v;
-        }
-      }
-    }
-    return params;
-  }
-
-  // ============================
-  //  Parser "simple" estilo lista / HCLAB
-  // ============================
-  function parseParametrosSimple(texto){
-    const params = {};
-    const lineas = texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length>0);
-
-    for(const linea of lineas){
-      // ej: "Colesterol Total 242 mg/dl ..."
-      const m = linea.match(/^([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\/()%\.\- ]*?[A-Za-zÁÉÍÓÚÜÑáéíóúüñ])\s+(-?\d+[.,]?\d*)\b/);
-      if(!m) continue;
-      let nombre = m[1].trim();
-      const valor = limpiarNumero(m[2]);
-      if(valor === null) continue;
-
-      // Normalizar nombres comunes
-      const nombreLow = nombre.toLowerCase();
-      if(nombreLow.includes("colesterol total")) nombre = "Colesterol total";
-      else if(nombreLow.includes("hdl")) nombre = "Colesterol HDL";
-      else if(nombreLow.includes("ldl")) nombre = "Colesterol LDL";
-      else if(nombreLow.includes("no hdl")) nombre = "Colesterol no HDL";
-      else if(nombreLow.includes("trig")) nombre = "Triglicéridos";
-      else if(nombreLow.includes("hba1c") || nombreLow.includes("glicosilada")) nombre = "HbA1c";
-      else if(nombreLow.includes("gluc")) nombre = "Glucosa";
-      else if(nombreLow.includes("sodio")) nombre = "Sodio";
-      else if(nombreLow.includes("potasio")) nombre = "Potasio";
-      else if(nombreLow.includes("cloro")) nombre = "Cloro";
-      else if(nombreLow.includes("creatinina")) nombre = "Creatinina";
-      else if(nombreLow.includes("urea")) nombre = "Urea";
-      else if(nombreLow.includes("acido urico") || nombreLow.includes("úrico")) nombre = "Ácido úrico";
-
-      if(!(nombre in params)){
-        params[nombre] = valor;
-      }
-    }
-    return params;
-  }
-
-  // ============================
-  //  Parser combinado
-  // ============================
-  function parseParametros(texto){
-    // 1) parser detallado (CEMIC / labs grandes)
-    const a = parseParametrosDetallado(texto);
-    // 2) parser simple para listas sueltas
-    const b = parseParametrosSimple(texto);
-
-    return {...b, ...a}; // lo detallado pisa al simple si coincide nombre
-  }
-
-  // ============================
-  //  Manejo de PDF con PDF.js
-  // ============================
-  const pdfInput = document.getElementById("pdfInput");
-  const labText = document.getElementById("labText");
-  const parseStatus = document.getElementById("parseStatus");
-
-  pdfInput.addEventListener("change", async (e)=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    parseStatus.textContent = "Leyendo PDF...";
-    try{
-      const arrayBuffer = await file.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({data: arrayBuffer});
-      const pdf = await loadingTask.promise;
-      let fullText = "";
-      for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
-        const page = await pdf.getPage(pageNum);
-        const content = await page.getTextContent();
-        const strings = content.items.map(it => it.str);
-        fullText += strings.join(" ") + "\n";
-      }
-      labText.value = fullText;
-      parseStatus.textContent = "PDF convertido a texto. Revisá y luego presioná 'Analizar laboratorio'.";
-    }catch(err){
-      console.error(err);
-      parseStatus.textContent = "Error al leer el PDF (debe ser PDF con texto, no una imagen escaneada).";
-    }
-  });
-
-  // ============================
-  //  Interfaz: Parsing desde textarea
-  // ============================
-  const btnParse = document.getElementById("btnParse");
-  const inputPaciente = document.getElementById("pacienteNombre");
-  const inputFecha = document.getElementById("fechaMuestra");
-  const ultimoResultadoDiv = document.getElementById("ultimoResultado");
-  const resumenPaciente = document.getElementById("resumenPaciente");
-  const tablaUltimoBody = document.querySelector("#tablaUltimo tbody");
-
-  btnParse.addEventListener("click", ()=>{
-    const texto = labText.value.trim();
-    if(!texto){
-      parseStatus.textContent = "Pegá primero el laboratorio o cargá un PDF.";
-      return;
-    }
-    parseStatus.textContent = "Analizando...";
-
-    const pacienteAut = extraerPaciente(texto);
-    if(pacienteAut && !inputPaciente.value){
-      inputPaciente.value = pacienteAut;
-    }
-    const fechaInfo = extraerFecha(texto);
-    if(fechaInfo.iso && !inputFecha.value){
-      inputFecha.value = fechaInfo.iso;
-    }
-
-    const parametros = parseParametros(texto);
-
-    const paciente = inputPaciente.value.trim() || "Paciente sin nombre";
-    const fechaISO = inputFecha.value || fechaInfo.iso || "";
-    const fechaTexto = fechaInfo.original || fechaISO || "(sin fecha detectable)";
-
-    if(!fechaISO){
-      parseStatus.textContent = "Atención: no se detectó fecha clara. Podés cargarla manualmente.";
-    }else{
-      parseStatus.textContent = "Laboratorio analizado.";
-    }
-
-    const registro = {
-      id: Date.now(),
-      paciente,
-      fechaISO,
-      fechaTexto,
-      parametros,
-      raw: texto
-    };
-    registros.push(registro);
-    saveRegistros(registros);
-
-    renderUltimo(registro);
-    actualizarSelects();
-    renderHistorial();
-    renderGrafico();
-  });
-
-  function renderUltimo(reg){
-    ultimoResultadoDiv.style.display = "block";
-    resumenPaciente.textContent = `${reg.paciente} – muestra: ${reg.fechaTexto}`;
-    tablaUltimoBody.innerHTML = "";
-    const entries = Object.entries(reg.parametros);
-    if(entries.length===0){
-      const tr = document.createElement("tr");
-      const td = document.createElement("td");
-      td.colSpan = 2;
-      td.textContent = "No se detectaron parámetros conocidos en el texto. Podés ampliar la lista de patrones en el código.";
-      tr.appendChild(td);
-      tablaUltimoBody.appendChild(tr);
-      return;
-    }
-    for(const [param, val] of entries){
-      const tr = document.createElement("tr");
-      const td1 = document.createElement("td");
-      const td2 = document.createElement("td");
-      td1.textContent = param;
-      // Mostrar con hasta 2 decimales si hace falta
-      const vStr = (Math.abs(val) < 10 && val !== Math.round(val))
-        ? val.toFixed(2)
-        : (Math.abs(val) < 100 && val !== Math.round(val))
-          ? val.toFixed(1)
-          : String(val);
-      td2.textContent = vStr;
-      tr.appendChild(td1);
-      tr.appendChild(td2);
-      tablaUltimoBody.appendChild(tr);
-    }
-  }
-
-  // ============================
-  //  Historial y selects
-  // ============================
-  const selectPaciente = document.getElementById("selectPaciente");
-  const selectParametro = document.getElementById("selectParametro");
-  const tablaHistorialBody = document.querySelector("#tablaHistorial tbody");
-  const resumenHistorial = document.getElementById("resumenHistorial");
-  const btnLimpiar = document.getElementById("btnLimpiar");
-
-  function getPacientesUnicos(){
-    const set = new Set(registros.map(r => r.paciente));
-    return Array.from(set).sort((a,b) => a.localeCompare(b));
-  }
-
-  function getParametrosDisponibles(pacienteSelec){
-    const set = new Set();
-    for(const r of registros){
-      if(!pacienteSelec || r.paciente === pacienteSelec){
-        Object.keys(r.parametros).forEach(k => set.add(k));
-      }
-    }
-    return Array.from(set).sort((a,b)=>a.localeCompare(b));
-  }
-
-  function actualizarSelects(){
-    const pacientes = getPacientesUnicos();
-    const currentPaciente = selectPaciente.value;
-    selectPaciente.innerHTML = "";
-    if(pacientes.length===0){
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "Sin datos";
-      selectPaciente.appendChild(opt);
-    }else{
-      for(const p of pacientes){
-        const opt = document.createElement("option");
-        opt.value = p;
-        opt.textContent = p;
-        selectPaciente.appendChild(opt);
-      }
-      if(currentPaciente && pacientes.includes(currentPaciente)){
-        selectPaciente.value = currentPaciente;
-      }
-    }
-
-    const pacActivo = selectPaciente.value || "";
-    const params = getParametrosDisponibles(pacActivo);
-    const currentParam = selectParametro.value;
-    selectParametro.innerHTML = "";
-    if(params.length===0){
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "Sin parámetros";
-      selectParametro.appendChild(opt);
-    }else{
-      for(const p of params){
-        const opt = document.createElement("option");
-        opt.value = p;
-        opt.textContent = p;
-        selectParametro.appendChild(opt);
-      }
-      if(currentParam && params.includes(currentParam)){
-        selectParametro.value = currentParam;
-      }
-    }
-  }
-
-  function renderHistorial(){
-    const pac = selectPaciente.value;
-    const param = selectParametro.value;
-    tablaHistorialBody.innerHTML = "";
-    if(!pac){
-      resumenHistorial.textContent = "No hay registros aún.";
-      return;
-    }
-    const filtrados = registros
-      .filter(r => r.paciente === pac && (!param || r.parametros.hasOwnProperty(param)))
-      .slice()
-      .sort((a,b) => (a.fechaISO||"") > (b.fechaISO||"") ? 1 : -1);
-
-    resumenHistorial.textContent = `${filtrados.length} registros para ${pac}${param ? " – " + param : ""}.`;
-    for(const r of filtrados){
-      if(param){
-        const valor = r.parametros[param];
-        if(valor===undefined) continue;
-        const tr = document.createElement("tr");
-        const tdF = document.createElement("td");
-        const tdP = document.createElement("td");
-        const tdV = document.createElement("td");
-        tdF.textContent = r.fechaISO || r.fechaTexto;
-        tdP.textContent = param;
-        tdV.textContent = valor;
-        tr.appendChild(tdF);
-        tr.appendChild(tdP);
-        tr.appendChild(tdV);
-        tablaHistorialBody.appendChild(tr);
-      }else{
-        for(const [p, v] of Object.entries(r.parametros)){
-          const tr = document.createElement("tr");
-          const tdF = document.createElement("td");
-          const tdP = document.createElement("td");
-          const tdV = document.createElement("td");
-          tdF.textContent = r.fechaISO || r.fechaTexto;
-          tdP.textContent = p;
-          tdV.textContent = v;
-          tr.appendChild(tdF);
-          tr.appendChild(tdP);
-          tr.appendChild(tdV);
-          tablaHistorialBody.appendChild(tr);
-        }
-      }
-    }
-  }
-
-  selectPaciente.addEventListener("change", ()=>{
-    actualizarSelects();
-    renderHistorial();
-    renderGrafico();
-  });
-
-  selectParametro.addEventListener("change", ()=>{
-    renderHistorial();
-    renderGrafico();
-  });
-
-  btnLimpiar.addEventListener("click", ()=>{
-    if(!confirm("Esto borrará todos los registros guardados en este navegador. ¿Continuar?")) return;
-    registros = [];
-    saveRegistros(registros);
-    actualizarSelects();
-    renderHistorial();
-    renderGrafico();
-  });
-
-  // ============================
-  //  Gráfico con Chart.js
-  // ============================
-  let chart = null;
-  const ctx = document.getElementById("grafico").getContext("2d");
-
-  function renderGrafico(){
-    const pac = selectPaciente.value;
-    const param = selectParametro.value;
-    if(chart){
-      chart.destroy();
-      chart = null;
-    }
-    if(!pac || !param){
-      return;
-    }
-    const datos = registros
-      .filter(r => r.paciente === pac && r.parametros.hasOwnProperty(param))
-      .filter(r => r.fechaISO)
-      .sort((a,b) => a.fechaISO > b.fechaISO ? 1 : -1)
-      .map(r => ({
-        x: r.fechaISO,
-        y: r.parametros[param]
-      }));
-    if(datos.length===0){
-      return;
-    }
-    chart = new Chart(ctx,{
-      type:"line",
-      data:{
-        labels: datos.map(d => d.x),
-        datasets:[{
-          label: `${param} – ${pac}`,
-          data: datos.map(d => d.y),
-          fill:false,
-          tension:0.2
-        }]
-      },
-      options:{
-        responsive:true,
-        scales:{
-          x:{ title:{display:true,text:"Fecha"} },
-          y:{ title:{display:true,text:param} }
-        },
-        plugins:{
-          legend:{display:false},
-          tooltip:{
-            callbacks:{
-              label:(ctx)=> `${ctx.parsed.y}`
-            }
-          }
-        }
-      }
-    });
-  }
-
-  // ============================
-  //  Inicialización
-  // ============================
-  (function init(){
-    actualizarSelects();
-    renderHistorial();
-    renderGrafico();
-  })();
-</script>
+  <script src="app_v10b.js"></script>
 </body>
 </html>
-
