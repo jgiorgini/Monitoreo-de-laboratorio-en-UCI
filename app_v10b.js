@@ -37,32 +37,59 @@ function normalizarFecha(texto) {
 }
 
 function extraerFechaHora(texto) {
-  let m = texto.match(/Toma de Muestra:?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})(?:\s+([0-9]{1,2}:[0-9]{2}))?/i);
-  if (!m) {
-    m = texto.match(/Toma de muestra:?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})(?:\s+([0-9]{1,2}:[0-9]{2}))?/i);
+  // Buscamos SOLO fechas ligadas a la muestra, no "Fecha de impresión" ni similares
+  const patrones = [
+    /Toma de Muestra:?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})(?:\s+([0-9]{1,2}:[0-9]{2}))?/i,
+    /Toma de muestra:?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})(?:\s+([0-9]{1,2}:[0-9]{2}))?/i,
+    /Fecha de extracción:?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})(?:\s+([0-9]{1,2}:[0-9]{2}))?/i,
+    /Fecha de extraccion:?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})(?:\s+([0-9]{1,2}:[0-9]{2}))?/i
+  ];
+
+  let m = null;
+  for (const re of patrones) {
+    m = texto.match(re);
+    if (m) break;
   }
+
+  // Si no encontramos nada "de muestra", como ÚLTIMO recurso
+  // tomamos la primera fecha que aparezca en el texto,
+  // pero evitando "F. Nac" y similares en la medida de lo posible.
   if (!m) {
-    m = texto.match(/Fecha de extracción:?\s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})(?:\s+([0-9]{1,2}:[0-9]{2}))?/i);
-  }
-  if (!m) {
-    m = texto.match(/Fecha:?s*([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})(?:\s+([0-9]{1,2}:[0-9]{2}))?/i);
-  }
-  if (m) {
-    const fechaOriginal = m[1].trim();
-    const horaOriginal = (m[2] || '').trim();
-    const fechaISO = normalizarFecha(fechaOriginal);
-    let horaISO = '';
-    if (horaOriginal) {
-      const hm = horaOriginal.match(/(\d{1,2}):(\d{2})/);
-      if (hm) horaISO = hm[1].padStart(2, '0') + ':' + hm[2].padStart(2, '0');
+    // Sacamos líneas que contengan F. Nac o nacimiento
+    const sinNac = texto
+      .split(/\r?\n/)
+      .filter(l => !/F\.\s*Nac|Nacimiento/i.test(l))
+      .join(' ');
+
+    const gen = sinNac.match(/([0-9]{1,2}[\/-][0-9]{1,2}[\/-][0-9]{2,4})/);
+    if (!gen) {
+      return { fechaISO: '', horaISO: '', original: '' };
     }
+    const fechaISO = normalizarFecha(gen[1]);
     return {
       fechaISO,
-      horaISO,
-      original: (fechaOriginal + (horaISO ? ' ' + horaISO : '')).trim()
+      horaISO: '',
+      original: gen[1]
     };
   }
-  return { fechaISO: '', horaISO: '', original: '' };
+
+  const fechaOriginal = m[1].trim();
+  const horaOriginal = (m[2] || '').trim();
+  const fechaISO = normalizarFecha(fechaOriginal);
+  let horaISO = '';
+
+  if (horaOriginal) {
+    const hm = horaOriginal.match(/(\d{1,2}):(\d{2})/);
+    if (hm) {
+      horaISO = hm[1].padStart(2, '0') + ':' + hm[2].padStart(2, '0');
+    }
+  }
+
+  return {
+    fechaISO,
+    horaISO,
+    original: (fechaOriginal + (horaISO ? ' ' + horaISO : '')).trim()
+  };
 }
 
 function extraerPaciente(texto) {
