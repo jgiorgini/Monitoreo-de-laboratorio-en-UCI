@@ -137,15 +137,20 @@ function parseParametrosDetallado(texto) {
     ['Triglicéridos', /(TRIGLICERIDOS?[^0-9]{0,40})([\d.,]+)/i],
     ['Bilirrubina directa', /(BILIRRUBINA DIRECTA[^0-9]{0,40})([\d.,]+)/i],
     ['Bilirrubina total', /(BILIRRUBINA TOTAL[^0-9]{0,40})([\d.,]+)/i],
-       ['AST/TGO',
-      // Busca el número que está justo antes de "UI/l" después del nombre de la enzima
-      /(ASPARTATO AMINOTRANSFERASA|ASAT.?-?GOT|TGO\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[^\d\r\n]{0,6}U[\/ ]?I?L/i
-    ],
-    ['ALT/TGP',
-      // Ídem para TGP
-      /(ALANINA AMINOTRANSFERASA|ALAT.?-?GPT|TGP\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[^\d\r\n]{0,6}U[\/ ]?I?L/i
-    ],
-    ['Fosfatasa alcalina', /(FOSFATASA ALCALINA\b[^0-9]{0,40})([\d.,]+)/i],
+     // AST/TGO
+['AST/TGO',
+ /(ASPARTATO AMINOTRANSFERASA|ASAT.?-?GOT|TGO\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
+],
+
+// ALT/TGP
+['ALT/TGP',
+ /(ALANINA AMINOTRANSFERASA|ALAT.?-?GPT|TGP\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
+],
+
+// Fosfatasa alcalina
+['Fosfatasa alcalina',
+ /(FOSFATASA ALCALINA(?: SERICA)?)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
+],
     ['GGT', /(GGT\b|GAMMA ?GLUTAMIL ?TRANSFERASA)[^0-9]{0,40}([\d.,]+)/i],
     ['Proteínas totales', /(PROTEINAS TOTALES[^0-9]{0,40})([\d.,]+)/i],
     ['Albúmina', /(ALBUMINA\b(?!.*ORINA)[^0-9]{0,40})([\d.,]+)/i],
