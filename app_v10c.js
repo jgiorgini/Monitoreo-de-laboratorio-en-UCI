@@ -119,37 +119,66 @@ function parseParametrosDetallado(texto) {
   const defs = [
     ['Hemoglobina', /(HEMOGLOBINA(?! GLICOSILADA)[^0-9]{0,40})([\d.,]+)/i],
     ['Hematocrito', /(HEMATOCRITO[^0-9]{0,40})([\d.,]+)/i],
-    ['Glucosa', /(GLUCOSA EN SANGRE|GLUCEMIA)[^0-9]{0,40}([\d.,]+)/i],
-    ['HbA1c', /(HEMOGLOBINA GLICOSILADA|HBA1C)[^0-9]{0,40}([\d.,]+)/i],
-    ['Urea', /(UREA EN SANGRE|UREMIA)[^0-9]{0,40}([\d.,]+)/i],
-    ['Creatinina', /(CREATININA EN SANGRE(?!.*ORINA)|CREATININA\b(?!.*ORINA))[^0-9]{0,40}([\d.,]+)/i],
-    ['Ácido úrico', /(ACIDO URICO EN SANGRE|URICEMIA)[^0-9]{0,40}([\d.,]+)/i],
+   ['Glucosa',
+  /(GLUCOSA EN SANGRE|GLUCEMIA)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
+
+['Urea',
+  /(UREA EN SANGRE|UREMIA)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
+
+['Creatinina',
+  /(CREATININA EN SANGRE(?!.*ORINA)|CREATININA\b(?!.*ORINA))[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
+
+['Ácido úrico',
+  /(ACIDO URICO EN SANGRE|URICEMIA)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
+
+['Magnesio',
+  /(MAGNESIO EN SANGRE)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
     ['Na', /(SODIO\b)[^0-9]{0,40}([\d.,]+)/i],
     ['K', /(POTASIO\b)[^0-9]{0,40}([\d.,]+)/i],
     ['Cl', /(CLORO\b)[^0-9]{0,40}([\d.,]+)/i],
     ['Magnesio', /(MAGNESIO EN SANGRE)[^0-9]{0,40}([\d.,]+)/i],
     ['Fosfato', /(FOSFORO INORGANICO|FOSFATO\b)[^0-9]{0,40}([\d.,]+)/i],
     ['Calcio', /(CALCEMIA TOTAL|CALCIO EN SANGRE)[^0-9]{0,40}([\d.,]+)/i],
-    ['Colesterol total', /(COLESTEROL TOTAL(?!.*NO)[^0-9]{0,40})([\d.,]+)/i],
-    ['Colesterol HDL', /(COLESTEROL HDL(?!.*NO)[^0-9]{0,40})([\d.,]+)/i],
-    ['Colesterol LDL', /(COLESTEROL LDL[^0-9]{0,40})([\d.,]+)/i],
-    ['Colesterol no HDL', /(COLESTEROL NO HDL[^0-9]{0,40})([\d.,]+)/i],
-    ['Triglicéridos', /(TRIGLICERIDOS?[^0-9]{0,40})([\d.,]+)/i],
+   ['Colesterol total',
+  /(COLESTEROL TOTAL(?!.*NO)[\s\S]{0,200}?)([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
+
+['Colesterol HDL',
+  /(COLESTEROL HDL(?!.*NO)[\s\S]{0,200}?)([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
+
+['Colesterol LDL',
+  /(COLESTEROL LDL[\s\S]{0,200}?)([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
+
+['Colesterol no HDL',
+  /(COLESTEROL NO HDL[\s\S]{0,200}?)([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
+
+['Triglicéridos',
+  /(TRIGLICERIDOS?[\s\S]{0,200}?)([0-9]+[.,]?[0-9]*)\s*mg\/dl/i
+],
     ['Bilirrubina directa', /(BILIRRUBINA DIRECTA[^0-9]{0,40})([\d.,]+)/i],
     ['Bilirrubina total', /(BILIRRUBINA TOTAL[^0-9]{0,40})([\d.,]+)/i],
-     // AST/TGO
 ['AST/TGO',
- /(ASPARTATO AMINOTRANSFERASA|ASAT.?-?GOT|TGO\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
+  /(ASPARTATO AMINOTRANSFERASA|ASAT.?-?GOT|TGO\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
 ],
 
-// ALT/TGP
 ['ALT/TGP',
- /(ALANINA AMINOTRANSFERASA|ALAT.?-?GPT|TGP\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
+  /(ALANINA AMINOTRANSFERASA|ALAT.?-?GPT|TGP\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
 ],
 
-// Fosfatasa alcalina
 ['Fosfatasa alcalina',
- /(FOSFATASA ALCALINA(?: SERICA)?)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
+  /(FOSFATASA ALCALINA(?: SERICA)?)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
+],
+
+['CPK',
+  /(CREATINQUINASA\s*\(CPK\)|CPK\b)[\s\S]{0,200}?([0-9]+[.,]?[0-9]*)\s*[↑↓]?\s*(?:U\s*\/?\s*[Ll1])/i
 ],
     ['GGT', /(GGT\b|GAMMA ?GLUTAMIL ?TRANSFERASA)[^0-9]{0,40}([\d.,]+)/i],
     ['Proteínas totales', /(PROTEINAS TOTALES[^0-9]{0,40})([\d.,]+)/i],
@@ -171,6 +200,12 @@ function parseParametrosDetallado(texto) {
     ['Amilasa', /(AMILASA\b)[^0-9]{0,40}([\d.,]+)/i],
     ['Lipasa', /(LIPASA\b)[^0-9]{0,40}([\d.,]+)/i],
     ['TSH', /(TIROTROFINA \(TSH\)|TSH\b)[^0-9]{0,40}([\d.,]+)/i]
+    ['Ácido fólico',
+  /(ACIDO FOLICO)[\s\S]{0,120}?([0-9]+[.,]?[0-9]*)\s*ng\/ml/i
+],
+['Vitamina B12',
+  /(VITAMINA B12|CIANOCOBALAMINA)[\s\S]{0,120}?([0-9]+[.,]?[0-9]*)\s*pg\/ml/i
+],
   ];
 
   for (const [nombre, regex] of defs) {
