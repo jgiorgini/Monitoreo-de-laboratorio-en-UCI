@@ -150,8 +150,12 @@ function parseParametrosDetallado(texto) {
     // Hepático
     ['Bilirrubina directa', /(BILIRRUBINA DIRECTA[^0-9]{0,40})([\d.,]+)/i],
     ['Bilirrubina total', /(BILIRRUBINA TOTAL[^0-9]{0,40})([\d.,]+)/i],
-    ['AST/TGO', /(ASPARTATO AMINOTRANSFERASA|ASAT.?GOT|TGO\b)[^0-9]{0,40}([\d.,]+)/i],
-    ['ALT/TGP', /(ALANINA AMINOTRANSFERASA|ALAT.?GPT|TGP\b)[^0-9]{0,40}([\d.,]+)/i],
+   ['AST/TGO',
+ /(ASPARTATO AMINOTRANSFERASA|ASAT.?GOT|TGO\b)[^0-9]{0,120}?([\d.,]+)\s*(?:U\/?L)/i
+],
+['ALT/TGP',
+ /(ALANINA AMINOTRANSFERASA|ALAT.?GPT|TGP\b)[^0-9]{0,120}?([\d.,]+)\s*(?:U\/?L)/i
+],
     ['Fosfatasa alcalina', /(FOSFATASA ALCALINA[^0-9]{0,40})([\d.,]+)/i],
     ['GGT', /(GGT\b|GAMMA ?GLUTAMIL ?TRANSFERASA)[^0-9]{0,40}([\d.,]+)/i],
     ['Proteínas totales', /(PROTEINAS TOTALES[^0-9]{0,40})([\d.,]+)/i],
