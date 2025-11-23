@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Monitor de Laboratorios UCI – V10c</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    :root{
+      --bg:#f4f5f7;
+      --card-bg:#ffffff;
+      --accent:#0b5ed7;
+      --accent-soft:#e1ecff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --radius:16px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding:16px;
+    }
+    h1{font-size:1.6rem;margin-bottom:4px;}
+    h2{font-size:1.1rem;margin:10px 0 6px;}
+    p{margin:3px 0;}
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(0,1.25fr) minmax(0,1.1fr);
+      gap:16px;
+    }
+    @media(max-width:900px){
+      .layout{grid-template-columns:1fr;}
+    }
+    .card{
+      background:var(--card-bg);
+      border-radius:var(--radius);
+      padding:14px 16px;
+      box-shadow:0 10px 30px rgba(15,23,42,0.06);
+      border:1px solid var(--border);
+    }
+    .card-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:8px;
+      gap:8px;
+    }
+    .badge{
+      background:var(--accent-soft);
+      color:var(--accent);
+      border-radius:999px;
+      padding:2px 10px;
+      font-size:0.75rem;
+      white-space:nowrap;
+    }
+    textarea{
+      width:100%;
+      min-height:180px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      padding:8px 10px;
+      font-family:monospace;
+      resize:vertical;
+    }
+    textarea:focus, select:focus, input:focus{
+      outline:none;
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px var(--accent-soft);
+    }
+    .btn{
+      border:none;
+      border-radius:999px;
+      padding:8px 14px;
+      font-size:0.9rem;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      background:var(--accent);
+      color:white;
+    }
+    .btn-outline{
+      border-radius:999px;
+      padding:6px 12px;
+      font-size:0.8rem;
+      border:1px solid var(--border);
+      background:white;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+    }
+    .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      margin-top:6px;
+      margin-bottom:4px;
+    }
+    label{font-size:0.8rem;color:var(--muted);}
+    input[type="text"],input[type="date"],select{
+      border-radius:999px;
+      border:1px solid var(--border);
+      padding:6px 10px;
+      font-size:0.85rem;
+      background:white;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:0.8rem;
+      margin-top:6px;
+    }
+    th,td{
+      border-bottom:1px solid var(--border);
+      padding:4px 6px;
+      text-align:left;
+    }
+    th{font-weight:600;background:#f9fafb;}
+    .small{font-size:0.75rem;color:var(--muted);}
+    .section-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-top:8px;
+    }
+    #hclabOutput{
+      width:100%;
+      border-radius:10px;
+      border:1px dashed var(--border);
+      padding:6px 8px;
+      font-size:0.8rem;
+      margin-top:4px;
+      background:#f9fafb;
+    }
+    .pill{
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-size:0.75rem;
+      color:var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:12px;">
+    <h1>Monitor de Laboratorios UCI – V10c</h1>
+    <p class="small">Cargar PDF o texto, interpretar resultados, seguir evolución diaria por paciente y exportar (HCLAB / CSV).</p>
+  </header>
+
+  <div class="layout">
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2>Ingreso de laboratorio</h2>
+          <p class="small">Copiar/pegar desde el sistema o subir PDF.</p>
+        </div>
+        <span class="badge">Carga diaria</span>
+      </div>
+
+      <label for="labText">Texto del informe:</label>
+      <textarea id="labText" placeholder="Pegá aquí el laboratorio completo o solo los parámetros."></textarea>
+
+      <div class="row">
+        <div>
+          <label for="pdfInput">o subir PDF:</label><br>
+          <input id="pdfInput" type="file" accept="application/pdf" />
+        </div>
+        <button id="btnParse" class="btn">➜ Analizar laboratorio</button>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="pacienteNombre">Paciente:</label><br>
+          <input type="text" id="pacienteNombre" placeholder="(autodetectado si es posible)" />
+        </div>
+        <div>
+          <label for="fechaMuestra">Fecha de muestra:</label><br>
+          <input type="date" id="fechaMuestra" />
+        </div>
+        <span id="parseStatus" class="small"></span>
+      </div>
+
+      <div id="ultimoResultado" style="margin-top:10px;display:none;">
+        <div class="section-title">
+          <h2>Último laboratorio cargado</h2>
+          <button id="btnHCLAB" class="btn-outline">HCLAB</button>
+        </div>
+        <p class="small" id="resumenPaciente"></p>
+        <table id="tablaUltimo">
+          <thead><tr><th>Parámetro</th><th>Valor</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div style="margin-top:6px;">
+          <label class="small">Salida HCLAB:</label>
+          <div class="row" style="align-items:flex-start;margin-top:4px;">
+            <textarea id="hclabOutput" rows="2" readonly></textarea>
+            <button id="btnCopiarHCLAB" class="btn-outline">Copiar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2>Historial y evolución</h2>
+          <p class="small">Serie de labs por paciente, tabla UCI y gráficos.</p>
+        </div>
+        <button id="btnLimpiar" class="btn-outline">🗑 Limpiar datos</button>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="selectPaciente">Paciente:</label><br>
+          <select id="selectPaciente"></select>
+        </div>
+        <div>
+          <label for="selectParametro">Parámetro:</label><br>
+          <select id="selectParametro"></select>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="row"><span class="pill">Gráfico de tendencia</span></div>
+        <canvas id="grafico" height="180"></canvas>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="section-title">
+          <h2>Tabla UCI (todas las variables por muestra)</h2>
+          <button id="btnCSV" class="btn-outline">Descargar CSV</button>
+        </div>
+        <div style="max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:#f9fafb;margin-top:4px;">
+          <table id="tablaUCI">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app_v10c.js"></script>
+</body>
+</html>
