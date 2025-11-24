@@ -159,39 +159,84 @@ function normalizeDate(dateStr) {
     return `${y}-${m}-${d}`;
 }
 
-function extractMetadata(textRaw) {
-    const text = textRaw.toUpperCase();
-    const result = {
-        paciente: null,
-        protocolo: null,
-        fecha: null,
-        hora: "00:00:00"
-    };
+function extractMetadata(text) {
+    // text llega ya en MAYÚSCULAS desde processInput(normalizedText)
+    const result = { paciente: null, protocolo: null, fecha: null, hora: '00:00:00' };
 
-    // PACIENTE
-    const patientRegex = /(PACIENTE|NOMBRE)\s*[:\-]\s*([A-ZÁÉÍÓÚÑ\s]{5,})/i;
+    // 1) PACIENTE
+    const patientRegex = /(PACIENTE|NOMBRE|PT)\s*[:]?\s*([A-ZÁÉÍÓÚÑ\s\.,]{5,})/i;
     let match = text.match(patientRegex);
     if (match) {
-        result.paciente = match[2].trim().replace(/\s{2,}/g, " ");
+        result.paciente = match[2].trim().replace(/\s{2,}/g, ' ');
     }
 
-    // PROTOCOLO / N° REGISTRO
-    const protocolRegex = /(PROTOCOLO\s*N[°O]?|PROTOCOLO|N[°O]\s*DE\s*PROTOCOLO|ACCESION|ACCESSION|REGISTRO)\s*[:\-]?\s*([A-Z0-9\-]{4,})/i;
+    // 2) PROTOCOLO (evita confundir con fechas)
+    const protocolRegex = /(PROTOCOLO\s*(N[º°O]?|N°)?\s*[:#]?\s*)([A-Z0-9-]{4,})/i;
     match = text.match(protocolRegex);
     if (match) {
-        result.protocolo = match[2].trim();
+        result.protocolo = match[3].trim();
     }
 
-    // 1) Fecha/hora de TOMA DE MUESTRA (prioridad A)
-    const tomaRegex =
-        /(TOMA DE MUESTRA|FECHA DE MUESTRA|MUESTRA TOMADA|COLLECTION DATE|FECHA\s*EXTRACCI[ÓO]N)[^0-9]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})(?:[^\d]{0,20}(\d{1,2}:\d{2}))?/i;
+    // 3) FECHA Y HORA DE TOMA DE MUESTRA (clave: NO usar F. NAC)
+    // Ejemplos típicos:
+    // "Toma de muestra: 20/11/2025 07:31"
+    // "TOMA DE MUESTRA 14-06-2025 11:41"
+    let fecha = null;
+    let hora = null;
 
+    const tomaRegex = /(TOMA\s+DE\s+MUESTRA\s*[:\-]?\s*)(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})(?:\s+(\d{1,2}:\d{2}))?/i;
     match = text.match(tomaRegex);
     if (match) {
-        result.fecha = normalizeDate(match[2]);
-        result.hora = match[3] ? match[3] + ":00" : "12:00:00";
-        return result;
+        fecha = match[2];
+        if (match[3]) {
+            hora = match[3];
+        }
     }
+
+    // Si por algún motivo no está “Toma de muestra”, usar la PRIMER fecha
+    // que NO esté en una línea con "F. NAC" / "NACIMIENTO".
+    if (!fecha) {
+        const dateRegexGlobal = /(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/g;
+        let m;
+        while ((m = dateRegexGlobal.exec(text)) !== null) {
+            const idx = m.index;
+            const contextoPrevio = text.slice(Math.max(0, idx - 25), idx);
+            if (!/F\.?\s*NAC|NACIMI/i.test(contextoPrevio)) {
+                fecha = m[1];
+                break;
+            }
+        }
+    }
+
+    // Normalizar fecha a AAAA-MM-DD si la encontramos
+    if (fecha) {
+        const parts = fecha.split(/[\/\.-]/);
+        if (parts.length === 3) {
+            let day = parts[0].padStart(2, '0');
+            let month = parts[1].padStart(2, '0');
+            let year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+            result.fecha = `${year}-${month}-${day}`;
+        }
+    }
+
+    // HORA: primero intento en la misma línea "Toma de muestra",
+    // si no la encontramos, uso la primera hora del informe.
+    if (hora) {
+        result.hora = hora + ':00';
+    } else {
+        const timeRegex = /(\d{1,2}:\d{2})/;
+        match = text.match(timeRegex);
+        if (match) {
+            result.hora = match[1] + ':00';
+        } else if (result.fecha) {
+            // fallback razonable
+            result.hora = '12:00:00';
+        }
+    }
+
+    return result;
+}
+
 
     // 2) Fecha de impresión/informe (prioridad B)
     const impresionRegex =
