@@ -160,27 +160,23 @@ function normalizeDate(dateStr) {
 }
 
 function extractMetadata(text) {
-    // text llega ya en MAYÚSCULAS desde processInput(normalizedText)
-    const result = { paciente: null, protocolo: null, fecha: null, hora: '00:00:00' };
+    const result = { paciente: null, protocolo: null, fecha: null, hora: "00:00:00" };
 
     // 1) PACIENTE
     const patientRegex = /(PACIENTE|NOMBRE|PT)\s*[:]?\s*([A-ZÁÉÍÓÚÑ\s\.,]{5,})/i;
     let match = text.match(patientRegex);
     if (match) {
-        result.paciente = match[2].trim().replace(/\s{2,}/g, ' ');
+        result.paciente = match[2].trim().replace(/\s{2,}/g, " ");
     }
 
-    // 2) PROTOCOLO (evita confundir con fechas)
+    // 2) PROTOCOLO
     const protocolRegex = /(PROTOCOLO\s*(N[º°O]?|N°)?\s*[:#]?\s*)([A-Z0-9-]{4,})/i;
     match = text.match(protocolRegex);
     if (match) {
         result.protocolo = match[3].trim();
     }
 
-    // 3) FECHA Y HORA DE TOMA DE MUESTRA (clave: NO usar F. NAC)
-    // Ejemplos típicos:
-    // "Toma de muestra: 20/11/2025 07:31"
-    // "TOMA DE MUESTRA 14-06-2025 11:41"
+    // 3) FECHA / HORA TOMA DE MUESTRA
     let fecha = null;
     let hora = null;
 
@@ -188,13 +184,10 @@ function extractMetadata(text) {
     match = text.match(tomaRegex);
     if (match) {
         fecha = match[2];
-        if (match[3]) {
-            hora = match[3];
-        }
+        if (match[3]) hora = match[3];
     }
 
-    // Si por algún motivo no está “Toma de muestra”, usar la PRIMER fecha
-    // que NO esté en una línea con "F. NAC" / "NACIMIENTO".
+    // Si no hay "Toma de muestra", buscar otra fecha que NO sea F. Nac
     if (!fecha) {
         const dateRegexGlobal = /(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/g;
         let m;
@@ -208,58 +201,26 @@ function extractMetadata(text) {
         }
     }
 
-    // Normalizar fecha a AAAA-MM-DD si la encontramos
     if (fecha) {
         const parts = fecha.split(/[\/\.-]/);
         if (parts.length === 3) {
-            let day = parts[0].padStart(2, '0');
-            let month = parts[1].padStart(2, '0');
+            let day = parts[0].padStart(2, "0");
+            let month = parts[1].padStart(2, "0");
             let year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
             result.fecha = `${year}-${month}-${day}`;
         }
     }
 
-    // HORA: primero intento en la misma línea "Toma de muestra",
-    // si no la encontramos, uso la primera hora del informe.
     if (hora) {
-        result.hora = hora + ':00';
+        result.hora = hora + ":00";
     } else {
         const timeRegex = /(\d{1,2}:\d{2})/;
         match = text.match(timeRegex);
         if (match) {
-            result.hora = match[1] + ':00';
+            result.hora = match[1] + ":00";
         } else if (result.fecha) {
-            // fallback razonable
-            result.hora = '12:00:00';
+            result.hora = "12:00:00";
         }
-    }
-
-    return result;
-}
-
-
-    // 2) Fecha de impresión/informe (prioridad B)
-    const impresionRegex =
-        /(FECHA\s*IMPRESI[ÓO]N|FECHA\s*DEL\s*INFORME|REPORT DATE)[^0-9]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i;
-
-    match = text.match(impresionRegex);
-    if (match) {
-        result.fecha = normalizeDate(match[2]);
-        result.hora = "12:00:00";
-        return result;
-    }
-
-    // 3) Evitar usar la fecha de nacimiento como fecha de muestra
-    const allDateMatches = [...text.matchAll(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g)].map(m => m[0]);
-
-    const fnacRegex = /(F\.?\s*NAC|FECHA\s*NAC(IMIENTO)?)[^0-9]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i;
-    const fnacMatch = text.match(fnacRegex);
-    const birthDate = fnacMatch ? fnacMatch[3] : null;
-
-    const candidates = allDateMatches.filter(d => d !== birthDate);
-    if (candidates.length > 0) {
-        result.fecha = normalizeDate(candidates[0]);
-        result.hora = "12:00:00";
     }
 
     return result;
@@ -705,8 +666,36 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPatientSelector();
     setupPdfHandling();
 
+    const btnTexto = document.getElementById("btnProcesarTexto");
+    if (btnTexto) {
+        btnTexto.addEventListener("click", () => {
+            const ta = document.getElementById("labInput");
+            if (ta) processInput(ta.value);
+        });
+    }
+
+    const btnLimpiar = document.getElementById("btnLimpiarEntrada");
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener("click", clearInput);
+    }
+
+    const btnHCLAB = document.getElementById("btnHCLAB");
+    if (btnHCLAB) {
+        btnHCLAB.addEventListener("click", generateHCLAB);
+    }
+
+    const btnCSV = document.getElementById("btnCSV");
+    if (btnCSV) {
+        btnCSV.addEventListener("click", downloadCSV);
+    }
+
     const patientSelector = document.getElementById("patientSelector");
-    if (patientSelector && patientSelector.value) {
-        loadPatientData();
+    if (patientSelector) {
+        patientSelector.addEventListener("change", loadPatientData);
+    }
+
+    const paramSelector = document.getElementById("paramSelector");
+    if (paramSelector) {
+        paramSelector.addEventListener("change", updateGraph);
     }
 });
