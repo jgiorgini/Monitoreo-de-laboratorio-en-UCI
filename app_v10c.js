@@ -21,7 +21,7 @@ const PARAMETERS = {
     // Metabolismo / Renal
     "Glucosa": { synonyms: /(GLUCOSA|GLU|GLICEMIA|GLC)/i, unit: "mg/dL", hclab: "Glu" },
     "Urea": { synonyms: /(UREA|UREICO|BUN)/i, unit: "mg/dL", hclab: "Urea" },
-    "Creatinina": { synonyms: /(CREATININA|CR\s?\b|CREA\b)/i, unit: "mg/dL", hclab: "Cr" },
+    "Creatinina": { synonyms: /(CREATININA|\bCR\b|\bCREA\b)/i, unit: "mg/dL", hclab: "Cr" },
     "Acido_Urico": { synonyms: /(ÁCIDO\s*ÚRICO|ACIDO\s*URICO)/i, unit: "mg/dL", hclab: "AU" },
     "Osmolalidad": { synonyms: /(OSMOLALIDAD|OSMOL)/i, unit: "mOsm/Kg", hclab: "Osm" },
 
@@ -72,7 +72,7 @@ const PARAMETERS = {
 };
 
 // =============================
-// 2. REGEX DE UNIDADES
+// 2. UNIDADES (solo para mostrar / doc, ya no obligan a matchear)
 // =============================
 
 const UNIT_REGEX = {
@@ -119,30 +119,50 @@ function loadData() {
 }
 
 // =============================
-// 4. PARSING DE VALORES
+// 4. PARSING DE VALORES (versión simplificada)
 // =============================
 
-function parseLabValue(text, paramName, unitKey) {
+function parseLabValue(text, paramName) {
     const config = PARAMETERS[paramName];
     if (!config) return null;
 
-    const unitPattern = UNIT_REGEX[unitKey] || "mg\\s*\\/\\s*d[Ll1]";
-    const paramRegexSource = config.synonyms.source;
+    // Trabajamos sobre 1 sola versión en mayúsculas para robustez,
+    // pero dejamos los números tal cual para no romper decimales.
+    const upperText = text.toUpperCase();
+    const paramRegexSource = config.synonyms.source.toUpperCase();
 
-    const masterRegex = new RegExp(
-        "(" + paramRegexSource + ")[\\s\\S]{0,120}?([\\d]+[\\d\\.,]*)\\s*[↑↓]?\\s*(" + unitPattern + ")",
-        "im"
-    );
+    // 1) Encontrar el índice del parámetro (primer match)
+    const paramRegex = new RegExp(paramRegexSource, "i");
+    const matchParam = upperText.match(paramRegex);
+    if (!matchParam) return null;
 
-    const match = text.match(masterRegex);
-    if (match) {
-        let valueStr = match[2]
-            .replace(/\./g, "")
-            .replace(",", ".");
-        const value = parseFloat(valueStr);
-        return isNaN(value) ? null : value;
+    const startIdx = matchParam.index || 0;
+
+    // 2) Tomar una ventana después del nombre (hasta 120–150 caracteres)
+    const windowText = text.slice(startIdx, startIdx + 150);
+
+    // 3) Buscar el PRIMER número razonable en esa ventana
+    //    - permite decimales con coma o punto
+    //    - ignora números muy largos tipo "2025" SOLO si hay otros más “de laboratorio”
+    const numRegex = /(\d+[\d\.,]*)/g;
+    let candidate = null;
+    let m;
+    while ((m = numRegex.exec(windowText)) !== null) {
+        const raw = m[1];
+
+        // descartamos cosas muy raras (ej: números de protocolo largos) si hay otras opciones
+        if (raw.length > 8) continue;
+
+        candidate = raw;
+        break; // primer número en la ventana
     }
-    return null;
+
+    if (!candidate) return null;
+
+    // Normalizar: 1.234,56 -> 1234.56
+    let valueStr = candidate.replace(/\./g, "").replace(",", ".");
+    const value = parseFloat(valueStr);
+    return isNaN(value) ? null : value;
 }
 
 // =============================
@@ -160,67 +180,58 @@ function normalizeDate(dateStr) {
 }
 
 function extractMetadata(text) {
+    const upper = text.toUpperCase();
     const result = { paciente: null, protocolo: null, fecha: null, hora: "00:00:00" };
 
     // 1) PACIENTE
     const patientRegex = /(PACIENTE|NOMBRE|PT)\s*[:]?\s*([A-ZÁÉÍÓÚÑ\s\.,]{5,})/i;
-    let match = text.match(patientRegex);
+    let match = upper.match(patientRegex);
     if (match) {
         result.paciente = match[2].trim().replace(/\s{2,}/g, " ");
     }
 
     // 2) PROTOCOLO
     const protocolRegex = /(PROTOCOLO\s*(N[º°O]?|N°)?\s*[:#]?\s*)([A-Z0-9-]{4,})/i;
-    match = text.match(protocolRegex);
+    match = upper.match(protocolRegex);
     if (match) {
         result.protocolo = match[3].trim();
     }
 
-    // 3) FECHA / HORA TOMA DE MUESTRA
+    // 3) TOMA DE MUESTRA (fecha y hora preferidas)
     let fecha = null;
     let hora = null;
 
-    const tomaRegex = /(TOMA\s+DE\s+MUESTRA\s*[:\-]?\s*)(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})(?:\s+(\d{1,2}:\d{2}))?/i;
-    match = text.match(tomaRegex);
+    const tomaRegex = /(TOMA\s+DE\s+MUESTRA[^0-9]*)(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})(?:\s+(\d{1,2}:\d{2}))?/i;
+    match = upper.match(tomaRegex);
     if (match) {
         fecha = match[2];
         if (match[3]) hora = match[3];
     }
 
-    // Si no hay "Toma de muestra", buscar otra fecha que NO sea F. Nac
+    // 4) Evitar F. NAC si no encontramos "Toma de muestra"
     if (!fecha) {
-        const dateRegexGlobal = /(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/g;
-        let m;
-        while ((m = dateRegexGlobal.exec(text)) !== null) {
-            const idx = m.index;
-            const contextoPrevio = text.slice(Math.max(0, idx - 25), idx);
-            if (!/F\.?\s*NAC|NACIMI/i.test(contextoPrevio)) {
-                fecha = m[1];
-                break;
-            }
+        const allDates = [...upper.matchAll(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g)].map(m => m[0]);
+
+        let birthDate = null;
+        const fnacRegex =
+            /(F\.?\s*NAC|FECHA\s*NAC(IMIENTO)?)[^0-9]*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i;
+        const fnacMatch = upper.match(fnacRegex);
+        if (fnacMatch) birthDate = fnacMatch[3];
+
+        const candidates = allDates.filter(d => d !== birthDate);
+        if (candidates.length > 0) {
+            fecha = candidates[0];
         }
     }
 
     if (fecha) {
-        const parts = fecha.split(/[\/\.-]/);
-        if (parts.length === 3) {
-            let day = parts[0].padStart(2, "0");
-            let month = parts[1].padStart(2, "0");
-            let year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-            result.fecha = `${year}-${month}-${day}`;
-        }
+        result.fecha = normalizeDate(fecha);
     }
 
     if (hora) {
         result.hora = hora + ":00";
-    } else {
-        const timeRegex = /(\d{1,2}:\d{2})/;
-        match = text.match(timeRegex);
-        if (match) {
-            result.hora = match[1] + ":00";
-        } else if (result.fecha) {
-            result.hora = "12:00:00";
-        }
+    } else if (result.fecha) {
+        result.hora = "12:00:00";
     }
 
     return result;
@@ -253,8 +264,7 @@ function processInput(text) {
 
     let detected = 0;
     for (const paramName in PARAMETERS) {
-        const { unit } = PARAMETERS[paramName];
-        const value = parseLabValue(text, paramName, unit);
+        const value = parseLabValue(text, paramName);
         if (value !== null) {
             newSample.parametros[paramName] = value;
             detected++;
@@ -269,7 +279,6 @@ function processInput(text) {
     const patientName = newSample.paciente;
     if (!labData[patientName]) labData[patientName] = [];
 
-    // Duplicado si coincide protocolo (si ambos tienen protocolo)
     const isDuplicate = labData[patientName].some(
         s => s.protocolo && newSample.protocolo && s.protocolo === newSample.protocolo
     );
@@ -369,7 +378,6 @@ function loadPatientData() {
     samples.forEach(sample => Object.keys(sample.parametros).forEach(p => allParams.add(p)));
     const sortedParams = Array.from(allParams).sort();
 
-    // Cabecera
     let headHTML = `
         <tr>
             <th class="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase">Fecha/Hora</th>
@@ -385,7 +393,6 @@ function loadPatientData() {
     headHTML += "</tr>";
     thead.innerHTML = headHTML;
 
-    // Cuerpo
     let bodyHTML = "";
     samples.forEach(sample => {
         const dt = sample.fecha
@@ -667,35 +674,17 @@ document.addEventListener("DOMContentLoaded", () => {
     setupPdfHandling();
 
     const btnTexto = document.getElementById("btnProcesarTexto");
-    if (btnTexto) {
-        btnTexto.addEventListener("click", () => {
-            const ta = document.getElementById("labInput");
-            if (ta) processInput(ta.value);
-        });
-    }
-
     const btnLimpiar = document.getElementById("btnLimpiarEntrada");
-    if (btnLimpiar) {
-        btnLimpiar.addEventListener("click", clearInput);
-    }
-
     const btnHCLAB = document.getElementById("btnHCLAB");
-    if (btnHCLAB) {
-        btnHCLAB.addEventListener("click", generateHCLAB);
-    }
-
     const btnCSV = document.getElementById("btnCSV");
-    if (btnCSV) {
-        btnCSV.addEventListener("click", downloadCSV);
-    }
+
+    if (btnTexto) btnTexto.addEventListener("click", () => processInput(document.getElementById("labInput").value));
+    if (btnLimpiar) btnLimpiar.addEventListener("click", clearInput);
+    if (btnHCLAB) btnHCLAB.addEventListener("click", generateHCLAB);
+    if (btnCSV) btnCSV.addEventListener("click", downloadCSV);
 
     const patientSelector = document.getElementById("patientSelector");
-    if (patientSelector) {
-        patientSelector.addEventListener("change", loadPatientData);
-    }
-
-    const paramSelector = document.getElementById("paramSelector");
-    if (paramSelector) {
-        paramSelector.addEventListener("change", updateGraph);
+    if (patientSelector && patientSelector.value) {
+        loadPatientData();
     }
 });
