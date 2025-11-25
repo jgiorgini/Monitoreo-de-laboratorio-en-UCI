@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor de Laboratorios UCI (V11)</title>
+    <title>Monitor de Laboratorios UCI (V10c)</title>
 
     <!-- Tailwind (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,7 +11,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 
-    <!-- pdf.js (antes de app_v11.js) -->
+    <!-- pdf.js (debe cargarse antes de app_v10c.js) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.min.js"></script>
 
     <style>
@@ -29,7 +29,7 @@
     <header class="mb-6 border-b pb-4">
         <h1 class="text-3xl font-bold text-blue-800">
             Monitor de Laboratorios UCI
-            <span class="text-sm bg-indigo-300 px-2 py-0.5 rounded">V11</span>
+            <span class="text-sm bg-indigo-300 px-2 py-0.5 rounded">V10c</span>
         </h1>
         <p class="text-sm text-gray-500">
             Carga de PDF/texto, parsing robusto y seguimiento diario por paciente crítico.
@@ -108,7 +108,8 @@
     </div>
 </div>
 
-<script src="app_v11.js"></script>
+<!-- Lógica principal -->
+<script src="app_v10c.js"></script>
 
 </body>
 </html>
