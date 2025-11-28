@@ -1,5 +1,5 @@
 // Monitor de Laboratorios UCI - V10c
-// Lógica principal
+// Lógica principal separada en app_v10c.js
 
 // =============================
 // 1. CONFIGURACIÓN DE PARÁMETROS
@@ -28,9 +28,9 @@ const PARAMETERS = {
     // Hepatograma
     "BT": { synonyms: /(BT\b|BILIRRUBINA\s*TOTAL)/i, unit: "mg/dL", hclab: "BT" },
     "BD": { synonyms: /(BD\b|BILIRRUBINA\s*DIRECTA)/i, unit: "mg/dL", hclab: "BD" },
-    "AST_TGO": { synonyms: /(AST\b|TGO\b|ASPARTATO\s+AMINOTRANSFERASA)/i, unit: "U/L", hclab: "AST" },
-    "ALT_TGP": { synonyms: /(ALT\b|TGP\b|ALANINA\s+AMINOTRANSFERASA|GPT\b)/i, unit: "U/L", hclab: "ALT" },
-    "Fosfatasa_Alcalina": { synonyms: /(FOSFATASA\s*ALCALINA|FAL\b)/i, unit: "U/L", hclab: "FA" },
+    "AST_TGO": { synonyms: /(ASPARTATO\s+AMINOTRANSFERASA|ASAT|TGO|GOT)/i, unit: "U/L", hclab: "AST" },
+    "ALT_TGP": { synonyms: /(ALANINA\s+AMINOTRANSFERASA|ALAT|TGP|GPT)/i, unit: "U/L", hclab: "ALT" },
+    "Fosfatasa_Alcalina": { synonyms: /(FOSFATASA\s*ALCALINA|FOSFATASA\s+ALCALI|FAL\b)/i, unit: "U/L", hclab: "FA" },
     "GGT": { synonyms: /(GGT\b|GAMMA\s*GLUTAMIL|GAMMAGT)/i, unit: "U/L", hclab: "GGT" },
     "Albúmina": { synonyms: /(ALBÚMINA|ALBUMINA|ALBUMIN\b)/i, unit: "g/dL", hclab: "Alb" },
     "Proteínas_Totales": { synonyms: /(PROTE[IÍ]NAS?\s*TOTAL(ES)?|PROT\s*TOTAL)/i, unit: "g/dL", hclab: "Prot" },
@@ -59,7 +59,7 @@ const PARAMETERS = {
     "Vitamina_B12": { synonyms: /(VITAMINA\s*B12|CIANOCOBALAMINA)/i, unit: "pg/ml", hclab: "B12" },
     "Acido_Fólico": { synonyms: /(ÁCIDO\s*F[ÓO]LICO|FOLATO)/i, unit: "ng/ml", hclab: "Fol" },
     "TSH": { synonyms: /\bTSH\b/i, unit: "uUI/ml", hclab: "TSH" },
-    "Cortisol": { synonyms: /CORTISOL/i, unit: "ug/dL", hclab: "Cort" },
+    "Cortisol": { synonyms: /CORTISOL/i, unit: "mcg/dL", hclab: "Cort" },
 
     // Coagulación
     "TP": { synonyms: /\b(TP|TIEMPO\s*DE\s*PROTROMBINA)\b/i, unit: "%", hclab: "TP" },
@@ -76,32 +76,19 @@ const PARAMETERS = {
 // =============================
 
 const UNIT_REGEX = {
-    // Actividades enzimáticas
-    "U/L": "(?:U|UI)\\s*\\/?\\s*[Ll1]",           // U/L, UI/L, UI/l, U/l
-
-    // Concentraciones clásicas
-    "mg/dL": "mg\\s*\\/?\\s*d[Ll1]",              // mg/dl, mg/dL
-    "g/dL": "g\\s*\\/?\\s*d[Ll1]",                // g/dl, g/dL
-    "mg/L": "mg\\s*\\/?\\s*[Ll1]",                // mg/l, mg/L
-
-    // Electrolitos
-    "mEq/L": "mEq\\s*\\/?\\s*[Ll1]",              // mEq/l, mEq/L
-    "mmol/L": "mmol\\s*\\/?\\s*[Ll1]",            // mmol/l, mmol/L
-
-    // Micro / nano / pico
-    "ug/dL": "(?:µg|ug)\\s*\\/?\\s*d[Ll1]",       // µg/dl, ug/dl
-    "ug/mL": "(?:µg|ug)\\s*\\/?\\s*ml",           // µg/ml, ug/ml
-    "ng/ml": "ng\\s*\\/?\\s*ml",                  // ng/ml, ng/mL
-    "pg/ml": "pg\\s*\\/?\\s*ml",                  // pg/ml, pg/Ml
-
-    // Hormonas (TSH, etc.)
-    "uUI/ml": "uU[Ii]?\\s*\\/?\\s*ml",            // uUI/ml, uUi/ml
-    "uU/ml": "uU\\s*\\/?\\s*ml",
-
-    // Otros
-    "mm/h": "mm\\s*\\/?\\s*h",
-    "mOsm/Kg": "mOsm\\s*\\/?\\s*K[gG]",
-    "s": "\\bs\\b",
+    "U/L": "(U|UI)\\s*\\/?\\s*[Ll1]",
+    "mg/dL": "mg\\s*\\/\\s*d[Ll1]",
+    "g/dL": "g\\s*\\/\\s*d[Ll1]",
+    "%": "%\\b",
+    "mEq/L": "mEq\\s*\\/\\s*[Ll1]",
+    "mmol/L": "mmol\\s*\\/\\s*[Ll1]",
+    "ng/ml": "ng\\s*\\/\\s*ml",
+    "pg/ml": "pg\\s*\\/\\s*ml",
+    "mm/h": "mm\\s*\\/\\s*h",
+    "mOsm/Kg": "mOsm\\s*\\/\\s*Kg",
+    "uUI/ml": "uU?I\\s*\\/\\s*ml",
+    "mcg/dL": "mcg\\s*\\/\\s*d[Ll1]",
+    "s": "\\s*s\\b",
     "": "\\s*$"
 };
 
@@ -142,18 +129,20 @@ function parseLabValue(text, paramName, unitKey) {
     const unitPattern = UNIT_REGEX[unitKey] || "mg\\s*\\/\\s*d[Ll1]";
     const paramRegexSource = config.synonyms.source;
 
-    // Permitimos hasta ~400 caracteres entre el nombre del parámetro
-    // y el valor, para cubrir métodos y fechas intermedias.
+    // Buscamos: [nombre parámetro] ... [número] (opcional flecha) [unidad]
     const masterRegex = new RegExp(
-        "(" + paramRegexSource + ")[\\s\\S]{0,400}?([\\d]+[\\d\\.,]*)\\s*[↑↓]?\\s*(" + unitPattern + ")",
+        "(" + paramRegexSource + ")[\\s\\S]{0,160}?([\\d]+[\\d\\.,]*)\\s*[↑↓]?\\s*(" + unitPattern + ")",
         "im"
     );
 
     const match = text.match(masterRegex);
     if (match) {
-        let valueStr = match[2]
-            .replace(/\./g, "")
-            .replace(",", ".");
+        let valueStr = match[2].trim();
+
+        // NO tocamos todos los puntos del texto global.
+        // Transformamos DECIMAL local: "4,8" → "4.8", "4.8" se queda como está.
+        valueStr = valueStr.replace(",", ".");
+
         const value = parseFloat(valueStr);
         return isNaN(value) ? null : value;
     }
@@ -164,65 +153,58 @@ function parseLabValue(text, paramName, unitKey) {
 // 5. PARSING DE METADATOS
 // =============================
 
-function normalizeDate(dateStr) {
-    const parts = dateStr.split(/[\/\-\.]/);
-    if (parts.length !== 3) return null;
-    let d = parts[0].padStart(2, "0");
-    let m = parts[1].padStart(2, "0");
-    let y = parts[2];
-    if (y.length === 2) y = "20" + y;
-    return `${y}-${m}-${d}`;
-}
-
 function extractMetadata(text) {
+    const upper = text.toUpperCase();
     const result = { paciente: null, protocolo: null, fecha: null, hora: "00:00:00" };
 
     // PACIENTE
-    const patientRegex = /(PACIENTE|NOMBRE|PT)\s*[:]?\s*([A-ZÁÉÍÓÚÑ\s\.,]{5,})/i;
-    let match = text.match(patientRegex);
+    let match = upper.match(/PACIENTE\s*[:\-]\s*([A-ZÁÉÍÓÚÑ\s\.,]{5,})/i);
     if (match) {
-        result.paciente = match[2].trim().replace(/\s{2,}/g, " ");
+        result.paciente = match[1].trim().replace(/\s{2,}/g, " ");
     }
 
     // PROTOCOLO
-    const protocolRegex = /(PROTOCOLO\s*(N[º°O]?|N°)?\s*[:#]?\s*)([A-Z0-9-]{4,})/i;
-    match = text.match(protocolRegex);
+    match = upper.match(/PROTOCOLO\s*N[º°O]?\s*[:#]?\s*([A-Z0-9\-]{4,})/i);
     if (match) {
-        result.protocolo = match[3].trim();
+        result.protocolo = match[1].trim();
     }
 
-    // FECHA Y HORA DE TOMA DE MUESTRA (prioridad)
+    // Toma de muestra (prioritario)
     let fecha = null;
     let hora = null;
 
-    const tomaRegex =
-        /(TOMA\s+DE\s+MUESTRA[^0-9]{0,20})(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})(?:\s+(\d{1,2}:\d{2}))?/i;
-    match = text.match(tomaRegex);
+    const tomaRegex = /(TOMA\s+DE\s+MUESTRA\s*[:\-]?\s*)(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})(?:\s+(\d{1,2}:\d{2}))?/i;
+    match = upper.match(tomaRegex);
     if (match) {
         fecha = match[2];
         if (match[3]) hora = match[3];
     }
 
-    // Si no encontramos "Toma de muestra", usar la primera fecha que
-    // NO esté cerca de "F. NAC" / "NACIMIENTO".
+    // Si no se encontró TOMA DE MUESTRA, usar primera fecha que NO sea F. NAC
     if (!fecha) {
-        const allDates = [...text.matchAll(/(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/g)];
-        for (const m2 of allDates) {
-            const d = m2[1];
-            const idx = m2.index;
-            const prev = text.slice(Math.max(0, idx - 30), idx);
-            if (!/F\.?\s*NAC|NACIMI/i.test(prev)) {
-                fecha = d;
+        const dateRegexGlobal = /(\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4})/g;
+        let m;
+        while ((m = dateRegexGlobal.exec(text)) !== null) {
+            const idx = m.index;
+            const contextoPrevio = text.slice(Math.max(0, idx - 30), idx);
+            if (!/F\.?\s*NAC|NACIMI/i.test(contextoPrevio)) {
+                fecha = m[1];
                 break;
             }
         }
     }
 
     if (fecha) {
-        result.fecha = normalizeDate(fecha);
+        const parts = fecha.split(/[\/\.-]/);
+        if (parts.length === 3) {
+            let day = parts[0].padStart(2, "0");
+            let month = parts[1].padStart(2, "0");
+            let year = parts[2];
+            if (year.length === 2) year = "20" + year;
+            result.fecha = `${year}-${month}-${day}`;
+        }
     }
 
-    // HORA
     if (hora) {
         result.hora = hora + ":00";
     } else {
@@ -242,13 +224,16 @@ function extractMetadata(text) {
 // 6. PROCESAMIENTO DE ENTRADA
 // =============================
 
-function processInput(text) {
-    if (!text || !text.trim()) {
+function processInput(rawText) {
+    if (!rawText || !rawText.trim()) {
         alert("Pegue el texto del laboratorio o cargue un PDF.");
         return;
     }
 
-    // Normalizar comas decimales: 6,1 -> 6.1
+    let text = rawText;
+
+    // Normalizar COMA decimal → PUNTO (solo cuando es patrón dígito,coma,dígito)
+    // Ej: 4,8 → 4.8; 0,92 → 0.92
     text = text.replace(/(\d),(\d)/g, "$1.$2");
 
     const metadata = extractMetadata(text);
@@ -260,9 +245,7 @@ function processInput(text) {
     const newSample = {
         ...metadata,
         parametros: {},
-        timestamp: metadata.fecha
-            ? new Date(`${metadata.fecha}T${metadata.hora}`).getTime()
-            : Date.now()
+        timestamp: metadata.fecha ? new Date(`${metadata.fecha}T${metadata.hora}`).getTime() : Date.now()
     };
 
     let detected = 0;
@@ -283,7 +266,7 @@ function processInput(text) {
     const patientName = newSample.paciente;
     if (!labData[patientName]) labData[patientName] = [];
 
-    // Duplicado si coincide protocolo (si ambos tienen protocolo)
+    // Duplicado si coincide protocolo (cuando ambos lo tienen)
     const isDuplicate = labData[patientName].some(
         s => s.protocolo && newSample.protocolo && s.protocolo === newSample.protocolo
     );
@@ -302,7 +285,8 @@ function processInput(text) {
     }
 
     loadPatientSelector(patientName);
-    clearInput();
+    const ta = document.getElementById("labInput");
+    if (ta) ta.value = "";
 }
 
 // =============================
@@ -332,14 +316,6 @@ function loadPatientSelector(selectPatient = null) {
 
     if (selector.value) {
         loadPatientData();
-    } else {
-        const tbody = document.querySelector("#uciTable tbody");
-        const thead = document.querySelector("#uciTable thead");
-        if (tbody && thead) {
-            thead.innerHTML = "";
-            tbody.innerHTML =
-                '<tr><td class="text-center py-4 text-gray-500" colspan="10">Seleccione un paciente con muestras cargadas.</td></tr>';
-        }
     }
 }
 
@@ -687,7 +663,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPatientSelector();
     setupPdfHandling();
 
-    // Botones
     const btnProc = document.getElementById("btnProcesarTexto");
     const btnLimpiar = document.getElementById("btnLimpiarEntrada");
     const btnHCLAB = document.getElementById("btnHCLAB");
@@ -703,27 +678,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (btnLimpiar) {
-        btnLimpiar.addEventListener("click", clearInput);
+        btnLimpiar.addEventListener("click", () => clearInput());
     }
 
     if (btnHCLAB) {
-        btnHCLAB.addEventListener("click", generateHCLAB);
+        btnHCLAB.addEventListener("click", () => generateHCLAB());
     }
 
     if (btnCSV) {
-        btnCSV.addEventListener("click", downloadCSV);
+        btnCSV.addEventListener("click", () => downloadCSV());
     }
 
     if (patientSelector) {
-        patientSelector.addEventListener("change", loadPatientData);
+        patientSelector.addEventListener("change", () => loadPatientData());
     }
 
     if (paramSelector) {
-        paramSelector.addEventListener("change", updateGraph);
+        paramSelector.addEventListener("change", () => updateGraph());
     }
 
-    // Si ya había datos guardados, seleccionar primero y mostrar
-    if (patientSelector && patientSelector.value) {
+    // Si ya hay datos en localStorage, seleccionar el primer paciente automáticamente
+    if (patientSelector && !patientSelector.value && patientSelector.options.length > 1) {
+        patientSelector.value = patientSelector.options[1].value;
         loadPatientData();
     }
 });
