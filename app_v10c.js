@@ -752,7 +752,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (paramSelector) {
         paramSelector.addEventListener("change", () => updateGraph());
-            if (btnReset) {
+    }
+
+    if (btnReset) {
         btnReset.addEventListener("click", () => resetAllData());
     }
 
