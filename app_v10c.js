@@ -605,6 +605,62 @@ function copyToClipboard(text) {
         alert("No se pudo copiar. Seleccione y copie manualmente.");
     }
     document.body.removeChild(ta);
+    // =============================
+// 10 bis. RESET DE TODOS LOS DATOS
+// =============================
+
+function resetAllData() {
+    const ok = confirm(
+        "Esto borrará TODOS los laboratorios guardados en este navegador (localStorage).\n\n¿Seguro que querés continuar?"
+    );
+    if (!ok) return;
+
+    // Borrar memoria en RAM
+    labData = {};
+
+    // Borrar de localStorage
+    try {
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+    } catch (e) {
+        console.warn("No se pudo limpiar localStorage", e);
+    }
+
+    // Limpiar selectores
+    const patientSelector = document.getElementById("patientSelector");
+    const paramSelector = document.getElementById("paramSelector");
+    if (patientSelector) {
+        patientSelector.innerHTML = '<option value="">-- Seleccionar paciente --</option>';
+    }
+    if (paramSelector) {
+        paramSelector.innerHTML = "";
+    }
+
+    // Limpiar tabla UCI
+    const table = document.getElementById("uciTable");
+    if (table) {
+        const thead = table.querySelector("thead");
+        const tbody = table.querySelector("tbody");
+        if (thead) thead.innerHTML = "";
+        if (tbody) {
+            tbody.innerHTML =
+                '<tr><td class="text-center py-4 text-gray-500" colspan="10">Sin datos cargados.</td></tr>';
+        }
+    }
+
+    // Ocultar salida HCLAB
+    const outDiv = document.getElementById("hclabOutput");
+    if (outDiv) {
+        outDiv.classList.add("hidden");
+        outDiv.innerHTML = "";
+    }
+
+    // Destruir gráfico si existe
+    if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+    }
+
+    alert("Se borraron todas las muestras guardadas en este navegador.");
 }
 
 // =============================
@@ -669,6 +725,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnCSV = document.getElementById("btnCSV");
     const patientSelector = document.getElementById("patientSelector");
     const paramSelector = document.getElementById("paramSelector");
+    const btnReset = document.getElementById("btnReset");
 
     if (btnProc) {
         btnProc.addEventListener("click", () => {
@@ -695,6 +752,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (paramSelector) {
         paramSelector.addEventListener("change", () => updateGraph());
+            if (btnReset) {
+        btnReset.addEventListener("click", () => resetAllData());
     }
 
     // Si ya hay datos en localStorage, seleccionar el primer paciente automáticamente
