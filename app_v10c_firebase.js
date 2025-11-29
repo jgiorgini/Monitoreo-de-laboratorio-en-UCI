@@ -309,23 +309,72 @@ document.addEventListener("DOMContentLoaded", () => {
     setupPdf();
 });
 
+// ... (El resto del código de arriba déjalo igual) ...
+
+// =============================
+// 6. INIT (Versión mejorada para PDF)
+// =============================
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Cargar API Key oculta
+    const savedKey = localStorage.getItem("my_openai_key_v1");
+    if (savedKey) {
+        const el = document.getElementById("apiKey");
+        if(el) el.value = savedKey;
+    }
+
+    initRealTimeListener();
+
+    document.getElementById("btnProcesarIA")?.addEventListener("click", processAndUpload);
+    document.getElementById("patientSelector")?.addEventListener("change", loadPatientData);
+    document.getElementById("paramSelector")?.addEventListener("change", updateGraph);
+    document.getElementById("btnLimpiarEntrada")?.addEventListener("click", () => document.getElementById("labInput").value = "");
+    
+    setupPdf();
+});
+
 function setupPdf() {
     const input = document.getElementById("pdfInput");
     if(!input) return;
+
+    // Verificación de seguridad: ¿Existe la librería?
+    if (!window["pdfjs-dist/build/pdf"]) {
+        console.error("PDF.js no cargó.");
+        alert("Error: La librería de PDF no se cargó correctamente. Intenta recargar la página con CTRL+F5.");
+        return;
+    }
+
     const pdfjsLib = window["pdfjs-dist/build/pdf"];
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js";
+
     input.addEventListener("change", async (e) => {
         const file = e.target.files[0];
         if(!file) return;
-        document.getElementById("labInput").value = "Leyendo PDF...";
-        const buffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(buffer).promise;
-        let fullText = "";
-        for(let i=1; i<=pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            fullText += textContent.items.map(it => it.str).join(" ") + "\n";
+
+        const textArea = document.getElementById("labInput");
+        // Forzamos el texto visible para que sepas que arrancó
+        textArea.value = "⏳ Procesando archivo PDF, espera unos segundos...";
+
+        try {
+            const buffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(buffer).promise;
+            
+            let fullText = "";
+            // Recorrer todas las páginas
+            for(let i=1; i<=pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                // Unir texto con espacios
+                const pageText = textContent.items.map(it => it.str).join(" ");
+                fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
+            }
+
+            // ¡Éxito! Mostrar texto
+            textArea.value = fullText;
+
+        } catch (error) {
+            console.error("Error leyendo PDF:", error);
+            textArea.value = "Error al leer el PDF: " + error.message;
+            alert("No se pudo leer este PDF. Puede que sea una imagen escaneada sin texto seleccionable.\n\nPrueba copiar y pegar el texto manualmente.");
         }
-        document.getElementById("labInput").value = fullText;
     });
 }
