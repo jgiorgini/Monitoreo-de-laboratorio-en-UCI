@@ -1,5 +1,5 @@
-// Monitor UCI - Versión Firebase (Corregido)
-// ==========================================
+// Monitor UCI - Versión Firebase (Blindada)
+// =========================================
 
 // --- 1. CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -105,24 +105,40 @@ async function extractDataWithOpenAI(rawText, apiKey) {
 }
 
 // =============================
-// 4. PROCESAR Y SUBIR (CORREGIDO)
+// 4. PROCESAR Y SUBIR (BLINDADO)
 // =============================
+
+// Función auxiliar para eliminar 'undefined' recursivamente
+function cleanObject(obj) {
+    if (typeof obj !== 'object' || obj === null) return obj;
+    
+    if (Array.isArray(obj)) {
+        return obj.map(cleanObject).filter(v => v !== undefined);
+    }
+    
+    const newObj = {};
+    for (const key in obj) {
+        const value = cleanObject(obj[key]);
+        if (value !== undefined) {
+            newObj[key] = value;
+        }
+    }
+    return newObj;
+}
+
 async function processAndUpload() {
     const rawText = document.getElementById("labInput").value;
     
-    // Buscar la Key en el input oculto o en memoria
     let apiKey = document.getElementById("apiKey").value.trim();
     if(!apiKey) apiKey = localStorage.getItem("my_openai_key_v1");
 
     if (!rawText) return alert("Cargue un PDF primero.");
     if (!apiKey) {
-        // Abrir el menú de configuración automáticamente si falta la llave
         document.getElementById("configDetails").open = true;
         document.getElementById("apiKey").focus();
         return alert("Por favor, configure su API Key en el menú de engranaje.");
     }
 
-    // Guardar Key localmente por si acaso se modificó
     localStorage.setItem("my_openai_key_v1", apiKey);
 
     const btn = document.getElementById("btnProcesarIA");
@@ -151,26 +167,26 @@ async function processAndUpload() {
     if(!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
     if(!result.hora) result.hora = "12:00";
 
-    const newDoc = {
+    // Creamos el objeto crudo
+    const rawDoc = {
         paciente: result.paciente,
         fecha: result.fecha,
         hora: result.hora,
         protocolo: result.protocolo || "",
-        parametros: result.parametros || {}, // Asegurar que exista
+        parametros: result.parametros || {}, 
         timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
         uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    // --- CORRECCIÓN VITAL PARA EL ERROR DE FIREBASE ---
-    // Este truco elimina cualquier campo "undefined" automáticamente
-    const cleanDoc = JSON.parse(JSON.stringify(newDoc));
+    // LIMPIEZA PROFUNDA: Esto elimina cualquier rastro de 'undefined'
+    const finalDoc = cleanObject(rawDoc);
 
     try {
-        await db.collection("muestras").add(cleanDoc);
+        await db.collection("muestras").add(finalDoc);
         alert(`¡Guardado en la nube! Paciente: ${result.paciente}`);
         document.getElementById("labInput").value = "";
     } catch (e) {
-        console.error(e);
+        console.error("ERROR CRÍTICO:", e);
         alert("Error subiendo a Firebase: " + e.message);
     }
 
@@ -277,7 +293,6 @@ function updateGraph() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Cargar API Key oculta
     const savedKey = localStorage.getItem("my_openai_key_v1");
     if (savedKey) {
         const el = document.getElementById("apiKey");
