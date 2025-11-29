@@ -1,8 +1,7 @@
-// Monitor UCI - Versión Firebase (Conectada a la Nube)
-// ====================================================
+// Monitor UCI - Versión Firebase (Corregido)
+// ==========================================
 
 // --- 1. CONFIGURACIÓN DE FIREBASE ---
-// (Estas son TUS claves reales de laboratorios-uco)
 const firebaseConfig = {
   apiKey: "AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8",
   authDomain: "laboratorios-uco.firebaseapp.com",
@@ -14,13 +13,12 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
-// Verifica si ya existe una app para no inicializar doble
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.firestore();
 
-// --- CONFIG PARAMETROS QUE BUSCAREMOS ---
+// --- CONFIG PARAMETROS ---
 const TARGET_PARAMS = [
     "Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos",
     "Na", "K", "Cl", "Mg", "Ca_Total",
@@ -34,34 +32,26 @@ const UNITS = {
     "Glucosa": "mg/dL", "Lactato": "mmol/L", "Creatinina": "mg/dL"
 };
 
-// Variables globales locales
 let labData = {}; 
 let chartInstance = null;
 
 // =============================
-// 2. SINCRONIZACIÓN REAL-TIME (La Magia)
+// 2. SINCRONIZACIÓN REAL-TIME
 // =============================
 
 function initRealTimeListener() {
-    // Escucha la colección "muestras" en la nube
     db.collection("muestras").orderBy("timestamp", "asc")
         .onSnapshot((snapshot) => {
-            labData = {}; // Reiniciamos espejo local
-            
+            labData = {}; 
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 const pac = data.paciente;
-                
                 if (!labData[pac]) labData[pac] = [];
-                // Guardamos los datos
                 labData[pac].push({ ...data, id: doc.id });
             });
-
-            // Actualizar UI
             refreshUI();
         }, (error) => {
             console.error("Error recibiendo datos:", error);
-            // No alertamos siempre para no molestar, solo log en consola
         });
 }
 
@@ -69,24 +59,22 @@ function refreshUI() {
     const selector = document.getElementById("patientSelector");
     if(!selector) return;
     const currentPatient = selector.value;
-    
     loadPatientSelector(currentPatient); 
     if(currentPatient) loadPatientData(); 
 }
 
 // =============================
-// 3. LOGICA IA (OpenAI)
+// 3. LOGICA IA
 // =============================
 async function extractDataWithOpenAI(rawText, apiKey) {
     const prompt = `
-    Analiza este texto de laboratorio médico (OCR sucio). Devuelve JSON.
-    Campos obligatorios: "paciente" (Nombre completo, MAYUSCULAS), "fecha" (YYYY-MM-DD), "hora" (HH:MM), "protocolo" (string).
+    Analiza este texto de laboratorio médico. Devuelve JSON.
+    Campos: "paciente" (Nombre completo, MAYUSCULAS), "fecha" (YYYY-MM-DD), "hora" (HH:MM), "protocolo" (string).
     Busca valores numéricos para: ${TARGET_PARAMS.join(", ")}.
     
     Reglas:
     - JSON válido estricto.
     - Si no encuentras paciente, pon "DESCONOCIDO".
-    - Ignora fechas de nacimiento o fechas pasadas irrelevantes.
     
     TEXTO:
     """${rawText.substring(0, 10000)}"""
@@ -117,15 +105,24 @@ async function extractDataWithOpenAI(rawText, apiKey) {
 }
 
 // =============================
-// 4. PROCESAR Y SUBIR A NUBE
+// 4. PROCESAR Y SUBIR (CORREGIDO)
 // =============================
 async function processAndUpload() {
     const rawText = document.getElementById("labInput").value;
-    const apiKey = document.getElementById("apiKey").value.trim();
+    
+    // Buscar la Key en el input oculto o en memoria
+    let apiKey = document.getElementById("apiKey").value.trim();
+    if(!apiKey) apiKey = localStorage.getItem("my_openai_key_v1");
 
-    if (!rawText || !apiKey) return alert("Falta texto o API Key.");
+    if (!rawText) return alert("Cargue un PDF primero.");
+    if (!apiKey) {
+        // Abrir el menú de configuración automáticamente si falta la llave
+        document.getElementById("configDetails").open = true;
+        document.getElementById("apiKey").focus();
+        return alert("Por favor, configure su API Key en el menú de engranaje.");
+    }
 
-    // Guardar Key localmente
+    // Guardar Key localmente por si acaso se modificó
     localStorage.setItem("my_openai_key_v1", apiKey);
 
     const btn = document.getElementById("btnProcesarIA");
@@ -135,13 +132,12 @@ async function processAndUpload() {
     const result = await extractDataWithOpenAI(rawText, apiKey);
     
     if (!result) {
-        alert("Error al interpretar los datos.");
+        alert("Error al interpretar los datos. Revise su API Key o el PDF.");
         btn.disabled = false;
         btn.innerText = "✨ Extraer y Subir";
         return;
     }
 
-    // Validar nombre
     if (!result.paciente || result.paciente === "DESCONOCIDO") {
         const manual = prompt("Nombre del paciente no detectado. Ingréselo:");
         if (manual) result.paciente = manual.toUpperCase();
@@ -155,20 +151,22 @@ async function processAndUpload() {
     if(!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
     if(!result.hora) result.hora = "12:00";
 
-    // Objeto para Firestore
     const newDoc = {
         paciente: result.paciente,
         fecha: result.fecha,
         hora: result.hora,
         protocolo: result.protocolo || "",
-        parametros: result.parametros,
+        parametros: result.parametros || {}, // Asegurar que exista
         timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
         uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    // SUBIR A FIRESTORE
+    // --- CORRECCIÓN VITAL PARA EL ERROR DE FIREBASE ---
+    // Este truco elimina cualquier campo "undefined" automáticamente
+    const cleanDoc = JSON.parse(JSON.stringify(newDoc));
+
     try {
-        await db.collection("muestras").add(newDoc);
+        await db.collection("muestras").add(cleanDoc);
         alert(`¡Guardado en la nube! Paciente: ${result.paciente}`);
         document.getElementById("labInput").value = "";
     } catch (e) {
@@ -187,17 +185,14 @@ async function processAndUpload() {
 function loadPatientSelector(preserveValue = null) {
     const sel = document.getElementById("patientSelector");
     if(!sel) return;
-    
     const current = preserveValue || sel.value;
     sel.innerHTML = '<option value="">-- Seleccionar --</option>';
-    
     Object.keys(labData).sort().forEach(p => {
         const opt = document.createElement("option");
         opt.value = p;
         opt.innerText = p;
         sel.appendChild(opt);
     });
-
     if (current && labData[current]) sel.value = current;
     else if (!current) {
         const tbody = document.querySelector("#uciTable tbody");
@@ -212,14 +207,12 @@ function loadPatientData() {
     const paramSel = document.getElementById("paramSelector");
 
     if (!patientName || !labData[patientName]) return;
-
     const samples = labData[patientName];
     
     let allKeys = new Set();
     samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
     let sortedKeys = Array.from(allKeys).sort();
 
-    // Headers
     let headHTML = `<tr class="bg-blue-100 text-left text-xs font-bold uppercase text-gray-700">
         <th class="p-3 sticky left-0 bg-blue-100 z-10 border-b border-blue-200">Fecha</th>`;
     sortedKeys.forEach(k => {
@@ -228,14 +221,12 @@ function loadPatientData() {
     headHTML += "</tr>";
     if(thead) thead.innerHTML = headHTML;
 
-    // Body
     let bodyHTML = "";
     samples.forEach(s => {
         let row = `<tr class="border-b hover:bg-gray-50 transition">
             <td class="p-3 sticky left-0 bg-white font-medium text-sm whitespace-nowrap border-r border-gray-100">
                 ${s.fecha} <span class="text-xs text-gray-400 ml-1">${s.hora}</span>
             </td>`;
-        
         sortedKeys.forEach(k => {
             const val = s.parametros[k];
             row += `<td class="p-3 text-center text-sm text-gray-700">${val !== undefined ? val : "-"}</td>`;
@@ -245,7 +236,6 @@ function loadPatientData() {
     });
     if(tbody) tbody.innerHTML = bodyHTML;
 
-    // Actualizar gráficos
     const currentParam = paramSel.value;
     paramSel.innerHTML = "";
     sortedKeys.forEach(k => {
@@ -255,7 +245,6 @@ function loadPatientData() {
         paramSel.appendChild(opt);
     });
     if(sortedKeys.includes(currentParam)) paramSel.value = currentParam;
-    
     updateGraph();
 }
 
@@ -263,7 +252,6 @@ function updateGraph() {
     const patientName = document.getElementById("patientSelector").value;
     const param = document.getElementById("paramSelector").value;
     const ctx = document.getElementById("evolutionChart").getContext("2d");
-    
     if (chartInstance) chartInstance.destroy();
     if (!patientName || !param) return;
 
@@ -288,21 +276,16 @@ function updateGraph() {
     });
 }
 
-// =============================
-// 6. INIT
-// =============================
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Cargar API Key Local
+    // 1. Cargar API Key oculta
     const savedKey = localStorage.getItem("my_openai_key_v1");
     if (savedKey) {
         const el = document.getElementById("apiKey");
         if(el) el.value = savedKey;
     }
 
-    // 2. Iniciar escucha de Firebase
     initRealTimeListener();
 
-    // 3. Listeners
     document.getElementById("btnProcesarIA")?.addEventListener("click", processAndUpload);
     document.getElementById("patientSelector")?.addEventListener("change", loadPatientData);
     document.getElementById("paramSelector")?.addEventListener("change", updateGraph);
@@ -314,10 +297,8 @@ document.addEventListener("DOMContentLoaded", () => {
 function setupPdf() {
     const input = document.getElementById("pdfInput");
     if(!input) return;
-
     const pdfjsLib = window["pdfjs-dist/build/pdf"];
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js";
-
     input.addEventListener("change", async (e) => {
         const file = e.target.files[0];
         if(!file) return;
