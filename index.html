@@ -7,59 +7,69 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f3f4f6; }
         .table-container { max-height: 500px; overflow-y: auto; }
         thead th { position: sticky; top: 0; z-index: 20; }
         tbody td:first-child, thead th:first-child { position: sticky; left: 0; z-index: 30; background-color: inherit; }
+        /* Animación suave para el menú de configuración */
+        details[open] summary ~ * { animation: sweep .3s ease-in-out; }
+        @keyframes sweep { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
-        <header class="bg-indigo-900 text-white p-6 border-b border-indigo-700">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-3xl font-bold tracking-tight">Monitor UCI <span class="text-green-400 text-lg">● Online</span></h1>
-                    <p class="text-indigo-200 text-sm mt-1">Sincronización en tiempo real</p>
-                </div>
-                <div class="text-right">
-                    <span class="bg-indigo-700 text-xs font-bold px-2 py-1 rounded text-white border border-indigo-500">Cloud Mode</span>
-                </div>
+        
+        <header class="bg-indigo-900 text-white p-6 border-b border-indigo-700 flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">Monitor UCI <span class="text-green-400 text-lg">● Online</span></h1>
+                <p class="text-indigo-200 text-sm mt-1">Sincronización en tiempo real</p>
+            </div>
+            
+            <div class="text-right">
+                <details id="configDetails" class="relative group">
+                    <summary class="list-none cursor-pointer bg-indigo-800 hover:bg-indigo-700 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-600 flex items-center gap-2 select-none">
+                        <span>⚙️ Configurar Llave</span>
+                    </summary>
+                    <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-50 text-gray-800">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Tu API Key de OpenAI</label>
+                        <input type="password" id="apiKey" class="w-full p-2 border border-gray-300 rounded text-sm mb-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="sk-...">
+                        <p class="text-[10px] text-gray-400 leading-tight">Se guarda solo en este navegador. Necesaria para procesar nuevos PDFs.</p>
+                    </div>
+                </details>
             </div>
         </header>
 
         <main class="p-6 space-y-8">
             <section class="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                <h2 class="text-lg font-semibold text-slate-700 mb-4">1. Carga de Laboratorio</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-3">
-                        <label class="block text-sm font-medium text-slate-700">API Key OpenAI</label>
-                        <input type="password" id="apiKey" class="w-full p-2.5 border border-slate-300 rounded-lg" placeholder="sk-..." autocomplete="off">
-                        <p class="text-xs text-gray-500">Se guarda en este navegador localmente.</p>
+                <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-700">1. Carga de Laboratorio</h2>
+                        <p class="text-xs text-slate-500">Sube el PDF, la IA extraerá los datos y los subirá a la nube.</p>
                     </div>
-                    <div class="space-y-3">
-                        <label class="block text-sm font-medium text-slate-700">Archivo PDF</label>
-                        <div class="flex gap-2">
-                            <label class="flex-1 cursor-pointer bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2.5 hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm">
-                                <span>📄 Elegir PDF...</span>
-                                <input type="file" id="pdfInput" accept="application/pdf" class="hidden">
-                            </label>
-                        </div>
+                    
+                    <div class="w-full md:w-auto">
+                        <label class="flex cursor-pointer bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm transition">
+                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            <span>Seleccionar PDF...</span>
+                            <input type="file" id="pdfInput" accept="application/pdf" class="hidden">
+                        </label>
                     </div>
                 </div>
-                <textarea id="labInput" rows="3" class="w-full mt-4 p-3 border border-slate-300 rounded-lg text-xs font-mono" placeholder="Vista previa del texto..."></textarea>
+
+                <textarea id="labInput" rows="2" class="w-full mt-4 p-3 border border-slate-300 rounded-lg text-xs font-mono text-slate-500 focus:text-slate-800 transition" placeholder="Aquí aparecerá el texto leído..."></textarea>
                 
                 <div class="mt-4 flex gap-3">
                     <button id="btnProcesarIA" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition flex items-center gap-2">
-                        ✨ Extraer y Subir a la Nube
+                        ✨ Extraer y Subir
                     </button>
-                    <button id="btnLimpiarEntrada" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg">Limpiar</button>
+                    <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-slate-700 text-sm font-medium px-4">Limpiar texto</button>
                 </div>
             </section>
 
@@ -67,13 +77,13 @@
                 <div class="lg:col-span-1 space-y-4">
                     <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Paciente</label>
-                        <select id="patientSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 mb-4"></select>
+                        <select id="patientSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
                         
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Parámetro</label>
-                        <select id="paramSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50"></select>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Parámetro (Gráfico)</label>
+                        <select id="paramSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
                     </div>
                 </div>
-                <div class="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
+                <div class="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-sm h-64">
                     <canvas id="evolutionChart"></canvas>
                 </div>
             </section>
