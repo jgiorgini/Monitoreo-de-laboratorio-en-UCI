@@ -1,5 +1,5 @@
-// Monitor UCI - Versión Firebase (Blindada)
-// =========================================
+// Monitor UCI - Versión Firebase (Definitiva y Blindada)
+// ======================================================
 
 // --- 1. CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
@@ -292,27 +292,8 @@ function updateGraph() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    const savedKey = localStorage.getItem("my_openai_key_v1");
-    if (savedKey) {
-        const el = document.getElementById("apiKey");
-        if(el) el.value = savedKey;
-    }
-
-    initRealTimeListener();
-
-    document.getElementById("btnProcesarIA")?.addEventListener("click", processAndUpload);
-    document.getElementById("patientSelector")?.addEventListener("change", loadPatientData);
-    document.getElementById("paramSelector")?.addEventListener("change", updateGraph);
-    document.getElementById("btnLimpiarEntrada")?.addEventListener("click", () => document.getElementById("labInput").value = "");
-    
-    setupPdf();
-});
-
-// ... (El resto del código de arriba déjalo igual) ...
-
 // =============================
-// 6. INIT (Versión mejorada para PDF)
+// 6. INIT (Versión UNIFICADA)
 // =============================
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Cargar API Key oculta
@@ -332,6 +313,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupPdf();
 });
 
+// Función PDF (Versión Moderna v3.11)
 function setupPdf() {
     const input = document.getElementById("pdfInput");
     if(!input) return;
@@ -343,15 +325,15 @@ function setupPdf() {
         const textArea = document.getElementById("labInput");
         textArea.value = "⏳ Iniciando lectura del PDF... por favor espera.";
 
-        // Intentamos obtener la librería de las dos formas posibles
+        // Intentamos obtener la librería
         const pdfjsLib = window.pdfjsLib || window["pdfjs-dist/build/pdf"];
 
         if (!pdfjsLib) {
-            textArea.value = "Error crítico: La librería PDF no se cargó. Revisa tu conexión a internet.";
+            textArea.value = "Error crítico: La librería PDF no se cargó.";
             return alert("Error: No se pudo cargar el lector de PDF.");
         }
 
-        // Aseguramos el worker una vez más
+        // Worker Moderno v3.11
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
         try {
@@ -363,10 +345,9 @@ function setupPdf() {
             
             // Leemos página por página
             for(let i=1; i<=pdf.numPages; i++) {
-                textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`; // Feedback visual
+                textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`; 
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                
                 const pageText = textContent.items.map(item => item.str).join(" ");
                 fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
             }
@@ -377,7 +358,7 @@ function setupPdf() {
         } catch (error) {
             console.error("Error leyendo PDF:", error);
             textArea.value = "Error al leer el PDF:\n" + error.message;
-            alert("Hubo un error al leer el archivo. \n\nPosibles causas:\n1. Es un PDF escaneado (imagen).\n2. El archivo está protegido.\n\nIntenta copiar y pegar el texto manualmente.");
+            alert("Error leyendo el archivo. Asegúrate que no sea una imagen escaneada.");
         }
     });
 }
