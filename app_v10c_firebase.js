@@ -336,45 +336,48 @@ function setupPdf() {
     const input = document.getElementById("pdfInput");
     if(!input) return;
 
-    // Verificación de seguridad: ¿Existe la librería?
-    if (!window["pdfjs-dist/build/pdf"]) {
-        console.error("PDF.js no cargó.");
-        alert("Error: La librería de PDF no se cargó correctamente. Intenta recargar la página con CTRL+F5.");
-        return;
-    }
-
-    const pdfjsLib = window["pdfjs-dist/build/pdf"];
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js";
-
     input.addEventListener("change", async (e) => {
         const file = e.target.files[0];
         if(!file) return;
 
         const textArea = document.getElementById("labInput");
-        // Forzamos el texto visible para que sepas que arrancó
-        textArea.value = "⏳ Procesando archivo PDF, espera unos segundos...";
+        textArea.value = "⏳ Iniciando lectura del PDF... por favor espera.";
+
+        // Intentamos obtener la librería de las dos formas posibles
+        const pdfjsLib = window.pdfjsLib || window["pdfjs-dist/build/pdf"];
+
+        if (!pdfjsLib) {
+            textArea.value = "Error crítico: La librería PDF no se cargó. Revisa tu conexión a internet.";
+            return alert("Error: No se pudo cargar el lector de PDF.");
+        }
+
+        // Aseguramos el worker una vez más
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
         try {
             const buffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument(buffer).promise;
+            const loadingTask = pdfjsLib.getDocument(buffer);
             
+            const pdf = await loadingTask.promise;
             let fullText = "";
-            // Recorrer todas las páginas
+            
+            // Leemos página por página
             for(let i=1; i<=pdf.numPages; i++) {
+                textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`; // Feedback visual
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                // Unir texto con espacios
-                const pageText = textContent.items.map(it => it.str).join(" ");
+                
+                const pageText = textContent.items.map(item => item.str).join(" ");
                 fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
             }
 
-            // ¡Éxito! Mostrar texto
             textArea.value = fullText;
+            console.log("PDF leído correctamente.");
 
         } catch (error) {
             console.error("Error leyendo PDF:", error);
-            textArea.value = "Error al leer el PDF: " + error.message;
-            alert("No se pudo leer este PDF. Puede que sea una imagen escaneada sin texto seleccionable.\n\nPrueba copiar y pegar el texto manualmente.");
+            textArea.value = "Error al leer el PDF:\n" + error.message;
+            alert("Hubo un error al leer el archivo. \n\nPosibles causas:\n1. Es un PDF escaneado (imagen).\n2. El archivo está protegido.\n\nIntenta copiar y pegar el texto manualmente.");
         }
     });
 }
