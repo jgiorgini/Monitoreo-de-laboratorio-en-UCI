@@ -68,16 +68,17 @@
                 <label for="paramSelector" class="block text-sm font-medium text-gray-700 mb-1">Parámetro a graficar:</label>
                 <select id="paramSelector" class="w-full p-2 border border-gray-300 rounded-lg"></select>
             </div>
-            <div class="flex flex-col justify-end space-y-2">
-                <button id="btnHCLAB" class="px-4 py-2 bg-yellow-500 text-white font-medium rounded-lg hover:bg-yellow-600 transition duration-150">
-                    Generar HCLAB (salida abreviada)
-                </button>
-                <button id="btnCSV" class="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition duration-150">
-                    Descargar CSV
-                </button>
-            </div>
-        </div>
-
+       <div class="flex flex-col justify-end space-y-2">
+    <button id="btnHCLAB" class="px-4 py-2 bg-yellow-500 text-white font-medium rounded-lg hover:bg-yellow-600 transition duration-150">
+        Generar HCLAB (salida abreviada)
+    </button>
+    <button id="btnCSV" class="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition duration-150">
+        Descargar CSV
+    </button>
+    <button id="btnReset" class="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition duration-150">
+        Reset monitoreo (borrar todos)
+    </button>
+</div>
         <div id="hclabOutput" class="p-3 bg-blue-50 border border-blue-200 rounded-lg hidden"></div>
     </section>
 
