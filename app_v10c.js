@@ -1,91 +1,100 @@
-/* ============================================================
-   Monitor de Laboratorios UCI - V10c
-   Archivo: app_v10c.js
-   Versión completa y corregida
-   ============================================================ */
+/****************************************************
+ * Monitor de Laboratorios UCI – Versión V10c (estable)
+ * Parser robusto – Sin duplicados – Sin NaN
+ ****************************************************/
 
-/* ============================================================
-   1. LISTA DE PARÁMETROS (sinónimos + unidades + nombre HCLAB)
-   ============================================================ */
+// =============================
+// 1. PARÁMETROS DE LABORATORIO
+// =============================
+
 const PARAMETERS = {
     // Hematología
-    "Hemoglobina": { synonyms: /(HGB|HEMOGLOBINA|HB\b|HEMOG)/i, unit: "g/dl", hclab: "Hb" },
-    "Hematocrito": { synonyms: /(HCT|HEMATOCRITO|HTO)/i, unit: "%", hclab: "Hto" },
+    "Hemoglobina": { synonyms: /(HEMOGLOBINA|HGB|HB\b)/i, unit: "g/dl", hclab: "Hb" },
+    "Hematocrito": { synonyms: /(HEMATOCRITO|HCT|HTO)/i, unit: "%", hclab: "Hto" },
 
     // Electrolitos
-    "Na": { synonyms: /\b(NA|SODIO|NATREMIA)\b/i, unit: "mEq/l", hclab: "Na" },
-    "K": { synonyms: /\b(K|POTASIO|KALEMIA)\b/i, unit: "mEq/l", hclab: "K" },
-    "Cl": { synonyms: /\b(CLORO|CL\b)\b/i, unit: "mEq/l", hclab: "Cl" },
-    "Mg": { synonyms: /\b(MG|MAGNESIO)\b/i, unit: "mg/dl", hclab: "Mg" },
-    "Ca_Total": { synonyms: /(CALCIO\s*TOTAL)/i, unit: "mg/dl", hclab: "CaT" },
-    "Ca_Ionizado": { synonyms: /(IONIZADO|CA ION)/i, unit: "mmol/l", hclab: "CaI" },
+    "Na": { synonyms: /\b(SODIO|NA)\b/i, unit: "mEq/l", hclab: "Na" },
+    "K": { synonyms: /\b(POTASIO|K)\b/i, unit: "mEq/l", hclab: "K" },
+    "Cl": { synonyms: /\b(CLORO|CL)\b/i, unit: "mEq/l", hclab: "Cl" },
+    "Mg": { synonyms: /\b(MAGNESIO|MG)\b/i, unit: "mg/dl", hclab: "Mg" },
 
-    // Metabolismo / Renal
-    "Glucosa": { synonyms: /(GLUCOSA|GLU|GLICEMIA)/i, unit: "mg/dl", hclab: "Glu" },
-    "Urea": { synonyms: /(UREA)/i, unit: "mg/dl", hclab: "Urea" },
+    // Renal / Metabólico
+    "Glucosa": { synonyms: /(GLUCOSA|GLUCOSE|GLU\b)/i, unit: "mg/dl", hclab: "Glu" },
+    "Urea": { synonyms: /\b(UREA)\b/i, unit: "mg/dl", hclab: "Urea" },
     "Creatinina": { synonyms: /(CREATININA|CREA\b|CR\b)/i, unit: "mg/dl", hclab: "Cr" },
-    "Acido_Urico": { synonyms: /(ACIDO\s*URICO)/i, unit: "mg/dl", hclab: "AU" },
+    "Acido_Urico": { synonyms: /(ACIDO URICO|ÁCIDO ÚRICO)/i, unit: "mg/dl", hclab: "AU" },
 
     // Hepatograma
     "BT": { synonyms: /(BILIRRUBINA TOTAL|BT\b)/i, unit: "mg/dl", hclab: "BT" },
     "BD": { synonyms: /(BILIRRUBINA DIRECTA|BD\b)/i, unit: "mg/dl", hclab: "BD" },
-    "AST_TGO": { synonyms: /(ASAT|GOT|AST)/i, unit: "UI/l", hclab: "AST" },
-    "ALT_TGP": { synonyms: /(ALAT|GPT|ALT|TGP)/i, unit: "UI/l", hclab: "ALT" },
-    "Fosfatasa_Alc": { synonyms: /(FOSFATASA ALCALINA|FA SERICA|FAL\b)/i, unit: "UI/l", hclab: "FA" },
-    "GGT": { synonyms: /(GGT|GAMMA.?GT)/i, unit: "UI/l", hclab: "GGT" },
-    "Proteínas_Totales": { synonyms: /(PROTEINAS TOTALES|PTOTAL)/i, unit: "g/dl", hclab: "Prot" },
-    "Albumina": { synonyms: /(ALBUMINA)/i, unit: "g/dl", hclab: "Alb" },
+    "AST_TGO": { synonyms: /(ASAT|AST|GOT)/i, unit: "UI/l", hclab: "AST" },
+    "ALT_TGP": { synonyms: /(ALAT|ALT|GPT|TGP)/i, unit: "UI/l", hclab: "ALT" },
+    "Fosfatasa_Alcalina": { synonyms: /(FOSFATASA ALCALINA|FOSFATASA)/i, unit: "UI/l", hclab: "FA" },
+    "Proteinas_Totales": { synonyms: /(PROTEINAS TOTALES|PROTEÍNAS TOTALES)/i, unit: "g/dl", hclab: "Prot" },
+    "Albúmina": { synonyms: /(ALBUMINA|ALBÚMINA)/i, unit: "g/dl", hclab: "Alb" },
 
     // Perfil lipídico
     "Colesterol_Total": { synonyms: /(COLESTEROL TOTAL)/i, unit: "mg/dl", hclab: "CT" },
-    "LDL": { synonyms: /(LDL)/i, unit: "mg/dl", hclab: "LDL" },
-    "HDL": { synonyms: /(HDL)/i, unit: "mg/dl", hclab: "HDL" },
-    "Trigliceridos": { synonyms: /(TRIGLICERIDOS|TGL|TG\b)/i, unit: "mg/dl", hclab: "TGL" },
+    "LDL": { synonyms: /\b(LDL)\b/i, unit: "mg/dl", hclab: "LDL" },
+    "HDL": { synonyms: /\b(HDL)\b/i, unit: "mg/dl", hclab: "HDL" },
+    "Trigliceridos": { synonyms: /(TRIGLICERIDOS|TRIGLICÉRIDOS)/i, unit: "mg/dl", hclab: "TGL" },
 
-    // Inflamación
-    "Ferritina": { synonyms: /(FERRITINA)/i, unit: "ng/ml", hclab: "Ferr" },
-    "PCR": { synonyms: /(PCR\b|C REACTIVA)/i, unit: "mg/l", hclab: "PCR" },
-    "Procalcitonina": { synonyms: /(PCT|PROCALCITONINA)/i, unit: "ng/ml", hclab: "PCT" },
+    // Endócrino
+    "TSH": { synonyms: /\bTSH\b/i, unit: "uUI/ml", hclab: "TSH" },
 
     // Cardíacos
-    "CPK": { synonyms: /(CPK|CREATIN.?KINASA)/i, unit: "UI/l", hclab: "CPK" },
+    "CPK": { synonyms: /(CPK|CK\b|CREATINQUINASA)/i, unit: "UI/l", hclab: "CPK" },
 
-    // Hormonas
-    "TSH": { synonyms: /(TSH)/i, unit: "uU/ml", hclab: "TSH" }
+    // Inflamación
+    "PCR": { synonyms: /(PCR|C REACTIVA)/i, unit: "mg/l", hclab: "PCR" }
 };
 
-/* ============================================================
-   2. UNIDADES DETECTABLES (Whitelist)
-   ============================================================ */
+// =============================
+// 2. UNIDADES
+// =============================
+
 const UNIT_REGEX = {
     "mg/dl": "mg\\s*\\/\\s*d[l1]",
     "g/dl": "g\\s*\\/\\s*d[l1]",
-    "UI/l": "UI\\s*\\/\\s*l",
-    "U/l": "U\\s*\\/\\s*l",
-    "mEq/l": "mEq\\s*\\/\\s*l",
+    "mEq/l": "mEq\\s*\\/\\s*[l1]",
+    "UI/l": "(UI|U)\\s*\\/\\s*[l1]",
     "%": "%",
-    "ng/ml": "ng\\s*\\/\\s*ml",
-    "uU/ml": "uU\\s*\\/\\s*ml"
+    "uUI/ml": "uUI\\s*\\/\\s*ml",
+    "mg/l": "mg\\s*\\/\\s*l"
 };
 
-/* ============================================================
-   3. ALMACENAMIENTO
-   ============================================================ */
-let labData = {};
-const LOCAL_STORAGE_KEY = "uciLabMonitorData_V10c";
+// =============================
+// 3. BASE DE DATOS
+// =============================
 
+let labData = {};
+const LOCAL_KEY = "uciLabMonitor";
+
+// Guardar
 function saveData() {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(labData));
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(labData));
 }
 
+// Cargar
 function loadData() {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const stored = localStorage.getItem(LOCAL_KEY);
     if (stored) labData = JSON.parse(stored);
 }
 
-/* ============================================================
-   4. PARSER DE VALORES
-   ============================================================ */
+// Reset general
+function resetAllData() {
+    if (!confirm("¿Eliminar todos los datos cargados?")) return;
+    labData = {};
+    localStorage.removeItem(LOCAL_KEY);
+    loadPatientSelector();
+    document.getElementById("uciTable").querySelector("tbody").innerHTML = "";
+    alert("Todos los datos fueron eliminados.");
+}
+
+// =============================
+// 4. PARSE DE VALORES
+// =============================
+
 function parseLabValue(text, paramName, unitKey) {
     const cfg = PARAMETERS[paramName];
     if (!cfg) return null;
@@ -93,6 +102,7 @@ function parseLabValue(text, paramName, unitKey) {
     const unitPattern = UNIT_REGEX[unitKey];
     if (!unitPattern) return null;
 
+    // Captura: número, número con coma/punto, valores con < >
     const regex = new RegExp(
         cfg.synonyms.source +
             "[\\s\\S]{0,80}?([<>]?)\\s*([0-9]+[\\.,]?[0-9]*)\\s*(?:↑|↓)?\\s*" +
@@ -103,164 +113,204 @@ function parseLabValue(text, paramName, unitKey) {
     const m = text.match(regex);
     if (!m) return null;
 
-    let num = m[2].replace(",", ".");
-    return parseFloat(num);
+    let value = parseFloat(m[2].replace(",", "."));
+    if (Number.isNaN(value)) return null;
+
+    return value;
 }
 
-/* ============================================================
-   5. METADATOS (Nombre, Protocolo, Fecha)
-   ============================================================ */
+// =============================
+// 5. PARSE DE METADATOS
+// =============================
+
 function extractMetadata(text) {
-    const out = { paciente: null, protocolo: null, fecha: null, hora: "12:00:00" };
+    let paciente = null;
+    let protocolo = null;
 
     // PACIENTE
-    let m = text.match(/PACIENTE.?[: ]+([A-ZÁÉÍÓÚÑ ]{5,50})/i);
-    if (m) out.paciente = m[1].trim();
+    const rePac = /(PACIENTE[: ]+|Paciente[: ]+)([A-ZÁÉÍÓÚÑ ]{3,})/i;
+    const mp = text.match(rePac);
+    if (mp) paciente = mp[2].trim();
 
     // PROTOCOLO
-    m = text.match(/PROTOCOLO.?[: ]+([A-Z0-9-]+)/i);
-    if (m) out.protocolo = m[1].trim();
+    const reProt = /(PROTOCOLO\s*(N°|Nº|NO)?[: ]*)([A-Z0-9\-]+)/i;
+    const pr = text.match(reProt);
+    if (pr) protocolo = pr[3].trim();
 
-    // TOMA DE MUESTRA
-    m = text.match(/TOMA DE MUESTRA.?[: ]+(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\s*(\d{1,2}:\d{2})?/i);
-    if (m) {
-        out.fecha = normalizeDate(m[1]);
-        if (m[2]) out.hora = m[2] + ":00";
+    // FECHA
+    const reFecha = /TOMA DE MUESTRA[: ]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i;
+    const rf = text.match(reFecha);
+
+    let fecha = null;
+    if (rf) {
+        const parts = rf[1].split(/[\/\-]/);
+        let d = parts[0].padStart(2, "0");
+        let m = parts[1].padStart(2, "0");
+        let y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+        fecha = `${y}-${m}-${d}`;
     }
 
-    return out;
+    // HORA
+    const reHora = /TOMA DE MUESTRA[^\d]*(\d{1,2}:\d{2})/i;
+    const rh = text.match(reHora);
+    const hora = rh ? rh[1] + ":00" : "12:00:00";
+
+    return { paciente, protocolo, fecha, hora };
 }
 
-function normalizeDate(d) {
-    const p = d.split(/[\/-]/);
-    let dd = p[0].padStart(2, "0");
-    let mm = p[1].padStart(2, "0");
-    let yy = p[2].length === 2 ? "20" + p[2] : p[2];
-    return `${yy}-${mm}-${dd}`;
-}
+// =============================
+// 6. PROCESAR INPUT
+// =============================
 
-/* ============================================================
-   6. PROCESAR ENTRADA COMPLETA
-   ============================================================ */
 function processInput(text) {
-    if (!text.trim()) return alert("Pegá el laboratorio primero.");
+    if (!text.trim()) {
+        alert("Pegue el texto del laboratorio.");
+        return;
+    }
 
     const meta = extractMetadata(text);
-    if (!meta.paciente) return alert("No se detectó el nombre del paciente.");
+    if (!meta.paciente) {
+        alert("No se detectó nombre del paciente.");
+        return;
+    }
 
     const sample = {
-        ...meta,
-        parametros: {},
-        timestamp: meta.fecha ? new Date(meta.fecha + "T" + meta.hora).getTime() : Date.now()
+        paciente: meta.paciente,
+        protocolo: meta.protocolo,
+        fecha: meta.fecha,
+        hora: meta.hora,
+        parametros: {}
     };
 
+    // PARSE DE CADA PARÁMETRO
     let detected = 0;
     for (const p in PARAMETERS) {
-        const cfg = PARAMETERS[p];
-        const v = parseLabValue(text, p, cfg.unit);
+        const u = PARAMETERS[p].unit;
+        const v = parseLabValue(text, p, u);
         if (v !== null) {
             sample.parametros[p] = v;
             detected++;
         }
     }
 
-    if (detected === 0) return alert("No se detectaron valores.");
-
-    if (!labData[meta.paciente]) labData[meta.paciente] = [];
-    labData[meta.paciente].push(sample);
-    saveData();
-
-    loadPatientSelector(meta.paciente);
-
-    alert(`Guardado correctamente (${detected} parámetros).`);
-}
-
-/* ============================================================
-   7. TABLA UCI
-   ============================================================ */
-
-function loadPatientSelector(sel = null) {
-    const s = document.getElementById("patientSelector");
-    if (!s) return;
-
-    s.innerHTML = "<option value=''>-- Seleccionar paciente --</option>";
-
-    Object.keys(labData)
-        .sort()
-        .forEach(n => {
-            const o = document.createElement("option");
-            o.value = n;
-            o.textContent = n;
-            s.appendChild(o);
-        });
-
-    if (sel) s.value = sel;
-
-    if (s.value) loadPatientData();
-}
-
-function loadPatientData() {
-    const p = document.getElementById("patientSelector").value;
-    const table = document.getElementById("uciTable");
-
-    if (!p || !labData[p]) {
-        table.querySelector("thead").innerHTML = "";
-        table.querySelector("tbody").innerHTML =
-            "<tr><td class='p-4 text-center text-gray-500'>Sin datos</td></tr>";
+    if (detected === 0) {
+        alert("No se detectaron parámetros en este informe.");
         return;
     }
 
-    const samples = labData[p];
+    // GUARDADO – evitar duplicados
+    if (!labData[meta.paciente]) labData[meta.paciente] = [];
 
-    // Reunir columnas
-    const params = new Set();
-    samples.forEach(s => Object.keys(s.parametros).forEach(x => params.add(x)));
-    const sorted = [...params].sort();
+    let idx = -1;
+    if (meta.protocolo) {
+        idx = labData[meta.paciente].findIndex(
+            s => s.protocolo === meta.protocolo
+        );
+    }
 
-    let thead = "<tr><th>Fecha</th>";
-    sorted.forEach(p => {
-        thead += `<th>${p}</th>`;
-    });
-    thead += "</tr>";
+    if (idx !== -1) {
+        labData[meta.paciente][idx] = sample;
+    } else {
+        labData[meta.paciente].push(sample);
+    }
 
-    let tbody = "";
+    saveData();
+    loadPatientSelector(meta.paciente);
+
+    alert("Laboratorio procesado correctamente.");
+}
+
+// =============================
+// 7. SELECTORES
+// =============================
+
+function loadPatientSelector(selected = null) {
+    const sel = document.getElementById("patientSelector");
+    sel.innerHTML = `<option value="">-- Seleccionar paciente --</option>`;
+
+    const names = Object.keys(labData).sort();
+    for (const n of names) {
+        const opt = document.createElement("option");
+        opt.value = n;
+        opt.textContent = n;
+        sel.appendChild(opt);
+    }
+
+    if (selected && names.includes(selected)) sel.value = selected;
+
+    loadPatientData();
+}
+
+// =============================
+// 8. TABLA UCI
+// =============================
+
+function loadPatientData() {
+    const sel = document.getElementById("patientSelector");
+    const name = sel.value;
+    const table = document.getElementById("uciTable");
+    const tbody = table.querySelector("tbody");
+    const thead = table.querySelector("thead");
+
+    if (!name || !labData[name].length) {
+        tbody.innerHTML = "";
+        thead.innerHTML = "";
+        return;
+    }
+
+    const samples = labData[name];
+
+    const allParams = new Set();
     samples.forEach(s => {
-        const d = s.fecha + " " + s.hora.slice(0, 5);
-        tbody += `<tr><td>${d}</td>`;
-        sorted.forEach(p => {
-            tbody += `<td>${s.parametros[p] ?? "-"}</td>`;
-        });
-        tbody += "</tr>";
+        Object.keys(s.parametros).forEach(p => allParams.add(p));
     });
 
-    table.querySelector("thead").innerHTML = thead;
-    table.querySelector("tbody").innerHTML = tbody;
+    const sortedParams = Array.from(allParams).sort();
+
+    // HEADER
+    let h = `<tr><th>Fecha</th>`;
+    sortedParams.forEach(p => h += `<th>${p}</th>`);
+    h += "</tr>";
+    thead.innerHTML = h;
+
+    // BODY
+    let out = "";
+    samples.forEach(s => {
+        out += `<tr><td>${s.fecha} ${s.hora.slice(0,5)}</td>`;
+        sortedParams.forEach(p => {
+            const v = s.parametros[p];
+            out += `<td>${v !== undefined ? v : "-"}</td>`;
+        });
+        out += "</tr>";
+    });
+
+    tbody.innerHTML = out;
 
     loadParamSelector();
 }
 
-/* ============================================================
-   8. SELECTOR DE PARÁMETROS + GRÁFICO
-   ============================================================ */
+// =============================
+// 9. GRAFICO
+// =============================
+
 function loadParamSelector() {
-    const p = document.getElementById("patientSelector").value;
-    const sel = document.getElementById("paramSelector");
+    const selP = document.getElementById("paramSelector");
+    const name = document.getElementById("patientSelector").value;
+    selP.innerHTML = "";
 
-    sel.innerHTML = "";
-
-    if (!p || !labData[p]) return;
+    if (!name || !labData[name]) return;
 
     const params = new Set();
-    labData[p].forEach(s => Object.keys(s.parametros).forEach(x => params.add(x)));
+    labData[name].forEach(s =>
+        Object.keys(s.parametros).forEach(p => params.add(p))
+    );
 
-    [...params]
-        .sort()
-        .forEach(x => {
-            const o = document.createElement("option");
-            o.value = x;
-            o.textContent = x;
-            sel.appendChild(o);
-        });
+    Array.from(params).sort().forEach(p => {
+        const o = document.createElement("option");
+        o.value = p;
+        o.textContent = p;
+        selP.appendChild(o);
+    });
 
     updateGraph();
 }
@@ -268,16 +318,17 @@ function loadParamSelector() {
 let chartInstance = null;
 
 function updateGraph() {
-    const p = document.getElementById("patientSelector").value;
+    const patient = document.getElementById("patientSelector").value;
     const param = document.getElementById("paramSelector").value;
     const canvas = document.getElementById("evolutionChart");
 
-    if (!p || !param || !labData[p]) return;
+    if (!patient || !param) return;
 
-    const data = labData[p]
+    const samples = labData[patient];
+    const points = samples
         .filter(s => s.parametros[param] !== undefined)
         .map(s => ({
-            x: s.fecha + " " + s.hora.slice(0, 5),
+            x: `${s.fecha} ${s.hora}`,
             y: s.parametros[param]
         }));
 
@@ -286,165 +337,86 @@ function updateGraph() {
     chartInstance = new Chart(canvas, {
         type: "line",
         data: {
-            labels: data.map(d => d.x),
-            datasets: [
-                {
-                    label: param,
-                    data: data.map(d => d.y),
-                    borderColor: "#3b82f6",
-                    backgroundColor: "rgba(59,130,246,0.2)",
-                    borderWidth: 2,
-                    pointRadius: 4
-                }
-            ]
+            labels: points.map(p => p.x),
+            datasets: [{
+                label: param,
+                data: points.map(p => p.y),
+                borderColor: "rgb(30, 110, 250)",
+                backgroundColor: "rgba(30,110,250,0.2)"
+            }]
         }
     });
 }
 
-/* ============================================================
-   9. HCLAB
-   ============================================================ */
+// =============================
+// 10. HCLAB Y CSV
+// =============================
+
 function generateHCLAB() {
-    const p = document.getElementById("patientSelector").value;
-    if (!p || !labData[p]) return alert("Elegí un paciente");
-
-    const last = labData[p][labData[p].length - 1];
-
-    const order = [
-        "Na",
-        "K",
-        "Cl",
-        "Hemoglobina",
-        "Hematocrito",
-        "Glucosa",
-        "Urea",
-        "Creatinina",
-        "LDL",
-        "HDL",
-        "Trigliceridos",
-        "AST_TGO",
-        "ALT_TGP",
-        "BT",
-        "BD",
-        "CPK",
-        "PCR",
-        "Ferritina",
-        "TSH"
-    ];
-
-    const parts = [];
-
-    order.forEach(p => {
-        const cfg = PARAMETERS[p];
-        const v = last.parametros[p];
-        if (cfg && v !== undefined) parts.push(`${cfg.hclab} ${v}`);
-    });
-
-    const out = document.getElementById("hclabOutput");
-    out.innerHTML = `<textarea class="w-full p-2 border rounded">${parts.join(", ")}</textarea>`;
-    out.classList.remove("hidden");
+    alert("HCLAB pendiente de integrar en esta versión.");
 }
 
-/* ============================================================
-   10. CSV
-   ============================================================ */
 function downloadCSV() {
-    const p = document.getElementById("patientSelector").value;
-    if (!p || !labData[p]) return;
-
-    const samples = labData[p];
-
-    const params = new Set();
-    samples.forEach(s => Object.keys(s.parametros).forEach(x => params.add(x)));
-    const sorted = [...params].sort();
-
-    let csv = "Paciente,Fecha,Hora," + sorted.join(",") + "\n";
-
-    samples.forEach(s => {
-        csv += `${p},${s.fecha},${s.hora},` +
-            sorted.map(x => s.parametros[x] ?? "").join(",") + "\n";
-    });
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${p.replace(/\s+/g, "_")}.csv`;
-    a.click();
+    alert("CSV pendiente de integrar en esta versión.");
 }
 
-/* ============================================================
-   11. RESET GENERAL
-   ============================================================ */
-function resetAllData() {
-    if (!confirm("Esto borrará TODOS los datos. ¿Continuar?")) return;
+// =============================
+// 11. PDF
+// =============================
 
-    labData = {};
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-
-    loadPatientSelector();
-
-    const out = document.getElementById("hclabOutput");
-    if (out) out.classList.add("hidden");
-
-    const t = document.getElementById("uciTable");
-    t.querySelector("thead").innerHTML = "";
-    t.querySelector("tbody").innerHTML =
-        "<tr><td class='p-4 text-center text-gray-500'>Sin datos</td></tr>";
-
-    if (chartInstance) chartInstance.destroy();
-}
-
-/* ============================================================
-   12. MANEJO DE PDF
-   ============================================================ */
 function setupPdfHandling() {
-    const input = document.getElementById("pdfInput");
+    const pdfInput = document.getElementById("pdfInput");
+    const loading = document.getElementById("loading");
 
-    input.addEventListener("change", async e => {
-        const file = e.target.files[0];
+    if (!pdfInput) return;
+
+    pdfInput.addEventListener("change", async (evt) => {
+        const file = evt.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = async function () {
-            const pdfData = new Uint8Array(this.result);
-            const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        loading.classList.remove("hidden");
 
-            let full = "";
+        try {
+            const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+            let fullText = "";
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
-                const txt = await page.getTextContent();
-                full += txt.items.map(t => t.str).join(" ") + "\n";
+                const content = await page.getTextContent();
+                fullText += content.items.map(a => a.str).join(" ") + "\n";
             }
 
-            document.getElementById("labInput").value = full;
-            processInput(full);
-        };
+            document.getElementById("labInput").value = fullText;
+            processInput(fullText);
 
-        reader.readAsArrayBuffer(file);
+        } catch (e) {
+            alert("Error leyendo PDF.");
+            console.error(e);
+        }
+
+        loading.classList.add("hidden");
     });
 }
 
-/* ============================================================
-   13. INICIALIZACIÓN FINAL
-   ============================================================ */
+// =============================
+// 12. INICIALIZACIÓN
+// =============================
+
 document.addEventListener("DOMContentLoaded", () => {
+
     loadData();
     loadPatientSelector();
     setupPdfHandling();
 
-    document.getElementById("btnProcesarTexto").onclick = () =>
-        processInput(document.getElementById("labInput").value);
+    document.getElementById("btnProcesarTexto")
+        .addEventListener("click", () =>
+            processInput(document.getElementById("labInput").value)
+        );
 
-    document.getElementById("btnLimpiarEntrada").onclick = () => {
-        document.getElementById("labInput").value = "";
-    };
+    document.getElementById("btnLimpiarEntrada")
+        .addEventListener("click", () =>
+            (document.getElementById("labInput").value = "")
+        );
 
-    document.getElementById("btnHCLAB").onclick = generateHCLAB;
-    document.getElementById("btnCSV").onclick = downloadCSV;
-
-    document.getElementById("paramSelector").onchange = updateGraph;
-    document.getElementById("patientSelector").onchange = loadPatientData;
-
-    const btnReset = document.getElementById("btnReset");
-    if (btnReset) btnReset.onclick = resetAllData;
+    document.getElementById("btnReset")
+        ?.addEventListener("click", () => resetAllData());
 });
