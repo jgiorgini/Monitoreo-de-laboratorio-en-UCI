@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - Final v7.0</title>
+    <title>Monitor UCI - Final v8.0 (Auto-Abbreviation)</title>
     
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     
@@ -63,16 +63,14 @@
             <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-4">
                 <div>
                     <h2 class="text-lg font-bold text-slate-700">Carga de Laboratorio</h2>
-                    <p class="text-sm text-slate-500">Sube el PDF. El sistema detecta y ordena los datos automáticamente.</p>
+                    <p class="text-sm text-slate-500">Sube el PDF. El sistema normaliza los nombres automáticamente.</p>
                 </div>
                 <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-5 py-2.5 flex items-center gap-2 transition font-medium">
                     <span>📄 Seleccionar PDF...</span>
                     <input type="file" id="pdfInput" accept="application/pdf" class="hidden" onclick="this.value=null;">
                 </label>
             </div>
-
             <textarea id="labInput" rows="2" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none" placeholder="El texto extraído aparecerá aquí..."></textarea>
-            
             <div class="mt-4 flex gap-3">
                 <button id="btnProcesarIA" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
                     <span>✨ Procesar con IA</span>
@@ -169,7 +167,7 @@
     </div>
 
     <script>
-        // 1. CONFIGURACIÓN FIREBASE
+        // 1. FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8",
             authDomain: "laboratorios-uco.firebaseapp.com",
@@ -182,41 +180,59 @@
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
 
-        // 2. PARÁMETROS A BUSCAR
+        // 2. CONFIGURACIÓN DE PARÁMETROS OBJETIVO (SOLO PARA IA)
         const TARGET_PARAMS = [
             "Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos",
             "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo",
             "Glucosa", "Urea", "Creatinina", "Acido_Urico", "HbA1c",
-            "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales",
+            "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales", "CPK",
             "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "TSH",
             "Colesterol_Total", "LDL", "HDL", "Triglicéridos", "TP", "RIN", "KPTT"
         ];
 
-        // 3. ABREVIATURAS
-        const ABBR = {
-            "Hematocrito": "Hto", "Hemoglobina": "Hb", "Leucocitos": "GB", "Plaquetas": "Plq",
-            "Urea": "Urea", "Creatinina": "Crea", "Glucosa": "Glu", "HbA1c": "HbA1c",
-            "BT": "BT", "BD": "BD", "AST_TGO": "GOT", "ALT_TGP": "GPT", "Fosfatasa_Alcalina": "FAL", "Albúmina": "Alb", "Proteinas_Totales": "Prot",
-            "Colesterol_Total": "Col", "LDL": "LDL", "HDL": "HDL", "Triglicéridos": "TG",
-            "Na": "Na", "K": "K", "Cl": "Cl", "Mg": "Mg", "Ca_Total": "Ca", "Fosforo": "P", "TSH": "TSH",
-            "pH": "pH", "pCO2": "pCO2", "pO2": "pO2", "Bicarbonato": "HCO3", "SatO2": "Sat", "Lactato": "LAC", "Acido_Lactico": "LAC",
-            "TP": "TP", "RIN": "RIN", "KPTT": "KPTT", "PCR": "PCR", "Procalcitonina": "PCT", "Ca_Ionizado": "Ca++", "Acido_Urico": "AU"
+        // 3. MAPEO INTELIGENTE DE NOMBRES SUCIOS -> NOMBRES OFICIALES
+        // Este mapa atrapa las variaciones que manda la IA y las fuerza a su nombre corto.
+        const NORMALIZATION_MAP = {
+            "Ácido Úrico": "AU", "ACIDO URICO": "AU", "Acido_Urico": "AU", "ACIDO_URICO": "AU",
+            "Bilirrubina_Total": "BT", "BILIRRUBINA_TOTAL": "BT", "Bilirrubina Total": "BT",
+            "Bilirrubina_Directa": "BD", "BILIRRUBINA_DIRECTA": "BD", "Bilirrubina Directa": "BD",
+            "Creatinquinasa": "CPK", "CREATINQUINASA": "CPK", "CK": "CPK",
+            "Fosfatasa_Alcalina": "FAL", "FOSFATASA_ALCALINA": "FAL",
+            "Proteinas_Totales": "Prot", "PROTEINAS_TOTALES": "Prot",
+            "Colesterol_Total": "Col", "COLESTEROL_TOTAL": "Col",
+            "Triglicéridos": "TG", "TRIGLICERIDOS": "TG",
+            "Ácido Láctico": "LAC", "Lactato": "LAC", "Acido_Lactico": "LAC"
         };
 
-        // ORDEN CLÍNICO ALEMÁN
+        // 4. ABREVIATURAS FINALES (DISPLAY)
+        // Mapea el nombre oficial (o normalizado) a lo que se ve en pantalla
+        const ABBR = {
+            "Hematocrito": "Hto", "Hemoglobina": "Hb", "Leucocitos": "GB", "Plaquetas": "Plq",
+            "Urea": "Urea", "Creatinina": "Crea", "Glucosa": "Glu", "HbA1c": "HbA1c", "AU": "AU",
+            "Na": "Na", "K": "K", "Cl": "Cl", "Mg": "Mg", "Ca_Total": "Ca", "Ca_Ionizado": "Ca++", "Fosforo": "P",
+            "BT": "BT", "BD": "BD", "AST_TGO": "GOT", "ALT_TGP": "GPT", "FAL": "FAL",
+            "Albúmina": "Alb", "Prot": "Prot", "CPK": "CPK",
+            "Col": "Col", "LDL": "LDL", "HDL": "HDL", "TG": "TG",
+            "PCR": "PCR", "Procalcitonina": "PCT", "TSH": "TSH",
+            "LAC": "LAC", "pH": "pH", "pCO2": "pCO2", "pO2": "pO2", "Bicarbonato": "BIC", "SatO2": "Sat",
+            "TP": "TP", "RIN": "RIN", "KPTT": "KPTT"
+        };
+
+        // 5. ORDEN CLÍNICO
         const CLINICAL_ORDER = [
             "Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas",
-            "Urea", "Creatinina", "Glucosa", "HbA1c",
-            "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales",
-            "Colesterol_Total", "LDL", "HDL", "Triglicéridos",
-            "Na", "K", "Cl", "Mg", "Ca_Total", "Fosforo", "TSH",
-            "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "Lactato",
+            "Urea", "Creatinina", "Glucosa", "HbA1c", "AU",
+            "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot",
+            "Col", "LDL", "HDL", "TG",
+            "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH",
+            "CPK", "PCR", "Procalcitonina",
+            "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "LAC",
             "TP", "RIN", "KPTT"
         ];
 
         const UNITS = {
             "Hemoglobina": "g/dL", "Hematocrito": "%", "Na": "mEq/L", "K": "mEq/L",
-            "Glucosa": "mg/dL", "Lactato": "mmol/L", "Creatinina": "mg/dL", "Plaquetas": "/mm3"
+            "Glucosa": "mg/dL", "LAC": "mmol/L", "Creatinina": "mg/dL", "Plaquetas": "/mm3"
         };
 
         let labData = {}; 
@@ -227,11 +243,28 @@
             Toastify({ text: msg, duration: 3000, gravity: "top", position: "center", style: { background: bg, borderRadius: "8px" } }).showToast();
         }
 
-        // UTIL FECHA AR
         function formatDate(isoDate) {
             if(!isoDate) return "-";
             const [y, m, d] = isoDate.split("-");
             return `${d}/${m}/${y}`;
+        }
+
+        // --- FUNCIÓN DE NORMALIZACIÓN MAESTRA ---
+        function getCanonicalKey(dirtyKey) {
+            // 1. Verificar si está en el mapa de normalización (claves sucias conocidas)
+            if (NORMALIZATION_MAP[dirtyKey]) return NORMALIZATION_MAP[dirtyKey];
+            
+            // 2. Verificar si ya es una clave válida directa (ej: "Hemoglobina")
+            if (ABBR[dirtyKey]) return dirtyKey;
+
+            // 3. Fallback inteligente: Si no la conozco, abrevio las primeras 3 letras
+            // Esto evita que la tabla se rompa con nombres kilométricos
+            return dirtyKey.substring(0, 3).toUpperCase();
+        }
+
+        function getDisplayLabel(key) {
+            // Retorna la etiqueta corta bonita (ej: "Hb") o la clave normalizada
+            return ABBR[key] || key;
         }
 
         function sortKeysClinically(keysSet) {
@@ -246,7 +279,7 @@
             });
         }
 
-        // 4. PDF READER (LEGACY)
+        // 3. PDF READER
         function setupPdf() {
             const input = document.getElementById("pdfInput");
             const textArea = document.getElementById("labInput");
@@ -270,7 +303,7 @@
             });
         }
 
-        // 5. LÓGICA PRINCIPAL
+        // 4. LÓGICA PRINCIPAL
         function initRealTimeListener() {
             db.collection("muestras").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
                 labData = {}; 
@@ -281,17 +314,6 @@
                 });
                 refreshUI();
             });
-        }
-
-        function cleanObject(obj) {
-            if (typeof obj !== 'object' || obj === null) return obj;
-            if (Array.isArray(obj)) return obj.map(cleanObject).filter(v => v !== undefined);
-            const newObj = {};
-            for (const key in obj) {
-                const value = cleanObject(obj[key]);
-                if (value !== undefined) newObj[key] = value;
-            }
-            return newObj;
         }
 
         async function processAndUpload() {
@@ -308,7 +330,7 @@
             const prompt = `Expert Medical: Extract JSON. Text: """${rawText.substring(0, 15000)}"""
             JSON: {"paciente": "NAME UPPERCASE", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "protocolo": "string", "parametros": {}}
             Search: ${TARGET_PARAMS.join(", ")}. 
-            Rules: "Ácido Láctico" = "Lactato". "Tiempo Protrombina" = "TP". "KPTT" = "KPTT". "Proteinas Totales" = "Proteinas_Totales".
+            Rules: "Ácido Láctico" = "Lactato". "Tiempo Protrombina" = "TP". "KPTT" = "KPTT". "Proteinas Totales" = "Proteinas_Totales". "Creatinquinasa" = "CPK".
             If unclear patient: "DESCONOCIDO".`;
 
             try {
@@ -335,9 +357,14 @@
                     if(!qProt.empty && qProt.docs[0].data().paciente === result.paciente) throw new Error("Protocolo duplicado");
                 }
 
+                // --- NORMALIZACIÓN DE CLAVES ANTES DE GUARDAR ---
                 const cleanParams = {};
                 for (const k in result.parametros) {
-                    if (result.parametros[k] !== undefined && result.parametros[k] !== null) cleanParams[k] = result.parametros[k];
+                    if (result.parametros[k] !== undefined && result.parametros[k] !== null) {
+                        // Aquí aplicamos la magia: convertimos "BILIRRUBINA_TOTAL" a "BT"
+                        const canonicalKey = getCanonicalKey(k);
+                        cleanParams[canonicalKey] = result.parametros[k];
+                    }
                 }
 
                 await db.collection("muestras").add({
@@ -352,7 +379,7 @@
             finally { btn.disabled = false; btn.innerText = "Procesar con IA"; }
         }
 
-        // 6. EXPORTS - WORD TABLE
+        // 5. EXPORT WORD
         function copyWordTable() {
             const p = document.getElementById("patientSelector").value;
             if(!p || !labData[p]) return showToast("Seleccione paciente", "error");
@@ -365,14 +392,14 @@
             const hto_hb = `${getVal('Hematocrito')} / ${getVal('Hemoglobina')}`;
             const bili = `${getVal('BT')} / ${getVal('BD')}`;
             const wbc = getVal('Leucocitos');
-            const enz = `${getVal('AST_TGO')} / ${getVal('ALT_TGP')} / ${getVal('Fosfatasa_Alcalina')}`;
+            const enz = `${getVal('AST_TGO')} / ${getVal('ALT_TGP')} / ${getVal('FAL')}`; // FAL ya normalizada
             const plaq = getVal('Plaquetas');
-            const prot = `${getVal('Proteinas_Totales')} / ${getVal('Albúmina')}`;
+            const prot = `${getVal('Prot')} / ${getVal('Albúmina')}`;
             const ren = `${getVal('Urea')} / ${getVal('Creatinina')}`;
             const glu = getVal('Glucosa');
             const coag = `${getVal('TP')} / ${getVal('KPTT')} / ${getVal('RIN')}`;
             const iono = `${getVal('Na')} / ${getVal('K')} / ${getVal('Cl')}`;
-            const eab = `${getVal('pH')} / ${getVal('pCO2')} / ${getVal('pO2')} / ${getVal('Lactato')} / ${getVal('Bicarbonato')}`;
+            const eab = `${getVal('pH')} / ${getVal('pCO2')} / ${getVal('pO2')} / ${getVal('LAC')} / ${getVal('Bicarbonato')}`;
 
             const tableHTML = `
                 <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial; font-size: 10pt;">
@@ -389,18 +416,62 @@
             navigator.clipboard.write([new ClipboardItem({ 'text/html': blob })]).then(() => showToast("Tabla Word copiada", "success")).catch(e => showToast("Error copia", "error"));
         }
 
+        // PDF ARGERICH
+        function downloadArgerichPDF() {
+            const p = document.getElementById("patientSelector").value;
+            if(!p) return showToast("Seleccione paciente", "error");
+            const samples = labData[p];
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4'); 
+            doc.setFontSize(14); doc.text(`Paciente: ${p}`, 14, 15); doc.setFontSize(10);
+            let yPos = 25;
+
+            samples.forEach(s => {
+                const par = s.parametros || {};
+                const getVal = (k) => par[k] !== undefined ? par[k] : "-";
+                // Lógica agrupada
+                const hto_hb = `${getVal('Hematocrito')}/${getVal('Hemoglobina')}`;
+                const bili = `${getVal('BT')}/${getVal('BD')}`;
+                const wbc = getVal('Leucocitos');
+                const enz = `${getVal('AST_TGO')}/${getVal('ALT_TGP')}/${getVal('FAL')}`;
+                const plaq = getVal('Plaquetas');
+                const prot = `${getVal('Prot')}/${getVal('Albúmina')}`;
+                const ren = `${getVal('Urea')} / ${getVal('Creatinina')}`;
+                const glu = getVal('Glucosa');
+                const coag = `${getVal('TP')}/${getVal('KPTT')}/${getVal('RIN')}`;
+                const iono = `${getVal('Na')}/${getVal('K')}/${getVal('Cl')}`;
+                const eab = `${getVal('pH')}/${getVal('pCO2')}/${getVal('pO2')}/${getVal('LAC')}/${getVal('Bicarbonato')}/${getVal('SatO2')}`;
+
+                if (yPos > 250) { doc.addPage(); yPos = 20; }
+                doc.autoTable({
+                    startY: yPos,
+                    head: [[{ content: `LABORATORIO ${formatDate(s.fecha)} (${s.hora})`, colSpan: 4, styles: { halign: 'center', fillColor: [220, 220, 220], textColor: 0, fontStyle: 'bold' } }]],
+                    body: [
+                        [{ content: 'Hto/Hb', styles: { fontStyle: 'bold' } }, hto_hb, { content: 'Bil T/D', styles: { fontStyle: 'bold' } }, bili],
+                        [{ content: 'Gl. blancos', styles: { fontStyle: 'bold' } }, wbc, { content: 'GOT/GPT/FAL', styles: { fontStyle: 'bold' } }, enz],
+                        [{ content: 'Plaquetas', styles: { fontStyle: 'bold' } }, plaq, { content: 'PT/Alb', styles: { fontStyle: 'bold' } }, prot],
+                        [{ content: 'Urea / Crea', styles: { fontStyle: 'bold' } }, ren, { content: 'Glucemia', styles: { fontStyle: 'bold' } }, glu],
+                        [{ content: 'TP/KPTT/RIN', styles: { fontStyle: 'bold' } }, coag, { content: 'IONO', styles: { fontStyle: 'bold' } }, iono],
+                        [{ content: 'EAB', styles: { fontStyle: 'bold' } }, { content: eab, colSpan: 3 }]
+                    ],
+                    theme: 'grid', styles: { fontSize: 9, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.1 }, columnStyles: { 0: { cellWidth: 35 }, 2: { cellWidth: 35 } }
+                });
+                yPos = doc.lastAutoTable.finalY + 10;
+            });
+            doc.save(`Argerich_${p}.pdf`);
+        }
+
+        // PDF STD
         function downloadPDF() {
             const p = document.getElementById("patientSelector").value;
             if(!p) return showToast("Seleccione paciente", "error");
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('l', 'mm', 'a4');
             const samples = labData[p];
-            
             let activeKeys = new Set();
             samples.forEach(s => Object.keys(s.parametros||{}).forEach(k => activeKeys.add(k)));
             const sorted = sortKeysClinically(activeKeys);
-            
-            const head = ['Fecha', 'Hora', ...sorted.map(k => ABBR[k]||k)];
+            const head = ['Fecha', 'Hora', ...sorted.map(k => getDisplayLabel(k))];
             const body = samples.map(s => {
                 let r = [formatDate(s.fecha), s.hora];
                 sorted.forEach(k => r.push(s.parametros[k] ?? '-'));
@@ -411,6 +482,7 @@
             doc.save(`Reporte_${p}.pdf`);
         }
 
+        // HCLAB
         function copyHCLAB() {
             const p = document.getElementById("patientSelector").value;
             if(!p) return showToast("Seleccione paciente", "error");
@@ -418,14 +490,16 @@
             if(!s || !s.length) return;
             const params = s[s.length-1].parametros || {};
             let parts = [];
-            CLINICAL_ORDER.forEach(k => { if(params[k] !== undefined) parts.push(`${ABBR[k]||k} ${params[k]}`); });
+            CLINICAL_ORDER.forEach(k => { 
+                if(params[k] !== undefined) parts.push(`${getDisplayLabel(k)} ${params[k]}`); 
+            });
             Object.keys(params).sort().forEach(k => { 
-                if(!CLINICAL_ORDER.includes(k)) parts.push(`${ABBR[k]||k} ${params[k]}`); 
+                if(!CLINICAL_ORDER.includes(k)) parts.push(`${getDisplayLabel(k)} ${params[k]}`); 
             });
             navigator.clipboard.writeText(parts.join(", ")).then(()=>showToast("Copiado HCLAB", "success"));
         }
 
-        // 7. UI (FECHA AR)
+        // 6. UI
         function refreshUI() {
             const sel = document.getElementById("patientSelector");
             const curr = sel.value;
@@ -450,7 +524,7 @@
 
             let h = `<tr><th class="p-3 text-left text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky left-0 z-20">Fecha</th>`;
             sorted.forEach(k => {
-                h += `<th class="p-3 text-center text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b border-slate-200 whitespace-nowrap" title="${k}">${ABBR[k]||k} <span class="text-[9px] text-slate-400 block">${UNITS[k]||""}</span></th>`;
+                h += `<th class="p-3 text-center text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b border-slate-200 whitespace-nowrap" title="${k}">${getDisplayLabel(k)} <span class="text-[9px] text-slate-400 block">${UNITS[k]||""}</span></th>`;
             });
             document.querySelector("#uciTable thead").innerHTML = h + "</tr>";
 
@@ -469,7 +543,7 @@
             pSel.innerHTML = "";
             sorted.forEach(k => {
                 const opt = document.createElement("option");
-                opt.value = k; opt.innerText = ABBR[k] || k;
+                opt.value = k; opt.innerText = getDisplayLabel(k);
                 pSel.appendChild(opt);
             });
             if(activeKeys.has(currP)) pSel.value = currP;
@@ -482,13 +556,15 @@
             const ctx = document.getElementById("evolutionChart").getContext("2d");
             if (chartInstance) chartInstance.destroy();
             if (!p || !param) return;
+
             const points = labData[p].filter(s => s.parametros[param] !== undefined).map(s => ({x: formatDate(s.fecha)+" "+s.hora, y: s.parametros[param]}));
+            
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: points.map(pt => pt.x),
                     datasets: [{
-                        label: ABBR[param] || param, 
+                        label: getDisplayLabel(param), 
                         data: points.map(pt => pt.y),
                         borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.1)',
                         borderWidth: 2, tension: 0.3, fill: true, pointRadius: 4
