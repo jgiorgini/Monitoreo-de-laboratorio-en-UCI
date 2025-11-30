@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - Online v3.5</title>
+    <title>Monitor UCI - Online v3.6 (Stable)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,7 +11,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        // Configuración forzada del Worker Legacy
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+    </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -63,7 +67,7 @@
                         <label class="flex cursor-pointer bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2 hover:bg-blue-50 hover:border-blue-300 flex items-center justify-center gap-2 shadow-sm transition group">
                             <span class="text-2xl group-hover:scale-110 transition">📄</span>
                             <span class="font-medium">Seleccionar PDF...</span>
-                            <input type="file" id="pdfInput" accept="application/pdf" class="hidden">
+                            <input type="file" id="pdfInput" accept="application/pdf" class="hidden" onclick="this.value=null;">
                         </label>
                     </div>
                 </div>
@@ -136,4 +140,121 @@
                         <span>1. Borrar ÚLTIMA muestra</span> <span class="text-xl">↩️</span>
                     </button>
                     <button onclick="deletePatient()" class="w-full bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-3 px-4 border border-red-300 rounded text-left flex items-center justify-between">
-                        <span>2. Borrar PACIENTE
+                        <span>2. Borrar PACIENTE actual</span> <span class="text-xl">👤</span>
+                    </button>
+                    <div class="border-t border-gray-200 pt-3 mt-4">
+                        <button onclick="deleteDatabase()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-4 rounded text-center">💀 Borrar TODA la Base de Datos</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. CONFIGURACIÓN FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8",
+            authDomain: "laboratorios-uco.firebaseapp.com",
+            projectId: "laboratorios-uco",
+            storageBucket: "laboratorios-uco.firebasestorage.app",
+            messagingSenderId: "435400240534",
+            appId: "1:435400240534:web:1cb4c57beb4b69e933c1b7",
+            measurementId: "G-Q0FE3ZD4P7"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        // LISTA DE VARIABLES
+        const TARGET_PARAMS = [
+            "Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos",
+            "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado",
+            "Glucosa", "Urea", "Creatinina", "Acido_Urico", 
+            "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina",
+            "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2",
+            "Colesterol_Total", "LDL", "HDL", "Triglicéridos"
+        ];
+
+        // ABREVIATURAS PARA PDF Y HCLAB
+        const PDF_ABBREVIATIONS = {
+            "Hemoglobina": "Hb", "Hematocrito": "Hto", "Plaquetas": "Plq", "Leucocitos": "GB",
+            "Na": "Na", "K": "K", "Cl": "Cl", "Mg": "Mg", "Ca_Total": "Ca", "Ca_Ionizado": "Ca++",
+            "Glucosa": "Glu", "Urea": "Urea", "Creatinina": "Cr", "Acido_Urico": "AU",
+            "BT": "BT", "BD": "BD", "AST_TGO": "GOT", "ALT_TGP": "GPT", "Fosfatasa_Alcalina": "FAL",
+            "Albúmina": "Alb", "PCR": "PCR", "Procalcitonina": "PCT", "Lactato": "LACT",
+            "pH": "pH", "pCO2": "pCO2", "pO2": "pO2", "Bicarbonato": "HCO3", "SatO2": "Sat",
+            "Colesterol_Total": "Col", "LDL": "LDL", "HDL": "HDL", "Triglicéridos": "TG"
+        };
+
+        // ORDEN ESPECÍFICO PARA HCLAB
+        const HCLAB_ORDER = [
+            "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", 
+            "Hemoglobina", "Hematocrito", "Leucocitos", "Plaquetas",
+            "Glucosa", "Urea", "Creatinina", 
+            "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina",
+            "PCR", "Procalcitonina", "Lactato", 
+            "pH", "pCO2", "pO2", "Bicarbonato"
+        ];
+
+        const UNITS = {
+            "Hemoglobina": "g/dL", "Hematocrito": "%", "Na": "mEq/L", "K": "mEq/L",
+            "Glucosa": "mg/dL", "Lactato": "mmol/L", "Creatinina": "mg/dL", "Plaquetas": "/mm3"
+        };
+
+        let labData = {}; 
+        let chartInstance = null;
+
+        // 2. CONFIGURACIÓN PDF (VERSIÓN LEGACY - ROBUSTA)
+        function setupPdf() {
+            const input = document.getElementById("pdfInput");
+            const textArea = document.getElementById("labInput");
+
+            input.addEventListener("change", async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+
+                textArea.value = "⏳ Iniciando motor de PDF... Espere un momento.";
+                
+                const pdfjsLib = window.pdfjsLib;
+                if (!pdfjsLib) {
+                    textArea.value = "Error crítico: La librería PDF no se cargó.";
+                    return alert("Error de librería PDF.");
+                }
+
+                try {
+                    const buffer = await file.arrayBuffer();
+                    // Sintaxis Legacy (v2.x)
+                    const loadingTask = pdfjsLib.getDocument(buffer);
+                    const pdf = await loadingTask.promise;
+                    let fullText = "";
+                    
+                    for(let i=1; i<=pdf.numPages; i++) {
+                        textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`;
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(" ");
+                        fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
+                    }
+                    textArea.value = fullText;
+                } catch (error) {
+                    console.error("Error PDF:", error);
+                    textArea.value = "Error lectura: " + error.message;
+                    alert("No se pudo leer el PDF.");
+                }
+            });
+        }
+
+        // 3. FIRESTORE LISTENER
+        function initRealTimeListener() {
+            db.collection("muestras").orderBy("timestamp", "asc")
+                .onSnapshot((snapshot) => {
+                    labData = {}; 
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const pac = data.paciente;
+                        if (!labData[pac]) labData[pac] = [];
+                        labData[pac].push({ ...data, id: doc.id });
+                    });
+                    refresh
