@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - Online v3.7 (Debug)</title>
+    <title>Monitor UCI - Online v3.9</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,7 +11,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    <script src="https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+    </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -56,7 +59,7 @@
                 <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-700">1. Carga de Laboratorio</h2>
-                        <p class="text-xs text-slate-500">Sube el PDF. El sistema detecta duplicados automáticamente.</p>
+                        <p class="text-xs text-slate-500">Sube el PDF. El sistema detecta parámetros automáticamente.</p>
                     </div>
                     
                     <div class="w-full md:w-auto">
@@ -68,7 +71,7 @@
                     </div>
                 </div>
 
-                <textarea id="labInput" rows="3" class="w-full mt-4 p-3 border border-slate-300 rounded-lg text-xs font-mono text-slate-600 focus:text-slate-800 transition shadow-inner" placeholder="El texto extraído aparecerá aquí..."></textarea>
+                <textarea id="labInput" rows="2" class="w-full mt-4 p-3 border border-slate-300 rounded-lg text-xs font-mono text-slate-600 focus:text-slate-800 transition shadow-inner" placeholder="El texto extraído aparecerá aquí..."></textarea>
                 
                 <div class="mt-4 flex gap-3">
                     <button id="btnProcesarIA" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition flex items-center gap-2">
@@ -163,6 +166,7 @@
         }
         const db = firebase.firestore();
 
+        // 2. PARÁMETROS
         const TARGET_PARAMS = [
             "Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos",
             "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado",
@@ -172,13 +176,15 @@
             "Colesterol_Total", "LDL", "HDL", "Triglicéridos"
         ];
 
+        // 3. ABREVIATURAS (Para PDF y HCLAB)
         const PDF_ABBREVIATIONS = {
             "Hemoglobina": "Hb", "Hematocrito": "Hto", "Plaquetas": "Plq", "Leucocitos": "GB",
             "Na": "Na", "K": "K", "Cl": "Cl", "Mg": "Mg", "Ca_Total": "Ca", "Ca_Ionizado": "Ca++",
             "Glucosa": "Glu", "Urea": "Urea", "Creatinina": "Cr", "Acido_Urico": "AU",
             "BT": "BT", "BD": "BD", "AST_TGO": "GOT", "ALT_TGP": "GPT", "Fosfatasa_Alcalina": "FAL",
-            "Albúmina": "Alb", "PCR": "PCR", "Procalcitonina": "PCT", "Lactato": "LACT",
-            "pH": "pH", "pCO2": "pCO2", "pO2": "pO2", "Bicarbonato": "HCO3", "SatO2": "Sat",
+            "Albúmina": "Alb", "PCR": "PCR", "Procalcitonina": "PCT", 
+            "Lactato": "LAC", "Acido_Lactico": "LAC",
+            "pH": "pH", "pCO2": "pCO2", "pO2": "pO2", "Bicarbonato": "BIC", "SatO2": "Sat",
             "Colesterol_Total": "Col", "LDL": "LDL", "HDL": "HDL", "Triglicéridos": "TG"
         };
 
@@ -199,7 +205,8 @@
         let labData = {}; 
         let chartInstance = null;
 
-        // 2. CONFIGURACIÓN PDF (LEGACY ROBUSTA)
+        // --- FUNCIONES DEL SISTEMA ---
+
         function setupPdf() {
             const input = document.getElementById("pdfInput");
             const textArea = document.getElementById("labInput");
@@ -208,43 +215,36 @@
                 const file = e.target.files[0];
                 if(!file) return;
 
-                textArea.value = "⏳ Paso 1: Cargando archivo...";
-                
-                // Configurar Worker justo antes de usar
+                textArea.value = "⏳ Iniciando motor de PDF... Espere.";
                 const pdfjsLib = window.pdfjsLib;
+                
                 if (!pdfjsLib) {
-                    textArea.value = "ERROR: Librería PDF no cargada. Recargue la página.";
-                    return alert("Error de librería.");
+                    textArea.value = "Error crítico: Librería PDF no cargada.";
+                    return alert("Error de librería PDF.");
                 }
-                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@2.16.105/build/pdf.worker.min.js";
 
                 try {
-                    textArea.value = "⏳ Paso 2: Leyendo binarios...";
                     const buffer = await file.arrayBuffer();
-                    
-                    textArea.value = "⏳ Paso 3: Decodificando PDF...";
                     const loadingTask = pdfjsLib.getDocument(buffer);
                     const pdf = await loadingTask.promise;
-                    
                     let fullText = "";
+                    
                     for(let i=1; i<=pdf.numPages; i++) {
-                        textArea.value = `⏳ Paso 4: Extrayendo página ${i} de ${pdf.numPages}...`;
+                        textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`;
                         const page = await pdf.getPage(i);
                         const textContent = await page.getTextContent();
                         const pageText = textContent.items.map(item => item.str).join(" ");
                         fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
                     }
                     textArea.value = fullText;
-                    
                 } catch (error) {
                     console.error("Error PDF:", error);
-                    textArea.value = "FALLO EN LECTURA:\n" + error.message;
-                    alert("No se pudo leer el PDF. ¿Es una imagen escaneada?");
+                    textArea.value = "Error lectura: " + error.message;
+                    alert("No se pudo leer el PDF.");
                 }
             });
         }
 
-        // 3. FIRESTORE
         function initRealTimeListener() {
             db.collection("muestras").orderBy("timestamp", "asc")
                 .onSnapshot((snapshot) => {
@@ -261,7 +261,6 @@
                 });
         }
 
-        // 4. IA
         function cleanObject(obj) {
             if (typeof obj !== 'object' || obj === null) return obj;
             if (Array.isArray(obj)) return obj.map(cleanObject).filter(v => v !== undefined);
@@ -279,11 +278,11 @@
             if(!apiKey) apiKey = localStorage.getItem("my_openai_key_v1");
 
             if (!rawText || rawText.startsWith("⏳") || rawText.length < 20) {
-                return alert("⚠️ Falta texto del laboratorio.");
+                return alert("⚠️ Cuadro de texto vacío o carga incompleta.");
             }
             if (!apiKey) {
                 document.getElementById("configDetails").open = true;
-                return alert("Falta API Key.");
+                return alert("Falta la API Key.");
             }
             localStorage.setItem("my_openai_key_v1", apiKey);
 
@@ -292,15 +291,18 @@
             btn.innerHTML = "⏳ Analizando...";
 
             const prompt = `
-            Eres experto médico. Texto: """${rawText.substring(0, 15000)}"""
-            Extrae JSON:
+            Eres un experto médico. Texto crudo: """${rawText.substring(0, 15000)}"""
+            TAREA: Extrae JSON.
             1. "paciente": Nombre completo MAYUSCULAS.
             2. "fecha": Fecha toma (YYYY-MM-DD).
             3. "hora": Hora muestra (HH:MM).
-            4. "protocolo": string.
-            5. "parametros": Objeto valores numéricos.
-            Busca: ${TARGET_PARAMS.join(", ")}.
-            Si paciente duda: "DESCONOCIDO".
+            4. "protocolo": string (si no hay, vacío).
+            5. "parametros": Objeto con valores numéricos.
+            
+            REGLAS: 
+            - Busca: ${TARGET_PARAMS.join(", ")}.
+            - Si encuentras "Ácido Láctico", guárdalo como "Lactato".
+            - Si paciente no claro: "DESCONOCIDO".
             `;
 
             try {
@@ -314,7 +316,7 @@
                     })
                 });
 
-                if (!response.ok) throw new Error("Error OpenAI");
+                if (!response.ok) throw new Error("Error API OpenAI");
                 const data = await response.json();
                 const content = data.choices[0].message.content.replace(/```json|```/g, "").trim();
                 const result = JSON.parse(content);
@@ -366,35 +368,53 @@
             }
         }
 
-        // 5. MODALES
+        // GESTIÓN MODALES
         function openDeleteModal() {
-            document.getElementById('deleteModal').classList.remove('opacity-0', 'pointer-events-none');
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.classList.add('modal-active');
         }
         function closeDeleteModal() {
-            document.getElementById('deleteModal').classList.add('opacity-0', 'pointer-events-none');
+            const modal = document.getElementById('deleteModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('modal-active');
         }
 
-        // 6. PDF
+        // 6. GENERADOR PDF (DINÁMICO CON N/D)
         function downloadPDF() {
             const patient = document.getElementById("patientSelector").value;
-            if(!patient || !labData[patient]) return alert("Seleccione paciente.");
-            if (!window.jspdf) return alert("Error librería PDF Gen.");
+            if(!patient || !labData[patient]) return alert("Seleccione un paciente.");
+
+            if (!window.jspdf) return alert("Error cargando librería de PDF.");
             
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('l', 'mm', 'a4'); 
+
             const samples = labData[patient];
             
-            let allKeys = new Set();
-            samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
-            const sortedParams = Array.from(allKeys).sort();
+            // 1. Determinar columnas activas (Solo las que tienen datos)
+            let activeParams = new Set();
+            samples.forEach(s => {
+                const params = s.parametros || {};
+                Object.keys(params).forEach(k => {
+                    if(params[k] !== undefined && params[k] !== null && params[k] !== "") {
+                        activeParams.add(k);
+                    }
+                });
+            });
+            const sortedParams = Array.from(activeParams).sort();
             
+            // 2. Crear cabeceras con abreviaturas
             const shortHeaders = sortedParams.map(key => PDF_ABBREVIATIONS[key] || key);
             const headRow = ['Fecha', 'Hora', ...shortHeaders];
 
+            // 3. Crear filas (Con "N/D" en huecos)
             const bodyRows = samples.map(s => {
                 let row = [s.fecha, s.hora];
                 sortedParams.forEach(p => {
-                    row.push(s.parametros[p] !== undefined ? s.parametros[p] : '-');
+                    let val = s.parametros[p];
+                    // Si el valor existe, lo ponemos. Si no, "N/D"
+                    row.push((val !== undefined && val !== null && val !== "") ? val : 'N/D');
                 });
                 return row;
             });
@@ -413,18 +433,21 @@
                 headStyles: { fillColor: [63, 81, 181], fontSize: 7, halign: 'center' },
                 columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 10 } }
             });
+
             doc.save(`Reporte_${patient.replace(/\s+/g, "_")}.pdf`);
         }
 
-        // 7. HCLAB
+        // HCLAB COPY
         function copyHCLAB() {
             const patient = document.getElementById("patientSelector").value;
-            if(!patient || !labData[patient]) return alert("Seleccione paciente.");
+            if(!patient || !labData[patient]) return alert("Seleccione un paciente.");
+
             const samples = labData[patient];
             if(samples.length === 0) return alert("No hay datos.");
 
             const lastSample = samples[samples.length - 1];
             const params = lastSample.parametros || {};
+
             let textParts = [];
             HCLAB_ORDER.forEach(key => {
                 if (params[key] !== undefined) {
@@ -432,27 +455,34 @@
                     textParts.push(`${label} ${params[key]}`);
                 }
             });
+
             Object.keys(params).forEach(key => {
                 if (!HCLAB_ORDER.includes(key)) {
                     const label = PDF_ABBREVIATIONS[key] || key;
                     textParts.push(`${label} ${params[key]}`);
                 }
             });
+
             const finalString = textParts.join(", ");
             navigator.clipboard.writeText(finalString).then(() => {
-                alert(`📋 Copiado:\n\n${finalString}`);
-            }).catch(err => prompt("Copie manual:", finalString));
+                alert(`📋 Copiado al portapapeles:\n\n${finalString}`);
+            }).catch(err => {
+                prompt("Copie manual:", finalString);
+            });
         }
 
-        // 8. BORRADO
+        // BORRADO
         async function deleteLastEntry() {
             const patient = document.getElementById("patientSelector").value;
-            if(!patient) return alert("Seleccione paciente.");
-            if(!confirm("¿Borrar última muestra?")) return;
+            if(!patient) return alert("Seleccione un paciente.");
+            if(!confirm(`¿Borrar la última muestra cargada de ${patient}?`)) return;
+
             const samples = labData[patient];
-            if(samples.length === 0) return;
+            if(samples.length === 0) return alert("No hay muestras.");
+            
+            const lastSample = samples[samples.length - 1];
             try {
-                await db.collection("muestras").doc(samples[samples.length - 1].id).delete();
+                await db.collection("muestras").doc(lastSample.id).delete();
                 alert("🗑️ Eliminada.");
                 closeDeleteModal();
             } catch(e) { alert("Error: " + e.message); }
@@ -460,15 +490,16 @@
 
         async function deletePatient() {
             const patient = document.getElementById("patientSelector").value;
-            if(!patient) return alert("Seleccione paciente.");
-            if(!confirm(`⚠️ ¿Borrar TODO de ${patient}?`)) return;
+            if(!patient) return alert("Seleccione un paciente.");
+            if(!confirm(`⚠️ PELIGRO ⚠️\n¿Borrar TODO el historial de ${patient}?`)) return;
+
             try {
                 const q = db.collection("muestras").where("paciente", "==", patient);
                 const snapshot = await q.get();
                 const batch = db.batch();
                 snapshot.forEach(doc => batch.delete(doc.ref));
                 await batch.commit();
-                alert("🗑️ Eliminado.");
+                alert(`🗑️ Historial de ${patient} eliminado.`);
                 closeDeleteModal();
                 document.getElementById("patientSelector").value = "";
                 refreshUI();
@@ -476,7 +507,8 @@
         }
 
         async function deleteDatabase() {
-            if (prompt("Escriba: BORRAR") !== "BORRAR") return;
+            const input = prompt("⛔ ZONA DE PELIGRO ⛔\nEsto borrará TODO.\nEscriba: BORRAR");
+            if (input !== "BORRAR") return alert("Cancelado.");
             try {
                 const snapshot = await db.collection("muestras").get();
                 const batch = db.batch();
@@ -488,7 +520,7 @@
             } catch(e) { alert("Error: " + e.message); }
         }
 
-        // 9. UI
+        // UI
         function refreshUI() {
             const selector = document.getElementById("patientSelector");
             const currentPatient = selector.value;
@@ -513,6 +545,7 @@
             const tbody = document.querySelector("#uciTable tbody");
             const thead = document.querySelector("#uciTable thead");
             const paramSel = document.getElementById("paramSelector");
+
             if (!patientName || !labData[patientName]) return;
             const samples = labData[patientName];
             
@@ -520,7 +553,8 @@
             samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
             let sortedKeys = Array.from(allKeys).sort();
 
-            let headHTML = `<tr class="bg-blue-100 text-left text-xs font-bold uppercase text-gray-700"><th class="p-3 sticky left-0 bg-blue-100 z-10 border-b border-blue-200 shadow-sm">Fecha</th>`;
+            let headHTML = `<tr class="bg-blue-100 text-left text-xs font-bold uppercase text-gray-700">
+                <th class="p-3 sticky left-0 bg-blue-100 z-10 border-b border-blue-200 shadow-sm">Fecha</th>`;
             sortedKeys.forEach(k => {
                 headHTML += `<th class="p-3 text-center whitespace-nowrap border-b border-blue-200">${k} <span class="text-[9px] text-gray-500 block">${UNITS[k]||""}</span></th>`;
             });
@@ -529,7 +563,10 @@
 
             let bodyHTML = "";
             samples.forEach(s => {
-                let row = `<tr class="border-b hover:bg-white transition bg-slate-50"><td class="p-3 sticky left-0 bg-slate-50 font-medium text-sm whitespace-nowrap border-r border-gray-200 shadow-sm">${s.fecha} <span class="text-xs text-gray-400 ml-1">${s.hora}</span></td>`;
+                let row = `<tr class="border-b hover:bg-white transition bg-slate-50">
+                    <td class="p-3 sticky left-0 bg-slate-50 font-medium text-sm whitespace-nowrap border-r border-gray-200 shadow-sm">
+                        ${s.fecha} <span class="text-xs text-gray-400 ml-1">${s.hora}</span>
+                    </td>`;
                 sortedKeys.forEach(k => {
                     const val = s.parametros[k];
                     row += `<td class="p-3 text-center text-sm text-gray-700">${val !== undefined ? val : "-"}</td>`;
@@ -557,7 +594,9 @@
             const ctx = document.getElementById("evolutionChart").getContext("2d");
             if (chartInstance) chartInstance.destroy();
             if (!patientName || !param) return;
-            const dataPoints = labData[patientName].filter(s => s.parametros[param] !== undefined).map(s => ({ x: s.fecha + " " + s.hora, y: s.parametros[param] }));
+            const dataPoints = labData[patientName]
+                .filter(s => s.parametros[param] !== undefined)
+                .map(s => ({ x: s.fecha + " " + s.hora, y: s.parametros[param] }));
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
