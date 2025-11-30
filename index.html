@@ -3,154 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - Online v3.9</title>
+    <title>Monitor UCI Pro</title>
+    
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script>
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-    </script>
+    <script>window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";</script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f1f5f9; }
-        .table-container { max-height: 500px; overflow-y: auto; }
-        thead th { position: sticky; top: 0; z-index: 20; }
-        tbody td:first-child, thead th:first-child { position: sticky; left: 0; z-index: 30; background-color: inherit; }
-        details[open] summary ~ * { animation: sweep .3s ease-in-out; }
-        @keyframes sweep { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        .table-container { max-height: 500px; overflow-y: auto; scrollbar-width: thin; }
+        thead th { position: sticky; top: 0; z-index: 20; background-color: #f1f5f9; }
+        .glass-panel { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-radius: 0.75rem; }
+        
+        /* Animaciones */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Modal */
         .modal { transition: opacity 0.25s ease; }
-        body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
+        body.modal-active { overflow: hidden; }
     </style>
 </head>
-<body class="p-4 md:p-8 text-slate-800">
+<body class="p-4 md:p-6 lg:p-8">
 
-    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden mb-10">
+    <div class="max-w-7xl mx-auto space-y-6">
         
-        <header class="bg-indigo-900 text-white p-6 border-b border-indigo-700 flex justify-between items-start">
-            <div>
-                <h1 class="text-3xl font-bold tracking-tight">Monitor UCI <span class="text-green-400 text-lg">● Online</span></h1>
-                <p class="text-indigo-200 text-sm mt-1">Gestión de Laboratorios en Tiempo Real</p>
+        <header class="glass-panel p-5 flex flex-col md:flex-row justify-between items-center bg-white">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-2 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-emerald-500 text-sm font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">● Online</span></h1>
+                    <p class="text-slate-500 text-xs mt-0.5">Sistema de Gestión de Laboratorios Críticos</p>
+                </div>
             </div>
             
-            <div class="text-right">
+            <div class="mt-4 md:mt-0">
                 <details id="configDetails" class="relative group">
-                    <summary class="list-none cursor-pointer bg-indigo-800 hover:bg-indigo-700 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-600 flex items-center gap-2 select-none">
-                        <span>⚙️ Configurar Llave</span>
+                    <summary class="list-none cursor-pointer bg-slate-50 hover:bg-slate-100 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 flex items-center gap-2 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <span>Configurar API</span>
                     </summary>
-                    <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-50 text-gray-800 text-left">
-                        <label class="block text-xs font-bold text-gray-500 mb-1">API Key OpenAI</label>
-                        <input type="password" id="apiKey" class="w-full p-2 border border-gray-300 rounded text-sm mb-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="sk-...">
-                        <p class="text-[10px] text-gray-400 leading-tight">Guardada localmente.</p>
+                    <div class="absolute right-0 mt-2 w-80 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 z-50 animate-fade-in-down">
+                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">OpenAI API Key</label>
+                        <input type="password" id="apiKey" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="sk-...">
+                        <p class="text-[10px] text-slate-400">La clave se almacena de forma segura en tu navegador.</p>
                     </div>
                 </details>
             </div>
         </header>
 
-        <main class="p-6 space-y-8">
-            <section class="bg-slate-50 border border-slate-200 rounded-lg p-5 shadow-sm">
-                <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <section class="glass-panel p-6">
+            <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-700">Carga de Documentos</h2>
+                    <p class="text-sm text-slate-500">Sube el PDF del laboratorio. La IA detectará duplicados y extraerá los datos.</p>
+                </div>
+                
+                <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-5 py-2.5 flex items-center gap-2 transition font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <span>Seleccionar PDF...</span>
+                    <input type="file" id="pdfInput" accept="application/pdf" class="hidden" onclick="this.value=null;">
+                </label>
+            </div>
+
+            <textarea id="labInput" rows="2" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none" placeholder="El texto extraído aparecerá aquí..."></textarea>
+            
+            <div class="mt-4 flex gap-3">
+                <button id="btnProcesarIA" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <span>Procesar con IA</span>
+                </button>
+                <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-slate-700 text-sm font-medium px-4 py-2 hover:bg-slate-100 rounded-lg transition">Limpiar</button>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="glass-panel p-6 flex flex-col justify-between h-full">
+                <div class="space-y-5">
                     <div>
-                        <h2 class="text-lg font-semibold text-slate-700">1. Carga de Laboratorio</h2>
-                        <p class="text-xs text-slate-500">Sube el PDF. El sistema detecta parámetros automáticamente.</p>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Paciente</label>
+                        <div class="relative">
+                            <select id="patientSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="w-full md:w-auto">
-                        <label class="flex cursor-pointer bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2 hover:bg-blue-50 hover:border-blue-300 flex items-center justify-center gap-2 shadow-sm transition group">
-                            <span class="text-2xl group-hover:scale-110 transition">📄</span>
-                            <span class="font-medium">Seleccionar PDF...</span>
-                            <input type="file" id="pdfInput" accept="application/pdf" class="hidden" onclick="this.value=null;">
-                        </label>
-                    </div>
-                </div>
-
-                <textarea id="labInput" rows="2" class="w-full mt-4 p-3 border border-slate-300 rounded-lg text-xs font-mono text-slate-600 focus:text-slate-800 transition shadow-inner" placeholder="El texto extraído aparecerá aquí..."></textarea>
-                
-                <div class="mt-4 flex gap-3">
-                    <button id="btnProcesarIA" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition flex items-center gap-2">
-                        <span>✨</span> Extraer y Subir
-                    </button>
-                    <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-red-500 text-sm font-medium px-4">Limpiar texto</button>
-                </div>
-            </section>
-
-            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-1 space-y-4">
-                    <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm h-full flex flex-col justify-between">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Paciente</label>
-                            <select id="patientSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></select>
-                            
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Parámetro (Gráfico)</label>
-                            <select id="paramSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm mb-6"></select>
-                        </div>
-
-                        <div class="border-t pt-4 border-slate-100">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Gestión de Datos</h3>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="copyHCLAB()" class="col-span-2 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 py-2 rounded text-xs font-bold flex items-center justify-center gap-2 transition mb-1">
-                                    <span>📋</span> Copiar HCLAB
-                                </button>
-                                <button onclick="downloadPDF()" class="col-span-1 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 py-2 rounded text-xs font-bold flex items-center justify-center gap-1 transition">
-                                    <span>📄</span> PDF
-                                </button>
-                                <button onclick="openDeleteModal()" class="col-span-1 bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 py-2 rounded text-xs font-bold flex items-center justify-center gap-1 transition">
-                                    <span>🗑️</span> Borrar
-                                </button>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parámetro</label>
+                        <div class="relative">
+                            <select id="paramSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-sm h-72">
+                <div class="mt-8 pt-6 border-t border-slate-100">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Acciones Rápidas</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="copyHCLAB()" class="col-span-2 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition group">
+                            <span class="group-hover:scale-110 transition">📋</span> Copiar para HC
+                        </button>
+                        <button onclick="downloadPDF()" class="bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">
+                            <span>📄</span> PDF
+                        </button>
+                        <button onclick="openDeleteModal()" class="bg-white text-red-600 hover:bg-red-50 border border-red-100 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">
+                            <span>🗑️</span> Borrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 glass-panel p-6 relative">
+                <h3 class="text-sm font-bold text-slate-500 mb-4">Tendencia Evolutiva</h3>
+                <div class="h-64 w-full">
                     <canvas id="evolutionChart"></canvas>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <section class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-                <div class="table-container overflow-x-auto">
-                    <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
-                        <thead class="bg-slate-100"></thead>
-                        <tbody class="divide-y divide-slate-200 bg-white"></tbody>
-                    </table>
-                </div>
-            </section>
-        </main>
+        <section class="glass-panel overflow-hidden">
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                <h3 class="text-sm font-bold text-slate-700">Tabla de Evolución</h3>
+            </div>
+            <div class="table-container">
+                <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50 text-slate-500"></thead>
+                    <tbody class="divide-y divide-slate-100 bg-white"></tbody>
+                </table>
+            </div>
+        </section>
     </div>
 
-    <div id="deleteModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
-            <div class="modal-content py-4 text-left px-6">
-                <div class="flex justify-between items-center pb-3">
-                    <p class="text-2xl font-bold text-red-600">Gestión de Borrado</p>
-                    <div class="modal-close cursor-pointer z-50" onclick="closeDeleteModal()">✖</div>
+    <div id="deleteModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
+        <div class="bg-white w-full max-w-md mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95" id="modalContent">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-slate-800">Gestión de Datos</h3>
+                    <button onclick="closeDeleteModal()" class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
                 </div>
-                <p class="mb-4 text-sm text-gray-600">Acciones irreversibles:</p>
+                <p class="text-sm text-slate-500 mb-6">Selecciona una acción. Estas operaciones son irreversibles.</p>
+                
                 <div class="space-y-3">
-                    <button onclick="deleteLastEntry()" class="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 font-semibold py-3 px-4 border border-orange-300 rounded text-left flex items-center justify-between">
-                        <span>1. Borrar ÚLTIMA muestra</span> <span class="text-xl">↩️</span>
+                    <button onclick="deleteLastEntry()" class="w-full flex items-center justify-between p-4 rounded-lg border border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 transition">
+                        <div class="text-left">
+                            <div class="font-bold text-sm">Deshacer última carga</div>
+                            <div class="text-xs opacity-75">Borra solo el último PDF subido</div>
+                        </div>
+                        <span class="text-xl">↩️</span>
                     </button>
-                    <button onclick="deletePatient()" class="w-full bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-3 px-4 border border-red-300 rounded text-left flex items-center justify-between">
-                        <span>2. Borrar PACIENTE actual</span> <span class="text-xl">👤</span>
+
+                    <button onclick="deletePatient()" class="w-full flex items-center justify-between p-4 rounded-lg border border-red-200 bg-red-50 text-red-800 hover:bg-red-100 transition">
+                        <div class="text-left">
+                            <div class="font-bold text-sm">Eliminar Paciente</div>
+                            <div class="text-xs opacity-75">Borra todo el historial de este paciente</div>
+                        </div>
+                        <span class="text-xl">👤</span>
                     </button>
-                    <div class="border-t border-gray-200 pt-3 mt-4">
-                        <button onclick="deleteDatabase()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-4 rounded text-center">💀 Borrar TODA la Base de Datos</button>
-                    </div>
+                </div>
+                
+                <div class="mt-6 pt-4 border-t border-slate-100">
+                    <button onclick="deleteDatabase()" class="w-full py-3 text-xs font-bold text-slate-400 hover:text-red-600 transition tracking-wider">
+                        RESET TOTAL DE BASE DE DATOS
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 1. CONFIGURACIÓN FIREBASE
+        // 1. FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8",
             authDomain: "laboratorios-uco.firebaseapp.com",
@@ -161,9 +205,7 @@
             measurementId: "G-Q0FE3ZD4P7"
         };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
 
         // 2. PARÁMETROS
@@ -176,14 +218,13 @@
             "Colesterol_Total", "LDL", "HDL", "Triglicéridos"
         ];
 
-        // 3. ABREVIATURAS (Para PDF y HCLAB)
         const PDF_ABBREVIATIONS = {
             "Hemoglobina": "Hb", "Hematocrito": "Hto", "Plaquetas": "Plq", "Leucocitos": "GB",
             "Na": "Na", "K": "K", "Cl": "Cl", "Mg": "Mg", "Ca_Total": "Ca", "Ca_Ionizado": "Ca++",
             "Glucosa": "Glu", "Urea": "Urea", "Creatinina": "Cr", "Acido_Urico": "AU",
             "BT": "BT", "BD": "BD", "AST_TGO": "GOT", "ALT_TGP": "GPT", "Fosfatasa_Alcalina": "FAL",
             "Albúmina": "Alb", "PCR": "PCR", "Procalcitonina": "PCT", 
-            "Lactato": "LAC", "Acido_Lactico": "LAC",
+            "Lactato": "LAC", "Acido_Lactico": "LAC", 
             "pH": "pH", "pCO2": "pCO2", "pO2": "pO2", "Bicarbonato": "BIC", "SatO2": "Sat",
             "Colesterol_Total": "Col", "LDL": "LDL", "HDL": "HDL", "Triglicéridos": "TG"
         };
@@ -205,8 +246,19 @@
         let labData = {}; 
         let chartInstance = null;
 
-        // --- FUNCIONES DEL SISTEMA ---
+        // UTIL: NOTIFICACIONES ELEGANTES
+        function showToast(msg, type = "info") {
+            let bg = type === "error" ? "#ef4444" : type === "success" ? "#10b981" : "#3b82f6";
+            Toastify({
+                text: msg,
+                duration: 3000,
+                gravity: "top",
+                position: "center",
+                style: { background: bg, borderRadius: "8px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }
+            }).showToast();
+        }
 
+        // 3. PDF SETUP
         function setupPdf() {
             const input = document.getElementById("pdfInput");
             const textArea = document.getElementById("labInput");
@@ -215,94 +267,64 @@
                 const file = e.target.files[0];
                 if(!file) return;
 
-                textArea.value = "⏳ Iniciando motor de PDF... Espere.";
-                const pdfjsLib = window.pdfjsLib;
-                
-                if (!pdfjsLib) {
-                    textArea.value = "Error crítico: Librería PDF no cargada.";
-                    return alert("Error de librería PDF.");
-                }
+                textArea.value = "⏳ Leyendo archivo...";
+                if (!window.pdfjsLib) return showToast("Error: Librería PDF no cargada", "error");
 
                 try {
                     const buffer = await file.arrayBuffer();
                     const loadingTask = pdfjsLib.getDocument(buffer);
                     const pdf = await loadingTask.promise;
                     let fullText = "";
-                    
                     for(let i=1; i<=pdf.numPages; i++) {
-                        textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`;
                         const page = await pdf.getPage(i);
                         const textContent = await page.getTextContent();
-                        const pageText = textContent.items.map(item => item.str).join(" ");
-                        fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
+                        fullText += textContent.items.map(item => item.str).join(" ") + "\n";
                     }
                     textArea.value = fullText;
+                    showToast("PDF leído correctamente", "success");
                 } catch (error) {
-                    console.error("Error PDF:", error);
-                    textArea.value = "Error lectura: " + error.message;
-                    alert("No se pudo leer el PDF.");
+                    console.error(error);
+                    textArea.value = "Error: " + error.message;
+                    showToast("No se pudo leer el PDF", "error");
                 }
             });
         }
 
+        // 4. LOGICA DE NEGOCIO
         function initRealTimeListener() {
             db.collection("muestras").orderBy("timestamp", "asc")
                 .onSnapshot((snapshot) => {
                     labData = {}; 
                     snapshot.forEach((doc) => {
                         const data = doc.data();
-                        const pac = data.paciente;
-                        if (!labData[pac]) labData[pac] = [];
-                        labData[pac].push({ ...data, id: doc.id });
+                        if (!labData[data.paciente]) labData[data.paciente] = [];
+                        labData[data.paciente].push({ ...data, id: doc.id });
                     });
                     refreshUI();
-                }, (error) => {
-                    console.error("Error Firebase:", error);
                 });
-        }
-
-        function cleanObject(obj) {
-            if (typeof obj !== 'object' || obj === null) return obj;
-            if (Array.isArray(obj)) return obj.map(cleanObject).filter(v => v !== undefined);
-            const newObj = {};
-            for (const key in obj) {
-                const value = cleanObject(obj[key]);
-                if (value !== undefined) newObj[key] = value;
-            }
-            return newObj;
         }
 
         async function processAndUpload() {
             const rawText = document.getElementById("labInput").value;
-            let apiKey = document.getElementById("apiKey").value.trim();
-            if(!apiKey) apiKey = localStorage.getItem("my_openai_key_v1");
+            let apiKey = document.getElementById("apiKey").value.trim() || localStorage.getItem("my_openai_key_v1");
 
-            if (!rawText || rawText.startsWith("⏳") || rawText.length < 20) {
-                return alert("⚠️ Cuadro de texto vacío o carga incompleta.");
-            }
+            if (!rawText || rawText.length < 20) return showToast("Falta texto válido", "error");
             if (!apiKey) {
                 document.getElementById("configDetails").open = true;
-                return alert("Falta la API Key.");
+                return showToast("Falta API Key", "error");
             }
             localStorage.setItem("my_openai_key_v1", apiKey);
 
             const btn = document.getElementById("btnProcesarIA");
             btn.disabled = true;
-            btn.innerHTML = "⏳ Analizando...";
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Procesando...`;
 
             const prompt = `
-            Eres un experto médico. Texto crudo: """${rawText.substring(0, 15000)}"""
-            TAREA: Extrae JSON.
-            1. "paciente": Nombre completo MAYUSCULAS.
-            2. "fecha": Fecha toma (YYYY-MM-DD).
-            3. "hora": Hora muestra (HH:MM).
-            4. "protocolo": string (si no hay, vacío).
-            5. "parametros": Objeto con valores numéricos.
-            
-            REGLAS: 
-            - Busca: ${TARGET_PARAMS.join(", ")}.
-            - Si encuentras "Ácido Láctico", guárdalo como "Lactato".
-            - Si paciente no claro: "DESCONOCIDO".
+            Eres experto médico. Texto: """${rawText.substring(0, 15000)}"""
+            Extrae JSON: {"paciente": "NOMBRE MAYUSCULAS", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "protocolo": "string", "parametros": {}}
+            Busca: ${TARGET_PARAMS.join(", ")}.
+            REGLA: "Ácido Láctico" = "Lactato".
+            Si paciente duda: "DESCONOCIDO".
             `;
 
             try {
@@ -316,7 +338,7 @@
                     })
                 });
 
-                if (!response.ok) throw new Error("Error API OpenAI");
+                if (!response.ok) throw new Error("Error OpenAI");
                 const data = await response.json();
                 const content = data.choices[0].message.content.replace(/```json|```/g, "").trim();
                 const result = JSON.parse(content);
@@ -330,293 +352,248 @@
                 if(!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
                 if(!result.hora) result.hora = "12:00";
 
-                const qTime = await db.collection("muestras")
-                    .where("paciente", "==", result.paciente)
-                    .where("fecha", "==", result.fecha)
-                    .where("hora", "==", result.hora)
-                    .get();
-                if (!qTime.empty) throw new Error(`🚫 DUPLICADO: Muestra ya existe.`);
+                // Duplicados
+                const qTime = await db.collection("muestras").where("paciente", "==", result.paciente).where("fecha", "==", result.fecha).where("hora", "==", result.hora).get();
+                if (!qTime.empty) throw new Error("Muestra duplicada (Fecha/Hora)");
 
                 if (result.protocolo && result.protocolo.length > 3) {
                     const qProt = await db.collection("muestras").where("protocolo", "==", result.protocolo).get();
-                    if (!qProt.empty) {
-                        const existing = qProt.docs[0].data();
-                        if (existing.paciente === result.paciente) throw new Error(`🚫 DUPLICADO: Protocolo ya existe.`);
+                    if(!qProt.empty) {
+                        const ex = qProt.docs[0].data();
+                        if(ex.paciente === result.paciente) throw new Error("Protocolo ya existe");
                     }
                 }
 
-                const rawDoc = {
+                // Limpieza undefined
+                const cleanParams = {};
+                for (const k in result.parametros) {
+                    if (result.parametros[k] !== undefined && result.parametros[k] !== null) cleanParams[k] = result.parametros[k];
+                }
+
+                await db.collection("muestras").add({
                     paciente: result.paciente,
                     fecha: result.fecha,
                     hora: result.hora,
                     protocolo: result.protocolo || "",
-                    parametros: result.parametros || {}, 
+                    parametros: cleanParams,
                     timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
                     uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
+                });
 
-                const finalDoc = cleanObject(rawDoc);
-                await db.collection("muestras").add(finalDoc);
-                alert(`✅ Guardado: ${result.paciente}`);
+                showToast(`✅ Guardado: ${result.paciente}`, "success");
+                document.getElementById("labInput").value = "";
 
             } catch (e) {
                 console.error(e);
-                alert(e.message);
+                showToast(e.message, "error");
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = "✨ Extraer y Subir";
+                btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> <span>Procesar con IA</span>`;
             }
         }
 
-        // GESTIÓN MODALES
-        function openDeleteModal() {
-            const modal = document.getElementById('deleteModal');
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            document.body.classList.add('modal-active');
-        }
-        function closeDeleteModal() {
-            const modal = document.getElementById('deleteModal');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            document.body.classList.remove('modal-active');
+        // 5. EXPORTS
+        function copyHCLAB() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!patient) return showToast("Seleccione paciente", "error");
+            const samples = labData[patient];
+            if(!samples || samples.length === 0) return;
+
+            const lastSample = samples[samples.length - 1];
+            const params = lastSample.parametros || {};
+            let parts = [];
+
+            // Orden Prioritario
+            HCLAB_ORDER.forEach(k => {
+                if(params[k] !== undefined) parts.push(`${PDF_ABBREVIATIONS[k]||k} ${params[k]}`);
+            });
+            // Resto
+            Object.keys(params).forEach(k => {
+                if(!HCLAB_ORDER.includes(k) && PDF_ABBREVIATIONS[k]) parts.push(`${PDF_ABBREVIATIONS[k]} ${params[k]}`);
+            });
+
+            navigator.clipboard.writeText(parts.join(", ")).then(() => showToast("Copiado al portapapeles", "success"));
         }
 
-        // 6. GENERADOR PDF (DINÁMICO CON N/D)
         function downloadPDF() {
             const patient = document.getElementById("patientSelector").value;
-            if(!patient || !labData[patient]) return alert("Seleccione un paciente.");
-
-            if (!window.jspdf) return alert("Error cargando librería de PDF.");
-            
+            if(!patient) return showToast("Seleccione paciente", "error");
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('l', 'mm', 'a4'); 
-
             const samples = labData[patient];
-            
-            // 1. Determinar columnas activas (Solo las que tienen datos)
-            let activeParams = new Set();
-            samples.forEach(s => {
-                const params = s.parametros || {};
-                Object.keys(params).forEach(k => {
-                    if(params[k] !== undefined && params[k] !== null && params[k] !== "") {
-                        activeParams.add(k);
-                    }
-                });
-            });
-            const sortedParams = Array.from(activeParams).sort();
-            
-            // 2. Crear cabeceras con abreviaturas
-            const shortHeaders = sortedParams.map(key => PDF_ABBREVIATIONS[key] || key);
-            const headRow = ['Fecha', 'Hora', ...shortHeaders];
 
-            // 3. Crear filas (Con "N/D" en huecos)
+            // Columnas dinámicas (solo si hay dato en alguna muestra)
+            let activeKeys = new Set();
+            samples.forEach(s => Object.keys(s.parametros||{}).forEach(k => activeKeys.add(k)));
+            const sortedParams = Array.from(activeKeys).sort();
+            
+            const headRow = ['Fecha', 'Hora', ...sortedParams.map(k => PDF_ABBREVIATIONS[k]||k)];
             const bodyRows = samples.map(s => {
                 let row = [s.fecha, s.hora];
-                sortedParams.forEach(p => {
-                    let val = s.parametros[p];
-                    // Si el valor existe, lo ponemos. Si no, "N/D"
-                    row.push((val !== undefined && val !== null && val !== "") ? val : 'N/D');
-                });
+                sortedParams.forEach(k => row.push(s.parametros[k] ?? 'N/D'));
                 return row;
             });
 
-            doc.setFontSize(16);
+            doc.setFontSize(14);
             doc.text(`Historial: ${patient}`, 14, 15);
-            doc.setFontSize(9);
-            doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 22);
+            doc.setFontSize(8);
+            doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 20);
 
             doc.autoTable({
                 startY: 25,
                 head: [headRow],
                 body: bodyRows,
                 theme: 'grid',
-                styles: { fontSize: 7, cellPadding: 1 }, 
-                headStyles: { fillColor: [63, 81, 181], fontSize: 7, halign: 'center' },
-                columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 10 } }
+                styles: { fontSize: 7, cellPadding: 1, halign: 'center' },
+                headStyles: { fillColor: [59, 130, 246] },
+                columnStyles: { 0: {cellWidth: 18}, 1: {cellWidth: 10} }
             });
-
-            doc.save(`Reporte_${patient.replace(/\s+/g, "_")}.pdf`);
+            doc.save(`Reporte_${patient}.pdf`);
         }
 
-        // HCLAB COPY
-        function copyHCLAB() {
-            const patient = document.getElementById("patientSelector").value;
-            if(!patient || !labData[patient]) return alert("Seleccione un paciente.");
-
-            const samples = labData[patient];
-            if(samples.length === 0) return alert("No hay datos.");
-
-            const lastSample = samples[samples.length - 1];
-            const params = lastSample.parametros || {};
-
-            let textParts = [];
-            HCLAB_ORDER.forEach(key => {
-                if (params[key] !== undefined) {
-                    const label = PDF_ABBREVIATIONS[key] || key;
-                    textParts.push(`${label} ${params[key]}`);
-                }
-            });
-
-            Object.keys(params).forEach(key => {
-                if (!HCLAB_ORDER.includes(key)) {
-                    const label = PDF_ABBREVIATIONS[key] || key;
-                    textParts.push(`${label} ${params[key]}`);
-                }
-            });
-
-            const finalString = textParts.join(", ");
-            navigator.clipboard.writeText(finalString).then(() => {
-                alert(`📋 Copiado al portapapeles:\n\n${finalString}`);
-            }).catch(err => {
-                prompt("Copie manual:", finalString);
-            });
-        }
-
-        // BORRADO
-        async function deleteLastEntry() {
-            const patient = document.getElementById("patientSelector").value;
-            if(!patient) return alert("Seleccione un paciente.");
-            if(!confirm(`¿Borrar la última muestra cargada de ${patient}?`)) return;
-
-            const samples = labData[patient];
-            if(samples.length === 0) return alert("No hay muestras.");
-            
-            const lastSample = samples[samples.length - 1];
-            try {
-                await db.collection("muestras").doc(lastSample.id).delete();
-                alert("🗑️ Eliminada.");
-                closeDeleteModal();
-            } catch(e) { alert("Error: " + e.message); }
-        }
-
-        async function deletePatient() {
-            const patient = document.getElementById("patientSelector").value;
-            if(!patient) return alert("Seleccione un paciente.");
-            if(!confirm(`⚠️ PELIGRO ⚠️\n¿Borrar TODO el historial de ${patient}?`)) return;
-
-            try {
-                const q = db.collection("muestras").where("paciente", "==", patient);
-                const snapshot = await q.get();
-                const batch = db.batch();
-                snapshot.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
-                alert(`🗑️ Historial de ${patient} eliminado.`);
-                closeDeleteModal();
-                document.getElementById("patientSelector").value = "";
-                refreshUI();
-            } catch(e) { alert("Error: " + e.message); }
-        }
-
-        async function deleteDatabase() {
-            const input = prompt("⛔ ZONA DE PELIGRO ⛔\nEsto borrará TODO.\nEscriba: BORRAR");
-            if (input !== "BORRAR") return alert("Cancelado.");
-            try {
-                const snapshot = await db.collection("muestras").get();
-                const batch = db.batch();
-                snapshot.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
-                alert("💀 Formateado.");
-                closeDeleteModal();
-                refreshUI();
-            } catch(e) { alert("Error: " + e.message); }
-        }
-
-        // UI
+        // 6. UI & GRAPHS
         function refreshUI() {
-            const selector = document.getElementById("patientSelector");
-            const currentPatient = selector.value;
-            selector.innerHTML = '<option value="">-- Seleccionar --</option>';
+            const sel = document.getElementById("patientSelector");
+            const curr = sel.value;
+            sel.innerHTML = '<option value="">-- Seleccionar --</option>';
             Object.keys(labData).sort().forEach(p => {
                 const opt = document.createElement("option");
-                opt.value = p;
-                opt.innerText = p;
-                selector.appendChild(opt);
+                opt.value = p; opt.innerText = p;
+                sel.appendChild(opt);
             });
-            if (currentPatient && labData[currentPatient]) {
-                selector.value = currentPatient;
-                loadPatientData();
-            } else {
-                document.querySelector("#uciTable tbody").innerHTML = "";
-                if(chartInstance) { chartInstance.destroy(); chartInstance = null; }
-            }
+            if(curr && labData[curr]) { sel.value = curr; loadPatientData(); }
+            else { document.querySelector("#uciTable tbody").innerHTML = ""; }
         }
 
         function loadPatientData() {
-            const patientName = document.getElementById("patientSelector").value;
+            const patient = document.getElementById("patientSelector").value;
             const tbody = document.querySelector("#uciTable tbody");
             const thead = document.querySelector("#uciTable thead");
             const paramSel = document.getElementById("paramSelector");
-
-            if (!patientName || !labData[patientName]) return;
-            const samples = labData[patientName];
             
-            let allKeys = new Set();
-            samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
-            let sortedKeys = Array.from(allKeys).sort();
+            if(!patient || !labData[patient]) return;
+            const samples = labData[patient];
 
-            let headHTML = `<tr class="bg-blue-100 text-left text-xs font-bold uppercase text-gray-700">
-                <th class="p-3 sticky left-0 bg-blue-100 z-10 border-b border-blue-200 shadow-sm">Fecha</th>`;
-            sortedKeys.forEach(k => {
-                headHTML += `<th class="p-3 text-center whitespace-nowrap border-b border-blue-200">${k} <span class="text-[9px] text-gray-500 block">${UNITS[k]||""}</span></th>`;
+            let activeKeys = new Set();
+            samples.forEach(s => Object.keys(s.parametros||{}).forEach(k => activeKeys.add(k)));
+            const sortedParams = Array.from(activeKeys).sort();
+
+            // Render Head
+            let headHTML = `<tr><th class="p-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-50 border-b border-slate-200 sticky left-0 z-20">Fecha</th>`;
+            sortedParams.forEach(k => {
+                headHTML += `<th class="p-3 text-center text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b border-slate-200 whitespace-nowrap">${PDF_ABBREVIATIONS[k]||k} <span class="text-[9px] text-slate-400 block">${UNITS[k]||""}</span></th>`;
             });
-            headHTML += "</tr>";
-            thead.innerHTML = headHTML;
+            thead.innerHTML = headHTML + "</tr>";
 
+            // Render Body
             let bodyHTML = "";
             samples.forEach(s => {
-                let row = `<tr class="border-b hover:bg-white transition bg-slate-50">
-                    <td class="p-3 sticky left-0 bg-slate-50 font-medium text-sm whitespace-nowrap border-r border-gray-200 shadow-sm">
-                        ${s.fecha} <span class="text-xs text-gray-400 ml-1">${s.hora}</span>
-                    </td>`;
-                sortedKeys.forEach(k => {
-                    const val = s.parametros[k];
-                    row += `<td class="p-3 text-center text-sm text-gray-700">${val !== undefined ? val : "-"}</td>`;
+                let row = `<tr class="hover:bg-blue-50 transition border-b border-slate-100">
+                    <td class="p-3 text-sm font-medium text-slate-700 bg-white sticky left-0 border-r border-slate-100 whitespace-nowrap">${s.fecha} <span class="text-xs text-slate-400 ml-1">${s.hora}</span></td>`;
+                sortedParams.forEach(k => {
+                    let val = s.parametros[k];
+                    row += `<td class="p-3 text-center text-sm text-slate-600">${val ?? "-"}</td>`;
                 });
-                row += "</tr>";
-                bodyHTML += row;
+                bodyHTML += row + "</tr>";
             });
             tbody.innerHTML = bodyHTML;
 
-            const currentParam = paramSel.value;
+            // Param Selector
+            const currParam = paramSel.value;
             paramSel.innerHTML = "";
-            sortedKeys.forEach(k => {
+            sortedParams.forEach(k => {
                 const opt = document.createElement("option");
-                opt.value = k;
-                opt.innerText = k;
+                opt.value = k; opt.innerText = PDF_ABBREVIATIONS[k] || k;
                 paramSel.appendChild(opt);
             });
-            if(sortedKeys.includes(currentParam)) paramSel.value = currentParam;
+            if(activeKeys.has(currParam)) paramSel.value = currParam;
             updateGraph();
         }
 
         function updateGraph() {
-            const patientName = document.getElementById("patientSelector").value;
+            const patient = document.getElementById("patientSelector").value;
             const param = document.getElementById("paramSelector").value;
             const ctx = document.getElementById("evolutionChart").getContext("2d");
+            
             if (chartInstance) chartInstance.destroy();
-            if (!patientName || !param) return;
-            const dataPoints = labData[patientName]
-                .filter(s => s.parametros[param] !== undefined)
-                .map(s => ({ x: s.fecha + " " + s.hora, y: s.parametros[param] }));
+            if (!patient || !param) return;
+
+            const points = labData[patient].filter(s => s.parametros[param] !== undefined).map(s => ({x: s.fecha+" "+s.hora, y: s.parametros[param]}));
+            
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: dataPoints.map(d => d.x),
+                    labels: points.map(p => p.x),
                     datasets: [{
-                        label: param,
-                        data: dataPoints.map(d => d.y),
-                        borderColor: 'rgb(79, 70, 229)',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                        fill: true,
-                        tension: 0.3
+                        label: PDF_ABBREVIATIONS[param] || param,
+                        data: points.map(p => p.y),
+                        borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderWidth: 2, tension: 0.3, fill: true, pointRadius: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
             });
         }
 
+        // MODALS
+        function openDeleteModal() { 
+            const m = document.getElementById('deleteModal'); 
+            m.classList.remove('opacity-0', 'pointer-events-none');
+            document.querySelector('#modalContent').classList.remove('scale-95');
+            document.querySelector('#modalContent').classList.add('scale-100');
+            document.body.classList.add('modal-active');
+        }
+        function closeDeleteModal() { 
+            const m = document.getElementById('deleteModal');
+            m.classList.add('opacity-0', 'pointer-events-none');
+            document.querySelector('#modalContent').classList.add('scale-95');
+            document.querySelector('#modalContent').classList.remove('scale-100');
+            document.body.classList.remove('modal-active');
+        }
+
+        // DELETE
+        async function deleteLastEntry() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!patient) return;
+            const samples = labData[patient];
+            if(!samples || !samples.length) return;
+            try {
+                await db.collection("muestras").doc(samples[samples.length-1].id).delete();
+                showToast("Última muestra eliminada", "success");
+                closeDeleteModal();
+            } catch(e) { showToast(e.message, "error"); }
+        }
+        async function deletePatient() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!confirm("¿Seguro? Se borrará TODO el historial.")) return;
+            try {
+                const q = await db.collection("muestras").where("paciente", "==", patient).get();
+                const batch = db.batch();
+                q.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                showToast("Paciente eliminado", "success");
+                closeDeleteModal();
+                document.getElementById("patientSelector").value = "";
+                refreshUI();
+            } catch(e) { showToast(e.message, "error"); }
+        }
+        async function deleteDatabase() {
+            if(prompt("Escriba: BORRAR") !== "BORRAR") return;
+            try {
+                const q = await db.collection("muestras").get();
+                const batch = db.batch();
+                q.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                showToast("Base de datos limpia", "success");
+                closeDeleteModal();
+                refreshUI();
+            } catch(e) { showToast(e.message, "error"); }
+        }
+
+        // INIT
         document.addEventListener("DOMContentLoaded", () => {
-            const savedKey = localStorage.getItem("my_openai_key_v1");
-            if (savedKey) document.getElementById("apiKey").value = savedKey;
+            const k = localStorage.getItem("my_openai_key_v1");
+            if(k) document.getElementById("apiKey").value = k;
             initRealTimeListener();
             setupPdf();
             document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
