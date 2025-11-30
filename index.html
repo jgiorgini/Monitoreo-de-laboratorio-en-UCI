@@ -3,39 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - Nube Compartida</title>
+    <title>Monitor UCI - Online v2.0</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        // Configuración inmediata del Worker para evitar bloqueos
-        if (window.pdfjsLib) {
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        }
-    </script>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        const pdfWorkerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+        }
+    </script>
+
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f3f4f6; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f1f5f9; }
         .table-container { max-height: 500px; overflow-y: auto; }
         thead th { position: sticky; top: 0; z-index: 20; }
         tbody td:first-child, thead th:first-child { position: sticky; left: 0; z-index: 30; background-color: inherit; }
-        /* Animación suave para el menú de configuración */
         details[open] summary ~ * { animation: sweep .3s ease-in-out; }
         @keyframes sweep { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Modal */
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 text-slate-800">
 
-    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
+    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden mb-10">
         
         <header class="bg-indigo-900 text-white p-6 border-b border-indigo-700 flex justify-between items-start">
             <div>
                 <h1 class="text-3xl font-bold tracking-tight">Monitor UCI <span class="text-green-400 text-lg">● Online</span></h1>
-                <p class="text-indigo-200 text-sm mt-1">Sincronización en tiempo real</p>
+                <p class="text-indigo-200 text-sm mt-1">Gestión de Laboratorios en Tiempo Real</p>
             </div>
             
             <div class="text-right">
@@ -43,53 +47,68 @@
                     <summary class="list-none cursor-pointer bg-indigo-800 hover:bg-indigo-700 px-3 py-2 rounded-lg text-xs font-bold border border-indigo-600 flex items-center gap-2 select-none">
                         <span>⚙️ Configurar Llave</span>
                     </summary>
-                    <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-50 text-gray-800">
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Tu API Key de OpenAI</label>
+                    <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-lg shadow-xl border border-gray-200 z-50 text-gray-800 text-left">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">API Key OpenAI</label>
                         <input type="password" id="apiKey" class="w-full p-2 border border-gray-300 rounded text-sm mb-2 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="sk-...">
-                        <p class="text-[10px] text-gray-400 leading-tight">Se guarda solo en este navegador. Necesaria para procesar nuevos PDFs.</p>
+                        <p class="text-[10px] text-gray-400 leading-tight">Guardada localmente.</p>
                     </div>
                 </details>
             </div>
         </header>
 
         <main class="p-6 space-y-8">
-            <section class="bg-slate-50 border border-slate-200 rounded-lg p-5">
+            <section class="bg-slate-50 border border-slate-200 rounded-lg p-5 shadow-sm">
                 <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-700">1. Carga de Laboratorio</h2>
-                        <p class="text-xs text-slate-500">Sube el PDF, la IA extraerá los datos y los subirá a la nube.</p>
+                        <p class="text-xs text-slate-500">Sube el PDF, la IA extraerá los datos.</p>
                     </div>
                     
                     <div class="w-full md:w-auto">
-                        <label class="flex cursor-pointer bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm transition">
-                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                            <span>Seleccionar PDF...</span>
+                        <label class="flex cursor-pointer bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2 hover:bg-blue-50 hover:border-blue-300 flex items-center justify-center gap-2 shadow-sm transition group">
+                            <span class="text-2xl group-hover:scale-110 transition">📄</span>
+                            <span class="font-medium">Seleccionar PDF...</span>
                             <input type="file" id="pdfInput" accept="application/pdf" class="hidden">
                         </label>
                     </div>
                 </div>
 
-                <textarea id="labInput" rows="2" class="w-full mt-4 p-3 border border-slate-300 rounded-lg text-xs font-mono text-slate-500 focus:text-slate-800 transition" placeholder="Aquí aparecerá el texto leído..."></textarea>
+                <textarea id="labInput" rows="2" class="w-full mt-4 p-3 border border-slate-300 rounded-lg text-xs font-mono text-slate-600 focus:text-slate-800 transition shadow-inner" placeholder="El texto extraído aparecerá aquí..."></textarea>
                 
                 <div class="mt-4 flex gap-3">
                     <button id="btnProcesarIA" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition flex items-center gap-2">
-                        ✨ Extraer y Subir
+                        <span>✨</span> Extraer y Subir
                     </button>
-                    <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-slate-700 text-sm font-medium px-4">Limpiar texto</button>
+                    <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-red-500 text-sm font-medium px-4">Limpiar texto</button>
                 </div>
             </section>
 
             <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-1 space-y-4">
-                    <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Paciente</label>
-                        <select id="patientSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
-                        
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Parámetro (Gráfico)</label>
-                        <select id="paramSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none"></select>
+                    <div class="bg-white border border-slate-200 rounded-lg p-5 shadow-sm h-full flex flex-col justify-between">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Paciente</label>
+                            <select id="patientSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></select>
+                            
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Parámetro (Gráfico)</label>
+                            <select id="paramSelector" class="w-full p-2 border border-slate-300 rounded bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none text-sm mb-6"></select>
+                        </div>
+
+                        <div class="border-t pt-4 border-slate-100">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Gestión de Datos</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="downloadCSV()" class="col-span-1 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 py-2 rounded text-xs font-bold flex items-center justify-center gap-1 transition">
+                                    <span>📥</span> Descargar
+                                </button>
+                                <button onclick="openDeleteModal()" class="col-span-1 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 py-2 rounded text-xs font-bold flex items-center justify-center gap-1 transition">
+                                    <span>🗑️</span> Borrar...
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-sm h-64">
+
+                <div class="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-sm h-72">
                     <canvas id="evolutionChart"></canvas>
                 </div>
             </section>
@@ -105,12 +124,455 @@
         </main>
     </div>
 
-    <script src="app_v10c_firebase.js"></script>
+    <div id="deleteModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p class="text-2xl font-bold text-red-600">Gestión de Borrado</p>
+                    <div class="modal-close cursor-pointer z-50" onclick="closeDeleteModal()">
+                        <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
+                    </div>
+                </div>
+
+                <p class="mb-4 text-sm text-gray-600">Seleccione qué acción desea realizar. <br><b>Atención:</b> Estas acciones son irreversibles.</p>
+
+                <div class="space-y-3">
+                    <button onclick="deleteLastEntry()" class="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 font-semibold py-3 px-4 border border-orange-300 rounded text-left flex items-center justify-between group">
+                        <span>1. Borrar ÚLTIMA muestra <br><span class="text-xs font-normal text-orange-600">(Corrige error de carga reciente)</span></span>
+                        <span class="text-xl">↩️</span>
+                    </button>
+
+                    <button onclick="deletePatient()" class="w-full bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-3 px-4 border border-red-300 rounded text-left flex items-center justify-between">
+                        <span>2. Borrar PACIENTE actual <br><span class="text-xs font-normal text-red-600">(Alta o Fallecimiento - Borra todo su historial)</span></span>
+                        <span class="text-xl">👤</span>
+                    </button>
+
+                    <div class="border-t border-gray-200 pt-3 mt-4">
+                        <button onclick="deleteDatabase()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-4 rounded text-center">
+                            💀 Borrar TODA la Base de Datos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        document.getElementById('pdfInput').addEventListener('change', (e) => {
-            const fileName = e.target.files[0]?.name || "Elegir PDF...";
-            document.getElementById('labInput').placeholder = "Cargando " + fileName + "...";
+        // 1. FIREBASE CONFIG (Tus claves reales)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8",
+            authDomain: "laboratorios-uco.firebaseapp.com",
+            projectId: "laboratorios-uco",
+            storageBucket: "laboratorios-uco.firebasestorage.app",
+            messagingSenderId: "435400240534",
+            appId: "1:435400240534:web:1cb4c57beb4b69e933c1b7",
+            measurementId: "G-Q0FE3ZD4P7"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        // PARÁMETROS OBJETIVO
+        const TARGET_PARAMS = [
+            "Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos",
+            "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado",
+            "Glucosa", "Urea", "Creatinina", "Acido_Urico", 
+            "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina",
+            "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2"
+        ];
+
+        const UNITS = {
+            "Hemoglobina": "g/dL", "Hematocrito": "%", "Na": "mEq/L", "K": "mEq/L",
+            "Glucosa": "mg/dL", "Lactato": "mmol/L", "Creatinina": "mg/dL", "Plaquetas": "/mm3"
+        };
+
+        let labData = {}; 
+        let chartInstance = null;
+
+        // 2. LECTOR PDF (v3.11)
+        function setupPdf() {
+            const input = document.getElementById("pdfInput");
+            const textArea = document.getElementById("labInput");
+
+            input.addEventListener("change", async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+
+                textArea.value = "⏳ Iniciando lectura del PDF... por favor espera.";
+
+                if (!window.pdfjsLib) return alert("Error crítico: Librería PDF no cargada.");
+                
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const loadingTask = window.pdfjsLib.getDocument(buffer);
+                    const pdf = await loadingTask.promise;
+                    let fullText = "";
+                    
+                    for(let i=1; i<=pdf.numPages; i++) {
+                        textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`;
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(" ");
+                        fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
+                    }
+                    textArea.value = fullText;
+                } catch (error) {
+                    console.error("Error PDF:", error);
+                    textArea.value = "Error leyendo el archivo: " + error.message;
+                    alert("No se pudo leer el PDF. Asegúrate de que no sea una imagen escaneada.");
+                }
+            });
+        }
+
+        // 3. FIRESTORE LISTENER
+        function initRealTimeListener() {
+            db.collection("muestras").orderBy("timestamp", "asc")
+                .onSnapshot((snapshot) => {
+                    labData = {}; 
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const pac = data.paciente;
+                        if (!labData[pac]) labData[pac] = [];
+                        // Guardamos el ID del documento para poder borrarlo luego
+                        labData[pac].push({ ...data, id: doc.id });
+                    });
+                    refreshUI();
+                }, (error) => {
+                    console.error("Error Firebase:", error);
+                });
+        }
+
+        // 4. FUNCIONES DE IA & SUBIDA
+        function cleanObject(obj) {
+            if (typeof obj !== 'object' || obj === null) return obj;
+            if (Array.isArray(obj)) return obj.map(cleanObject).filter(v => v !== undefined);
+            const newObj = {};
+            for (const key in obj) {
+                const value = cleanObject(obj[key]);
+                if (value !== undefined) newObj[key] = value;
+            }
+            return newObj;
+        }
+
+        async function processAndUpload() {
+            const rawText = document.getElementById("labInput").value;
+            let apiKey = document.getElementById("apiKey").value.trim();
+            if(!apiKey) apiKey = localStorage.getItem("my_openai_key_v1");
+
+            if (!rawText || rawText.startsWith("⏳") || rawText.length < 20) {
+                return alert("⚠️ El cuadro de texto parece vacío o incompleto.");
+            }
+
+            if (!apiKey) {
+                document.getElementById("configDetails").open = true;
+                return alert("Falta la API Key.");
+            }
+            localStorage.setItem("my_openai_key_v1", apiKey);
+
+            const btn = document.getElementById("btnProcesarIA");
+            btn.disabled = true;
+            btn.innerHTML = "⏳ Analizando...";
+
+            const prompt = `
+            Eres un experto extrayendo datos de laboratorios médicos.
+            Texto crudo: """${rawText.substring(0, 15000)}"""
+            
+            TAREA:
+            Extrae un JSON con:
+            1. "paciente": Nombre completo en MAYÚSCULAS.
+            2. "fecha": Fecha de toma de muestra (YYYY-MM-DD).
+            3. "hora": Hora de muestra (HH:MM).
+            4. "protocolo": ID o número de protocolo.
+            5. "parametros": Objeto con valores numéricos detectados.
+
+            REGLAS:
+            - Busca estos parámetros o sus SINÓNIMOS: ${TARGET_PARAMS.join(", ")}
+            - Formato NUMBER con punto decimal.
+            - Si el paciente no está claro, pon "DESCONOCIDO".
+
+            Devuelve SOLO JSON VÁLIDO.
+            `;
+
+            try {
+                const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0
+                    })
+                });
+
+                if (!response.ok) throw new Error("Error API OpenAI");
+                const data = await response.json();
+                const content = data.choices[0].message.content.replace(/```json|```/g, "").trim();
+                const result = JSON.parse(content);
+
+                // --- MODO PRODUCCIÓN (DIRECTO) ---
+                if (!result.paciente || result.paciente === "DESCONOCIDO") {
+                    const manual = prompt("Nombre del paciente no detectado. Ingréselo:");
+                    if (manual) result.paciente = manual.toUpperCase();
+                    else throw new Error("Cancelado");
+                }
+                
+                if(!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
+                if(!result.hora) result.hora = "12:00";
+
+                const rawDoc = {
+                    paciente: result.paciente,
+                    fecha: result.fecha,
+                    hora: result.hora,
+                    protocolo: result.protocolo || "",
+                    parametros: result.parametros || {}, 
+                    timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
+                    uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                const finalDoc = cleanObject(rawDoc);
+                await db.collection("muestras").add(finalDoc);
+                alert(`✅ Guardado: ${result.paciente}`);
+
+            } catch (e) {
+                console.error(e);
+                alert("Error: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = "✨ Extraer y Subir";
+            }
+        }
+
+        // 5. GESTIÓN DE DATOS (NUEVAS FUNCIONES)
+        
+        // Modal Logic
+        function openDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.classList.add('modal-active');
+        }
+        function closeDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('modal-active');
+        }
+
+        // Descargar CSV
+        function downloadCSV() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!patient || !labData[patient]) return alert("Seleccione un paciente primero.");
+
+            const samples = labData[patient];
+            let allKeys = new Set();
+            samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
+            const sortedKeys = Array.from(allKeys).sort();
+
+            // Header
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Fecha,Hora,Protocolo," + sortedKeys.join(",") + "\n";
+
+            // Rows
+            samples.forEach(s => {
+                let row = `${s.fecha},${s.hora},${s.protocolo || ""}`;
+                sortedKeys.forEach(k => {
+                    row += "," + (s.parametros[k] !== undefined ? s.parametros[k] : "");
+                });
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `LAB_${patient.replace(/\s+/g, "_")}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Borrar Última Muestra
+        async function deleteLastEntry() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!patient) return alert("Seleccione un paciente primero.");
+            
+            if(!confirm(`¿Borrar la última muestra cargada de ${patient}?`)) return;
+
+            const samples = labData[patient];
+            if(samples.length === 0) return alert("No hay muestras.");
+            
+            // La última muestra en el array es la más reciente (porque ordenamos asc)
+            const lastSample = samples[samples.length - 1];
+            
+            try {
+                await db.collection("muestras").doc(lastSample.id).delete();
+                alert("🗑️ Última muestra eliminada.");
+                closeDeleteModal();
+            } catch(e) {
+                alert("Error al borrar: " + e.message);
+            }
+        }
+
+        // Borrar Paciente Completo
+        async function deletePatient() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!patient) return alert("Seleccione un paciente primero.");
+
+            if(!confirm(`⚠️ PELIGRO ⚠️\n\n¿Estás seguro de borrar TODO el historial de ${patient}?\nEsta acción no se puede deshacer.`)) return;
+
+            try {
+                const q = db.collection("muestras").where("paciente", "==", patient);
+                const snapshot = await q.get();
+                
+                const batch = db.batch();
+                snapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                
+                alert(`🗑️ Historial de ${patient} eliminado.`);
+                closeDeleteModal();
+                // Limpiar UI
+                document.getElementById("patientSelector").value = "";
+                refreshUI();
+            } catch(e) {
+                alert("Error borrando paciente: " + e.message);
+            }
+        }
+
+        // Borrar Base de Datos (Nuclear)
+        async function deleteDatabase() {
+            const input = prompt("⛔ ZONA DE PELIGRO ⛔\n\nEsto borrará los datos de TODOS los pacientes de la terapia.\nPara confirmar, escriba la palabra: BORRAR");
+            if (input !== "BORRAR") return alert("Acción cancelada.");
+
+            try {
+                // Borrar en tandas (Firebase tiene limite de 500 por batch, hacemos loop simple)
+                const snapshot = await db.collection("muestras").get();
+                const batch = db.batch();
+                
+                snapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                await batch.commit();
+                alert("💀 Base de datos formateada.");
+                closeDeleteModal();
+                refreshUI();
+            } catch(e) {
+                alert("Error crítico: " + e.message);
+            }
+        }
+
+        // 6. UI INTERACTION
+        function refreshUI() {
+            const selector = document.getElementById("patientSelector");
+            const currentPatient = selector.value;
+            
+            selector.innerHTML = '<option value="">-- Seleccionar --</option>';
+            Object.keys(labData).sort().forEach(p => {
+                const opt = document.createElement("option");
+                opt.value = p;
+                opt.innerText = p;
+                selector.appendChild(opt);
+            });
+
+            if (currentPatient && labData[currentPatient]) {
+                selector.value = currentPatient;
+                loadPatientData();
+            } else {
+                document.querySelector("#uciTable tbody").innerHTML = "";
+                if(chartInstance) { chartInstance.destroy(); chartInstance = null; }
+            }
+        }
+
+        function loadPatientData() {
+            const patientName = document.getElementById("patientSelector").value;
+            const tbody = document.querySelector("#uciTable tbody");
+            const thead = document.querySelector("#uciTable thead");
+            const paramSel = document.getElementById("paramSelector");
+
+            if (!patientName || !labData[patientName]) return;
+            const samples = labData[patientName];
+            
+            let allKeys = new Set();
+            samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
+            let sortedKeys = Array.from(allKeys).sort();
+
+            let headHTML = `<tr class="bg-blue-100 text-left text-xs font-bold uppercase text-gray-700">
+                <th class="p-3 sticky left-0 bg-blue-100 z-10 border-b border-blue-200 shadow-sm">Fecha</th>`;
+            sortedKeys.forEach(k => {
+                headHTML += `<th class="p-3 text-center whitespace-nowrap border-b border-blue-200">${k} <span class="text-[9px] text-gray-500 block">${UNITS[k]||""}</span></th>`;
+            });
+            headHTML += "</tr>";
+            thead.innerHTML = headHTML;
+
+            let bodyHTML = "";
+            samples.forEach(s => {
+                let row = `<tr class="border-b hover:bg-white transition bg-slate-50">
+                    <td class="p-3 sticky left-0 bg-slate-50 font-medium text-sm whitespace-nowrap border-r border-gray-200 shadow-sm">
+                        ${s.fecha} <span class="text-xs text-gray-400 ml-1">${s.hora}</span>
+                    </td>`;
+                sortedKeys.forEach(k => {
+                    const val = s.parametros[k];
+                    row += `<td class="p-3 text-center text-sm text-gray-700">${val !== undefined ? val : "-"}</td>`;
+                });
+                row += "</tr>";
+                bodyHTML += row;
+            });
+            tbody.innerHTML = bodyHTML;
+
+            const currentParam = paramSel.value;
+            paramSel.innerHTML = "";
+            sortedKeys.forEach(k => {
+                const opt = document.createElement("option");
+                opt.value = k;
+                opt.innerText = k;
+                paramSel.appendChild(opt);
+            });
+            if(sortedKeys.includes(currentParam)) paramSel.value = currentParam;
+            updateGraph();
+        }
+
+        function updateGraph() {
+            const patientName = document.getElementById("patientSelector").value;
+            const param = document.getElementById("paramSelector").value;
+            const ctx = document.getElementById("evolutionChart").getContext("2d");
+            
+            if (chartInstance) chartInstance.destroy();
+            if (!patientName || !param) return;
+
+            const dataPoints = labData[patientName]
+                .filter(s => s.parametros[param] !== undefined)
+                .map(s => ({ x: s.fecha + " " + s.hora, y: s.parametros[param] }));
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dataPoints.map(d => d.x),
+                    datasets: [{
+                        label: param,
+                        data: dataPoints.map(d => d.y),
+                        borderColor: 'rgb(79, 70, 229)',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedKey = localStorage.getItem("my_openai_key_v1");
+            if (savedKey) document.getElementById("apiKey").value = savedKey;
+
+            initRealTimeListener();
+            setupPdf();
+
+            document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
+            document.getElementById("patientSelector").addEventListener("change", loadPatientData);
+            document.getElementById("paramSelector").addEventListener("change", updateGraph);
+            document.getElementById("btnLimpiarEntrada").addEventListener("click", () => document.getElementById("labInput").value = "");
         });
     </script>
 </body>
