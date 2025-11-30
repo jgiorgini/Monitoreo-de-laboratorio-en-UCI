@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - Reporte PDF</title>
+    <title>Monitor UCI - Online v3.1</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,12 +12,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        const pdfWorkerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-        if (window.pdfjsLib) {
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
-        }
-    </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -29,8 +23,6 @@
         tbody td:first-child, thead th:first-child { position: sticky; left: 0; z-index: 30; background-color: inherit; }
         details[open] summary ~ * { animation: sweep .3s ease-in-out; }
         @keyframes sweep { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Modal */
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
     </style>
@@ -133,11 +125,9 @@
             <div class="modal-content py-4 text-left px-6">
                 <div class="flex justify-between items-center pb-3">
                     <p class="text-2xl font-bold text-red-600">Gestión de Borrado</p>
-                    <div class="modal-close cursor-pointer z-50" onclick="closeDeleteModal()">
-                        <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
-                    </div>
+                    <div class="modal-close cursor-pointer z-50" onclick="closeDeleteModal()">✖</div>
                 </div>
-                <p class="mb-4 text-sm text-gray-600">Seleccione qué acción desea realizar. <br><b>Atención:</b> Estas acciones son irreversibles.</p>
+                <p class="mb-4 text-sm text-gray-600">Acciones irreversibles:</p>
                 <div class="space-y-3">
                     <button onclick="deleteLastEntry()" class="w-full bg-orange-100 hover:bg-orange-200 text-orange-800 font-semibold py-3 px-4 border border-orange-300 rounded text-left flex items-center justify-between">
                         <span>1. Borrar ÚLTIMA muestra</span> <span class="text-xl">↩️</span>
@@ -154,7 +144,7 @@
     </div>
 
     <script>
-        // 1. FIREBASE CONFIG
+        // 1. CONFIGURACIÓN FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8",
             authDomain: "laboratorios-uco.firebaseapp.com",
@@ -170,10 +160,395 @@
         }
         const db = firebase.firestore();
 
-        // PARÁMETROS OBJETIVO
+        // PARÁMETROS
         const TARGET_PARAMS = [
             "Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos",
             "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado",
             "Glucosa", "Urea", "Creatinina", "Acido_Urico", 
             "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina",
-            "PCR", "Procalcitonina
+            "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2"
+        ];
+
+        const UNITS = {
+            "Hemoglobina": "g/dL", "Hematocrito": "%", "Na": "mEq/L", "K": "mEq/L",
+            "Glucosa": "mg/dL", "Lactato": "mmol/L", "Creatinina": "mg/dL", "Plaquetas": "/mm3"
+        };
+
+        let labData = {}; 
+        let chartInstance = null;
+
+        // 2. CONFIGURACIÓN PDF (CORREGIDA)
+        function setupPdf() {
+            const input = document.getElementById("pdfInput");
+            const textArea = document.getElementById("labInput");
+
+            input.addEventListener("change", async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+
+                console.log("Archivo seleccionado:", file.name);
+                textArea.value = "⏳ Iniciando motor de PDF... Espere un momento.";
+
+                // Verificación de seguridad
+                const pdfjsLib = window.pdfjsLib;
+                if (!pdfjsLib) {
+                    textArea.value = "Error crítico: La librería PDF.js no se ha cargado. Refresca la página.";
+                    return alert("Error de librería PDF.");
+                }
+
+                // CONFIGURACIÓN DEL WORKER EN TIEMPO DE EJECUCIÓN (Esto evita el error de carga)
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const loadingTask = pdfjsLib.getDocument(buffer);
+                    const pdf = await loadingTask.promise;
+                    let fullText = "";
+                    
+                    for(let i=1; i<=pdf.numPages; i++) {
+                        textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`;
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(" ");
+                        fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
+                    }
+                    textArea.value = fullText;
+                    console.log("PDF leído con éxito.");
+
+                } catch (error) {
+                    console.error("Error PDF:", error);
+                    textArea.value = "Error leyendo el archivo: " + error.message;
+                    alert("No se pudo leer el PDF. Verifica que no esté corrupto o sea una imagen.");
+                }
+            });
+        }
+
+        // 3. FIRESTORE LISTENER
+        function initRealTimeListener() {
+            db.collection("muestras").orderBy("timestamp", "asc")
+                .onSnapshot((snapshot) => {
+                    labData = {}; 
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const pac = data.paciente;
+                        if (!labData[pac]) labData[pac] = [];
+                        labData[pac].push({ ...data, id: doc.id });
+                    });
+                    refreshUI();
+                }, (error) => {
+                    console.error("Error Firebase:", error);
+                });
+        }
+
+        // 4. IA & SUBIDA
+        function cleanObject(obj) {
+            if (typeof obj !== 'object' || obj === null) return obj;
+            if (Array.isArray(obj)) return obj.map(cleanObject).filter(v => v !== undefined);
+            const newObj = {};
+            for (const key in obj) {
+                const value = cleanObject(obj[key]);
+                if (value !== undefined) newObj[key] = value;
+            }
+            return newObj;
+        }
+
+        async function processAndUpload() {
+            const rawText = document.getElementById("labInput").value;
+            let apiKey = document.getElementById("apiKey").value.trim();
+            if(!apiKey) apiKey = localStorage.getItem("my_openai_key_v1");
+
+            if (!rawText || rawText.startsWith("⏳") || rawText.length < 20) {
+                return alert("⚠️ El cuadro de texto parece vacío. Asegúrate de cargar el PDF primero.");
+            }
+
+            if (!apiKey) {
+                document.getElementById("configDetails").open = true;
+                return alert("Falta la API Key.");
+            }
+            localStorage.setItem("my_openai_key_v1", apiKey);
+
+            const btn = document.getElementById("btnProcesarIA");
+            btn.disabled = true;
+            btn.innerHTML = "⏳ Analizando...";
+
+            const prompt = `
+            Eres un experto médico. Texto crudo: """${rawText.substring(0, 15000)}"""
+            TAREA: Extrae JSON.
+            1. "paciente": Nombre completo en MAYÚSCULAS.
+            2. "fecha": Fecha toma (YYYY-MM-DD).
+            3. "hora": Hora muestra (HH:MM).
+            4. "protocolo": string.
+            5. "parametros": Objeto valores numéricos.
+            
+            REGLAS: Busca: ${TARGET_PARAMS.join(", ")}.
+            Si paciente no claro: "DESCONOCIDO".
+            Solo JSON.
+            `;
+
+            try {
+                const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0
+                    })
+                });
+
+                if (!response.ok) throw new Error("Error API OpenAI");
+                const data = await response.json();
+                const content = data.choices[0].message.content.replace(/```json|```/g, "").trim();
+                const result = JSON.parse(content);
+
+                if (!result.paciente || result.paciente === "DESCONOCIDO") {
+                    const manual = prompt("Nombre del paciente no detectado. Ingréselo:");
+                    if (manual) result.paciente = manual.toUpperCase();
+                    else throw new Error("Cancelado");
+                }
+                
+                if(!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
+                if(!result.hora) result.hora = "12:00";
+
+                const rawDoc = {
+                    paciente: result.paciente,
+                    fecha: result.fecha,
+                    hora: result.hora,
+                    protocolo: result.protocolo || "",
+                    parametros: result.parametros || {}, 
+                    timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
+                    uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                const finalDoc = cleanObject(rawDoc);
+                await db.collection("muestras").add(finalDoc);
+                alert(`✅ Guardado: ${result.paciente}`);
+
+            } catch (e) {
+                console.error(e);
+                alert("Error: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = "✨ Extraer y Subir";
+            }
+        }
+
+        // 5. GESTIÓN MODALES
+        function openDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.classList.add('modal-active');
+        }
+        function closeDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('modal-active');
+        }
+
+        // 6. GENERAR PDF (Reporte)
+        function downloadPDF() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!patient || !labData[patient]) return alert("Seleccione un paciente primero.");
+
+            if (!window.jspdf) return alert("Error cargando librería de PDF Generator.");
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4'); 
+
+            const samples = labData[patient];
+            
+            let allKeys = new Set();
+            samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
+            const sortedParams = Array.from(allKeys).sort();
+            
+            const headRow = ['Fecha', 'Hora', 'Protocolo', ...sortedParams];
+
+            const bodyRows = samples.map(s => {
+                let row = [s.fecha, s.hora, s.protocolo || '-'];
+                sortedParams.forEach(p => {
+                    row.push(s.parametros[p] !== undefined ? s.parametros[p] : '-');
+                });
+                return row;
+            });
+
+            doc.setFontSize(18);
+            doc.text(`Historial: ${patient}`, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 22);
+
+            doc.autoTable({
+                startY: 25,
+                head: [headRow],
+                body: bodyRows,
+                theme: 'grid',
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [63, 81, 181] }
+            });
+
+            doc.save(`Reporte_${patient.replace(/\s+/g, "_")}.pdf`);
+        }
+
+        // 7. BORRADO
+        async function deleteLastEntry() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!patient) return alert("Seleccione un paciente.");
+            if(!confirm(`¿Borrar la última muestra cargada de ${patient}?`)) return;
+
+            const samples = labData[patient];
+            if(samples.length === 0) return alert("No hay muestras.");
+            
+            const lastSample = samples[samples.length - 1];
+            try {
+                await db.collection("muestras").doc(lastSample.id).delete();
+                alert("🗑️ Eliminada.");
+                closeDeleteModal();
+            } catch(e) { alert("Error: " + e.message); }
+        }
+
+        async function deletePatient() {
+            const patient = document.getElementById("patientSelector").value;
+            if(!patient) return alert("Seleccione un paciente.");
+            if(!confirm(`⚠️ PELIGRO ⚠️\n¿Borrar TODO el historial de ${patient}?`)) return;
+
+            try {
+                const q = db.collection("muestras").where("paciente", "==", patient);
+                const snapshot = await q.get();
+                const batch = db.batch();
+                snapshot.forEach(doc => { batch.delete(doc.ref); });
+                await batch.commit();
+                alert(`🗑️ Historial de ${patient} eliminado.`);
+                closeDeleteModal();
+                document.getElementById("patientSelector").value = "";
+                refreshUI();
+            } catch(e) { alert("Error: " + e.message); }
+        }
+
+        async function deleteDatabase() {
+            const input = prompt("⛔ ZONA DE PELIGRO ⛔\nEsto borrará TODO.\nEscriba: BORRAR");
+            if (input !== "BORRAR") return alert("Cancelado.");
+
+            try {
+                const snapshot = await db.collection("muestras").get();
+                const batch = db.batch();
+                snapshot.forEach(doc => { batch.delete(doc.ref); });
+                await batch.commit();
+                alert("💀 Formateado.");
+                closeDeleteModal();
+                refreshUI();
+            } catch(e) { alert("Error: " + e.message); }
+        }
+
+        // 8. INTERFAZ
+        function refreshUI() {
+            const selector = document.getElementById("patientSelector");
+            const currentPatient = selector.value;
+            
+            selector.innerHTML = '<option value="">-- Seleccionar --</option>';
+            Object.keys(labData).sort().forEach(p => {
+                const opt = document.createElement("option");
+                opt.value = p;
+                opt.innerText = p;
+                selector.appendChild(opt);
+            });
+
+            if (currentPatient && labData[currentPatient]) {
+                selector.value = currentPatient;
+                loadPatientData();
+            } else {
+                document.querySelector("#uciTable tbody").innerHTML = "";
+                if(chartInstance) { chartInstance.destroy(); chartInstance = null; }
+            }
+        }
+
+        function loadPatientData() {
+            const patientName = document.getElementById("patientSelector").value;
+            const tbody = document.querySelector("#uciTable tbody");
+            const thead = document.querySelector("#uciTable thead");
+            const paramSel = document.getElementById("paramSelector");
+
+            if (!patientName || !labData[patientName]) return;
+            const samples = labData[patientName];
+            
+            let allKeys = new Set();
+            samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
+            let sortedKeys = Array.from(allKeys).sort();
+
+            let headHTML = `<tr class="bg-blue-100 text-left text-xs font-bold uppercase text-gray-700">
+                <th class="p-3 sticky left-0 bg-blue-100 z-10 border-b border-blue-200 shadow-sm">Fecha</th>`;
+            sortedKeys.forEach(k => {
+                headHTML += `<th class="p-3 text-center whitespace-nowrap border-b border-blue-200">${k} <span class="text-[9px] text-gray-500 block">${UNITS[k]||""}</span></th>`;
+            });
+            headHTML += "</tr>";
+            thead.innerHTML = headHTML;
+
+            let bodyHTML = "";
+            samples.forEach(s => {
+                let row = `<tr class="border-b hover:bg-white transition bg-slate-50">
+                    <td class="p-3 sticky left-0 bg-slate-50 font-medium text-sm whitespace-nowrap border-r border-gray-200 shadow-sm">
+                        ${s.fecha} <span class="text-xs text-gray-400 ml-1">${s.hora}</span>
+                    </td>`;
+                sortedKeys.forEach(k => {
+                    const val = s.parametros[k];
+                    row += `<td class="p-3 text-center text-sm text-gray-700">${val !== undefined ? val : "-"}</td>`;
+                });
+                row += "</tr>";
+                bodyHTML += row;
+            });
+            tbody.innerHTML = bodyHTML;
+
+            const currentParam = paramSel.value;
+            paramSel.innerHTML = "";
+            sortedKeys.forEach(k => {
+                const opt = document.createElement("option");
+                opt.value = k;
+                opt.innerText = k;
+                paramSel.appendChild(opt);
+            });
+            if(sortedKeys.includes(currentParam)) paramSel.value = currentParam;
+            updateGraph();
+        }
+
+        function updateGraph() {
+            const patientName = document.getElementById("patientSelector").value;
+            const param = document.getElementById("paramSelector").value;
+            const ctx = document.getElementById("evolutionChart").getContext("2d");
+            
+            if (chartInstance) chartInstance.destroy();
+            if (!patientName || !param) return;
+
+            const dataPoints = labData[patientName]
+                .filter(s => s.parametros[param] !== undefined)
+                .map(s => ({ x: s.fecha + " " + s.hora, y: s.parametros[param] }));
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dataPoints.map(d => d.x),
+                    datasets: [{
+                        label: param,
+                        data: dataPoints.map(d => d.y),
+                        borderColor: 'rgb(79, 70, 229)',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedKey = localStorage.getItem("my_openai_key_v1");
+            if (savedKey) document.getElementById("apiKey").value = savedKey;
+
+            initRealTimeListener();
+            setupPdf();
+
+            document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
+            document.getElementById("patientSelector").addEventListener("change", loadPatientData);
+            document.getElementById("paramSelector").addEventListener("change", updateGraph);
+            document.getElementById("btnLimpiarEntrada").addEventListener("click", () => document.getElementById("labInput").value = "");
+        });
+    </script>
+</body>
+</html>
