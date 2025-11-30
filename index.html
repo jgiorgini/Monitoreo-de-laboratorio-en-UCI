@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - Online v3.3 (Stable)</title>
+    <title>Monitor UCI - Online v3.4</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,11 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script>
-        // Configuración forzada del Worker Legacy
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
@@ -67,7 +63,7 @@
                         <label class="flex cursor-pointer bg-white border border-slate-300 text-slate-700 rounded-lg px-4 py-2 hover:bg-blue-50 hover:border-blue-300 flex items-center justify-center gap-2 shadow-sm transition group">
                             <span class="text-2xl group-hover:scale-110 transition">📄</span>
                             <span class="font-medium">Seleccionar PDF...</span>
-                            <input type="file" id="pdfInput" accept="application/pdf" class="hidden" onclick="this.value=null;">
+                            <input type="file" id="pdfInput" accept="application/pdf" class="hidden">
                         </label>
                     </div>
                 </div>
@@ -164,7 +160,7 @@
         }
         const db = firebase.firestore();
 
-        // PARÁMETROS
+        // LISTA DE VARIABLES A BUSCAR
         const TARGET_PARAMS = [
             "Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos",
             "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado",
@@ -174,15 +170,40 @@
             "Colesterol_Total", "LDL", "HDL", "Triglicéridos"
         ];
 
-        // Diccionario para PDF (Abreviaturas)
+        // DICCIONARIO DE ABREVIATURAS PARA PDF (Columnas Angostas)
         const PDF_ABBREVIATIONS = {
-            "Hemoglobina": "Hb", "Hematocrito": "Hto", "Plaquetas": "PLQ", "Leucocitos": "WBC",
-            "Glucosa": "GLU", "Urea": "UREA", "Creatinina": "Cr", "Acido_Urico": "AU",
-            "Colesterol_Total": "COL.T", "LDL": "LDL", "HDL": "HDL", "Triglicéridos": "TRG",
-            "Bilirrubina_Total": "BT", "Bilirrubina_Directa": "BD", "BT": "BT", "BD": "BD",
-            "Fosfatasa_Alcalina": "FAL", "Albúmina": "ALB", "Magnesio": "Mg", "Calcio_Total": "CaT",
-            "Procalcitonina": "PCT", "Lactato": "LACT", "Bicarbonato": "HCO3",
-            "AST_TGO": "AST", "ALT_TGP": "ALT"
+            "Hemoglobina": "Hb",
+            "Hematocrito": "Hto",
+            "Plaquetas": "Plq",
+            "Leucocitos": "GB",
+            "Na": "Na",
+            "K": "K",
+            "Cl": "Cl",
+            "Mg": "Mg",
+            "Ca_Total": "Ca",
+            "Ca_Ionizado": "Ca++",
+            "Glucosa": "Glu",
+            "Urea": "Urea",
+            "Creatinina": "Cr",
+            "Acido_Urico": "AU",
+            "BT": "BT",
+            "BD": "BD",
+            "AST_TGO": "GOT",
+            "ALT_TGP": "GPT",
+            "Fosfatasa_Alcalina": "FAL",
+            "Albúmina": "Alb",
+            "PCR": "PCR",
+            "Procalcitonina": "PCT",
+            "Lactato": "LACT",
+            "pH": "pH",
+            "pCO2": "pCO2",
+            "pO2": "pO2",
+            "Bicarbonato": "HCO3",
+            "SatO2": "Sat",
+            "Colesterol_Total": "Col",
+            "LDL": "LDL",
+            "HDL": "HDL",
+            "Triglicéridos": "TG"
         };
 
         const UNITS = {
@@ -193,7 +214,7 @@
         let labData = {}; 
         let chartInstance = null;
 
-        // 2. CONFIGURACIÓN PDF (LEGACY MODE - V2.16)
+        // 2. CONFIGURACIÓN PDF
         function setupPdf() {
             const input = document.getElementById("pdfInput");
             const textArea = document.getElementById("labInput");
@@ -202,36 +223,34 @@
                 const file = e.target.files[0];
                 if(!file) return;
 
-                console.log("Archivo seleccionado:", file.name); // DEBUG
-                textArea.value = "⏳ Iniciando motor de PDF Legacy... Espere.";
-
+                textArea.value = "⏳ Iniciando motor de PDF... Espere un momento.";
                 const pdfjsLib = window.pdfjsLib;
+                
                 if (!pdfjsLib) {
-                    textArea.value = "Error crítico: Librería PDF no cargada.";
+                    textArea.value = "Error crítico: La librería PDF no se cargó.";
                     return alert("Error de librería PDF.");
                 }
+                
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
                 try {
                     const buffer = await file.arrayBuffer();
-                    // En versión 2.x getDocument devuelve un objeto con .promise directo o el objeto
                     const loadingTask = pdfjsLib.getDocument(buffer);
                     const pdf = await loadingTask.promise;
-                    
                     let fullText = "";
+                    
                     for(let i=1; i<=pdf.numPages; i++) {
-                        textArea.value = `⏳ Leyendo pág ${i}/${pdf.numPages}...`;
+                        textArea.value = `⏳ Leyendo página ${i} de ${pdf.numPages}...`;
                         const page = await pdf.getPage(i);
                         const textContent = await page.getTextContent();
                         const pageText = textContent.items.map(item => item.str).join(" ");
                         fullText += `--- PÁGINA ${i} ---\n${pageText}\n\n`;
                     }
                     textArea.value = fullText;
-                    console.log("PDF leído con éxito.");
-
                 } catch (error) {
                     console.error("Error PDF:", error);
                     textArea.value = "Error lectura: " + error.message;
-                    alert("Error al leer PDF. Intente con otro archivo.");
+                    alert("No se pudo leer el PDF.");
                 }
             });
         }
@@ -253,7 +272,7 @@
                 });
         }
 
-        // 4. IA & SUBIDA
+        // 4. IA & SUBIDA (Con Bloqueo de Duplicados)
         function cleanObject(obj) {
             if (typeof obj !== 'object' || obj === null) return obj;
             if (Array.isArray(obj)) return obj.map(cleanObject).filter(v => v !== undefined);
@@ -321,13 +340,12 @@
                 if(!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
                 if(!result.hora) result.hora = "12:00";
 
-                // --- VERIFICACIÓN DUPLICADOS ---
+                // --- CHEQUEO DUPLICADOS ---
                 const qTime = await db.collection("muestras")
                     .where("paciente", "==", result.paciente)
                     .where("fecha", "==", result.fecha)
                     .where("hora", "==", result.hora)
                     .get();
-                
                 if (!qTime.empty) throw new Error(`🚫 DUPLICADO: Ya existe una muestra para ${result.paciente} el ${result.fecha} a las ${result.hora}.`);
 
                 if (result.protocolo && result.protocolo.length > 3) {
@@ -373,7 +391,7 @@
             document.body.classList.remove('modal-active');
         }
 
-        // 6. GENERAR PDF (Abreviaturas)
+        // 6. GENERAR PDF (CON ABREVIATURAS Y ESTILO COMPACTO)
         function downloadPDF() {
             const patient = document.getElementById("patientSelector").value;
             if(!patient || !labData[patient]) return alert("Seleccione un paciente.");
@@ -381,18 +399,22 @@
             if (!window.jspdf) return alert("Error cargando librería de PDF.");
             
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'mm', 'a4'); 
+            const doc = new jsPDF('l', 'mm', 'a4'); // Horizontal
 
             const samples = labData[patient];
+            
+            // Recolectar todas las claves
             let allKeys = new Set();
             samples.forEach(s => Object.keys(s.parametros || {}).forEach(k => allKeys.add(k)));
             const sortedParams = Array.from(allKeys).sort();
             
+            // TRADUCIR ENCABEZADOS
             const shortHeaders = sortedParams.map(key => PDF_ABBREVIATIONS[key] || key);
-            const headRow = ['Fecha', 'Hora', 'Prot.', ...shortHeaders];
+            const headRow = ['Fecha', 'Hora', ...shortHeaders];
 
+            // Construir filas
             const bodyRows = samples.map(s => {
-                let row = [s.fecha, s.hora, s.protocolo || '-'];
+                let row = [s.fecha, s.hora];
                 sortedParams.forEach(p => {
                     row.push(s.parametros[p] !== undefined ? s.parametros[p] : '-');
                 });
@@ -409,9 +431,20 @@
                 head: [headRow],
                 body: bodyRows,
                 theme: 'grid',
-                styles: { fontSize: 7, cellPadding: 1 }, 
-                headStyles: { fillColor: [63, 81, 181], fontSize: 7, halign: 'center', valign: 'middle' },
-                columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 10 }, 2: { cellWidth: 15 } }
+                styles: { fontSize: 7, cellPadding: 1, overflow: 'linebreak' }, // Letra chica
+                headStyles: { 
+                    fillColor: [63, 81, 181], 
+                    fontSize: 7, 
+                    halign: 'center',
+                    valign: 'middle'
+                },
+                columnStyles: {
+                    0: { cellWidth: 18 }, // Fecha
+                    1: { cellWidth: 10 }  // Hora
+                },
+                didDrawPage: function (data) {
+                    // Pie de página si es necesario
+                }
             });
 
             doc.save(`Reporte_${patient.replace(/\s+/g, "_")}.pdf`);
@@ -466,7 +499,7 @@
             } catch(e) { alert("Error: " + e.message); }
         }
 
-        // 8. INTERFAZ
+        // 8. INTERFAZ UI
         function refreshUI() {
             const selector = document.getElementById("patientSelector");
             const currentPatient = selector.value;
