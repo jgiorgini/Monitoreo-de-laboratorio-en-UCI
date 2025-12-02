@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v10.1 (Fixed)</title>
+    <title>Monitor UCI - v12.0 (Master Final)</title>
     
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     
@@ -41,8 +41,8 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v10.1</span></h1>
-                    <p class="text-slate-500 text-xs mt-0.5">Gestión Integral de Laboratorios</p>
+                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v12.0</span></h1>
+                    <p class="text-slate-500 text-xs mt-0.5">Sistema Integral de Laboratorios</p>
                 </div>
             </div>
             
@@ -108,14 +108,11 @@
                         <button onclick="copyHCLAB()" class="col-span-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
                             <span>📝</span> HCLAB
                         </button>
-                        <button onclick="downloadArgerichPDF()" class="col-span-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
-                            <span>🏥</span> PDF Arg
+                        <button onclick="downloadPDF()" class="col-span-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
+                            <span>📄</span> PDF
                         </button>
-                        <button onclick="downloadPDF()" class="col-span-1 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
-                            <span>📄</span> PDF Std
-                        </button>
-                        <button onclick="deleteSelected()" class="col-span-1 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
-                            <span>🗑️</span> Borrar
+                        <button onclick="deleteSelected()" class="col-span-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition mt-1">
+                            <span>🗑️</span> Borrar Seleccionados
                         </button>
                     </div>
                     <div class="mt-3 text-center">
@@ -176,40 +173,29 @@
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
 
-        // 2. CONSTANTES
+        // 2. PARÁMETROS
         const TARGET_PARAMS = ["Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "Glucosa", "Urea", "Creatinina", "Acido_Urico", "HbA1c", "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales", "CPK", "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "TSH", "Colesterol_Total", "LDL", "HDL", "Triglicéridos", "TP", "RIN", "KPTT", "aPTT"];
         
         const ABBR = {"Hematocrito": "Hto", "Hemoglobina": "Hb", "Leucocitos": "GB", "Plaquetas": "Plq", "Urea": "Urea", "Creatinina": "Crea", "Glucosa": "Glu", "HbA1c": "HbA1c", "AU": "AU", "Na": "Na", "K": "K", "Cl": "Cl", "Mg": "Mg", "Ca_Total": "Ca", "Ca_Ionizado": "Ca++", "Fosforo": "P", "BT": "BT", "BD": "BD", "AST_TGO": "GOT", "ALT_TGP": "GPT", "FAL": "FAL", "Albúmina": "Alb", "Prot": "Prot", "CPK": "CPK", "Col": "Col", "LDL": "LDL", "HDL": "HDL", "TG": "TG", "PCR": "PCR", "PCT": "PCT", "TSH": "TSH", "LAC": "LAC", "pH": "pH", "pCO2": "pCO2", "pO2": "pO2", "BIC": "BIC", "SatO2": "Sat", "TP": "TP", "RIN": "RIN", "KPTT": "KPTT", "aPTT": "KPTT"};
         
+        const NORM_MAP = {"Ácido Úrico": "AU", "ACIDO URICO": "AU", "Acido_Urico": "AU", "Bilirrubina_Total": "BT", "BILIRRUBINA_TOTAL": "BT", "Bilirrubina Total": "BT", "Bilirrubina_Directa": "BD", "Bilirrubina Directa": "BD", "Creatinquinasa": "CPK", "CREATINQUINASA": "CPK", "Fosfatasa_Alcalina": "FAL", "Proteinas_Totales": "Prot", "Colesterol_Total": "Col", "Triglicéridos": "TG", "Ácido Láctico": "LAC", "Lactato": "LAC", "Acido_Lactico": "LAC", "Bicarbonato": "BIC", "aPTT": "KPTT", "APTT": "KPTT", "KPTT": "KPTT", "Tiempo de Protrombina": "TP", "TP (Seg)": "TP"};
+        
         const CLINICAL_ORDER = ["Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas", "Urea", "Creatinina", "Glucosa", "HbA1c", "AU", "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot", "Col", "LDL", "HDL", "TG", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH", "CPK", "PCR", "PCT", "pH", "pCO2", "pO2", "BIC", "SatO2", "LAC", "TP", "RIN", "KPTT"];
+
+        // --- FILTRO DE SEGURIDAD FISIOLÓGICA ---
+        const SAFETY_RANGES = {
+            "K": { min: 1.0, max: 9.0 },       // Filtra errores de K=36
+            "Na": { min: 100, max: 180 },
+            "pH": { min: 6.5, max: 8.0 },
+            "Hb": { min: 2, max: 25 }
+        };
 
         let labData = {}; 
         let chartInstance = null;
 
-        // 3. HELPERS (Smart Value Vital)
-        function getSmartValue(params, key) {
-            // 1. Búsqueda Directa
-            if (params[key] !== undefined) return params[key];
-            
-            // 2. Búsqueda por etiqueta (Display Label)
-            const label = ABBR[key]; 
-            if (!label) return undefined;
-
-            // 3. Barrido Inverso: Buscar cualquier clave en 'params' que mapee a 'label'
-            // Ejemplo: Si params tiene "Bilirrubina Total" y label es "BT", buscamos qué clave de ABBR da "BT"
-            const possibleKeys = Object.keys(ABBR).filter(k => ABBR[k] === label);
-            for (const k of possibleKeys) {
-                if (params[k] !== undefined) return params[k];
-                // También buscar en minúsculas o variaciones comunes
-                if (params[k.toUpperCase()] !== undefined) return params[k.toUpperCase()];
-            }
-            
-            // 4. Barrido por similitud (último recurso)
-            for (const k in params) {
-                if (k.includes(label) || label.includes(k)) return params[k];
-            }
-
-            return undefined;
+        function showToast(msg, type="info") {
+            let bg = type==="error"?"#ef4444":type==="success"?"#10b981":"#3b82f6";
+            Toastify({ text: msg, duration: 3000, gravity: "top", position: "center", style: { background: bg, borderRadius: "8px" } }).showToast();
         }
 
         function formatDate(isoDate) {
@@ -217,22 +203,41 @@
             const [y, m, d] = isoDate.split("-");
             return `${d}/${m}/${y}`;
         }
-        
-        function showToast(msg, type="info") {
-            let bg = type==="error"?"#ef4444":type==="success"?"#10b981":"#3b82f6";
-            Toastify({ text: msg, duration: 3000, gravity: "top", position: "center", style: { background: bg, borderRadius: "8px" } }).showToast();
-        }
 
         function getCanonicalKey(dirtyKey) {
+            if (NORM_MAP[dirtyKey]) return NORM_MAP[dirtyKey];
             if (ABBR[dirtyKey]) return dirtyKey;
-            // Mapeos manuales de emergencia
-            if (dirtyKey.includes("Bilirrubina Total")) return "BT";
-            if (dirtyKey.includes("Bilirrubina Directa")) return "BD";
-            if (dirtyKey.includes("aPTT")) return "KPTT";
             return dirtyKey.substring(0, 3).toUpperCase();
         }
-        
+
         function getDisplayLabel(key) { return ABBR[key] || key; }
+
+        function getSmartValue(params, key) {
+            if (params[key] !== undefined) return params[key];
+            const longKey = Object.keys(ABBR).find(k => ABBR[k] === key);
+            if (longKey && params[longKey] !== undefined) return params[longKey];
+            return undefined;
+        }
+
+        function isValidValue(key, value) {
+            let num = parseFloat(value);
+            if (isNaN(num)) return true; 
+            let safeKey = null;
+            // Detectar clave canónica o corta
+            const label = getDisplayLabel(key);
+            if (label === 'K' || key === 'Potasio') safeKey = 'K';
+            if (label === 'Na' || key === 'Sodio') safeKey = 'Na';
+            if (label === 'pH') safeKey = 'pH';
+            if (label === 'Hb') safeKey = 'Hb';
+
+            if (safeKey && SAFETY_RANGES[safeKey]) {
+                if (num < SAFETY_RANGES[safeKey].min || num > SAFETY_RANGES[safeKey].max) {
+                    console.warn(`Valor inseguro bloqueado: ${key} = ${value}`);
+                    return false;
+                }
+            }
+            return true;
+        }
 
         function sortKeysClinically(keysSet) {
             return Array.from(keysSet).sort((a, b) => {
@@ -245,39 +250,7 @@
             });
         }
 
-        function getSelectedIds() {
-            return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id);
-        }
-        
-        function getExportSamples(p) {
-            const ids = getSelectedIds();
-            return ids.length > 0 ? labData[p].filter(s => ids.includes(s.id)) : labData[p];
-        }
-
-        // 4. FUNCIONES CORE
-        function setupPdf() {
-            const input = document.getElementById("pdfInput");
-            const textArea = document.getElementById("labInput");
-            input.addEventListener("change", async (e) => {
-                const file = e.target.files[0];
-                if(!file) return;
-                textArea.value = "⏳ Leyendo...";
-                if (!window.pdfjsLib) return showToast("Error Lib PDF", "error");
-                try {
-                    const buffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument(buffer).promise;
-                    let fullText = "";
-                    for(let i=1; i<=pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const textContent = await page.getTextContent();
-                        fullText += textContent.items.map(item => item.str).join(" ") + "\n";
-                    }
-                    textArea.value = fullText;
-                    showToast("PDF Cargado", "success");
-                } catch (error) { textArea.value = "Error: "+error.message; showToast("Error PDF", "error"); }
-            });
-        }
-
+        // 3. LISTENER
         function initRealTimeListener() {
             db.collection("muestras").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
                 labData = {}; 
@@ -290,71 +263,107 @@
             });
         }
 
+        // 4. LOGICA
         async function processAndUpload() {
             const files = document.getElementById('pdfInput').files;
             const apiKey = document.getElementById("apiKey").value.trim() || localStorage.getItem("my_openai_key_v1");
-            if (files.length === 0) return showToast("Seleccione PDF", "error");
+            
+            if (files.length === 0) return showToast("Seleccione archivos PDF", "error");
             if (!apiKey) { document.getElementById("configDetails").open = true; return showToast("Falta API Key", "error"); }
             localStorage.setItem("my_openai_key_v1", apiKey);
 
             const btn = document.getElementById("btnProcesarIA");
-            btn.disabled = true; btn.innerText = "Procesando...";
+            btn.disabled = true; btn.innerText = "Procesando Cola...";
             const txtArea = document.getElementById("labInput");
-
+            
             for (let i = 0; i < files.length; i++) {
-                txtArea.value = `>>> PROCESANDO ARCHIVO ${i+1}/${files.length}...\n`;
+                txtArea.value = `>>> PROCESANDO ARCHIVO ${i+1}/${files.length}: ${files[i].name}...\n`;
                 try {
-                    const buffer = await files[i].arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument(buffer).promise;
-                    let pdfText = "";
-                    for(let j=1; j<=pdf.numPages; j++){
-                         const p = await pdf.getPage(j);
-                         const c = await p.getTextContent();
-                         pdfText += c.items.map(item=>item.str).join(" ")+"\n";
-                    }
-                    
-                    // LLAMADA IA
-                    const prompt = `Medical Expert: Extract JSON.
-                    JSON: {"paciente": "NAME UPPERCASE", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "protocolo": "string", "parametros": {}}
-                    Targets: ${TARGET_PARAMS.join(", ")}. Rules: "aPTT"->"KPTT".
-                    Text: """${pdfText.substring(0, 12000)}"""`;
-
-                    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-                        method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0 })
-                    });
-                    const data = await res.json();
-                    const result = JSON.parse(data.choices[0].message.content.replace(/```json|```/g, "").trim());
-                    
-                    // GUARDAR
-                    if (!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
-                    if (!result.hora) result.hora = "12:00";
-                    const cleanParams = {};
-                    for (const k in result.parametros) {
-                        if (result.parametros[k] !== null) cleanParams[getCanonicalKey(k)] = result.parametros[k];
-                    }
-                    await db.collection("muestras").add({
-                        paciente: result.paciente, fecha: result.fecha, hora: result.hora,
-                        protocolo: result.protocolo || "", parametros: cleanParams,
-                        timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
-                        uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    txtArea.value += "✅ SUBIDA EXITOSA.\n";
-
-                } catch (e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
+                    const pdfText = await readPdfFile(files[i]);
+                    txtArea.value += "PDF Leído. Enviando a IA...\n";
+                    const extracted = await extractWithAI(pdfText, apiKey);
+                    txtArea.value += `IA OK. Paciente: ${extracted.paciente}. Subiendo...\n`;
+                    await uploadToFirebase(extracted);
+                    txtArea.value += "✅ SUBIDA EXITOSA.\n----------------\n";
+                } catch (e) {
+                    console.error(e);
+                    txtArea.value += `❌ ERROR en ${files[i].name}: ${e.message}\n----------------\n`;
+                }
             }
-            showToast("Proceso Terminado", "success");
+            showToast("Procesamiento finalizado", "success");
             btn.disabled = false; btn.innerText = "✨ Procesar Cola";
         }
 
-        // UI
+        async function readPdfFile(file) {
+            const buffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(buffer).promise;
+            let fullText = "";
+            for(let i=1; i<=pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                fullText += content.items.map(item => item.str).join(" ") + "\n";
+            }
+            return fullText;
+        }
+
+        async function extractWithAI(text, apiKey) {
+            const prompt = `Medical Expert: Extract JSON.
+            JSON: {"paciente": "NAME UPPERCASE", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "protocolo": "string", "parametros": {}}
+            Targets: ${TARGET_PARAMS.join(", ")}. 
+            IMPORTANT RULES: 
+            1. "aPTT" is "KPTT". "RIN" is "RIN". "Tiempo de Protrombina" is "TP".
+            2. "Creatinquinasa" is "CPK".
+            3. "Bilirrubina Total" is "BT", "Bilirrubina Directa" is "BD".
+            Text: """${text.substring(0, 15000)}"""`;
+
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0 })
+            });
+            const data = await response.json();
+            return JSON.parse(data.choices[0].message.content.replace(/```json|```/g, "").trim());
+        }
+
+        async function uploadToFirebase(result) {
+            if (!result.paciente || result.paciente === "DESCONOCIDO") throw new Error("Paciente no identificado");
+            if (!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
+            if (!result.hora) result.hora = "12:00";
+
+            const cleanParams = {};
+            for (const k in result.parametros) {
+                if (result.parametros[k] !== null) {
+                    const canonical = getCanonicalKey(k);
+                    // APLICAR FILTRO DE SEGURIDAD
+                    if (isValidValue(canonical, result.parametros[k])) {
+                        cleanParams[canonical] = result.parametros[k];
+                    }
+                }
+            }
+
+            await db.collection("muestras").add({
+                paciente: result.paciente, fecha: result.fecha, hora: result.hora,
+                protocolo: result.protocolo || "", parametros: cleanParams,
+                timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
+                uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        // UI & HELPERS
         function refreshUI() {
             const sel = document.getElementById("patientSelector");
             const curr = sel.value;
             sel.innerHTML = '<option value="">-- Seleccionar --</option>';
             Object.keys(labData).sort().forEach(p => sel.appendChild(new Option(p, p)));
             if(curr && labData[curr]) { sel.value = curr; loadPatientData(); }
-            else { document.querySelector("#uciTable tbody").innerHTML = ""; }
+            else { 
+                document.querySelector("#uciTable tbody").innerHTML = ""; 
+                if(chartInstance) { chartInstance.destroy(); chartInstance=null; }
+            }
+        }
+
+        function getSelectedIds() {
+            return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id);
         }
 
         function loadPatientData() {
@@ -382,14 +391,17 @@
             document.querySelector("#uciTable tbody").innerHTML = b;
 
             const pSel = document.getElementById("paramSelector");
-            const currP = pSel.value; pSel.innerHTML = "";
+            const currP = pSel.value;
+            pSel.innerHTML = "";
             sorted.forEach(k => pSel.appendChild(new Option(getDisplayLabel(k), k)));
             if(activeKeys.has(currP)) pSel.value = currP;
             updateGraph();
         }
 
-        function toggleAll(source) { document.querySelectorAll('.row-select').forEach(cb => cb.checked = source.checked); }
-        
+        function toggleAll(source) {
+            document.querySelectorAll('.row-select').forEach(cb => cb.checked = source.checked);
+        }
+
         function updateGraph() {
             const p = document.getElementById("patientSelector").value;
             const param = document.getElementById("paramSelector").value;
@@ -398,7 +410,8 @@
             if (!p || !param) return;
             const points = labData[p].map(s => {
                  const v = getSmartValue(s.parametros, param);
-                 return v ? {x: formatDate(s.fecha)+" "+s.hora, y: v} : null;
+                 const n = parseFloat(v);
+                 return (!isNaN(n)) ? {x: formatDate(s.fecha)+" "+s.hora, y: n} : null;
             }).filter(pt => pt !== null);
             
             chartInstance = new Chart(ctx, {
@@ -408,27 +421,51 @@
             });
         }
 
-        // EXPORTS
+        function getExportSamples(p) {
+            const ids = getSelectedIds();
+            return ids.length > 0 ? labData[p].filter(s => ids.includes(s.id)) : labData[p];
+        }
+
+        // WORD EXPORT
         function copyWordTable() {
             const p = document.getElementById("patientSelector").value;
             if(!p) return;
+            
             const samples = getExportSamples(p);
-            let html = "";
+            if(samples.length === 0) return showToast("No hay datos", "error");
+
+            let finalHTML = "";
+            
             samples.forEach(s => {
                 const par = s.parametros || {};
                 const get = (k) => getSmartValue(par, k) ?? "-";
-                html += `
+
+                const hto_hb = `${get('Hto')} / ${get('Hb')}`;
+                const bili = `${get('BT')} / ${get('BD')}`;
+                const wbc = get('GB');
+                const enz = `${get('GOT')} / ${get('GPT')} / ${get('FAL')}`;
+                const plaq = get('Plq');
+                const prot = `${get('Prot')} / ${get('Alb')}`;
+                const ren = `${get('Urea')} / ${get('Crea')}`;
+                const glu = get('Glu');
+                const coag = `${get('TP')} / ${get('KPTT')} / ${get('RIN')}`;
+                const iono = `${get('Na')} / ${get('K')} / ${get('Cl')}`;
+                const eab = `${get('pH')} / ${get('pCO2')} / ${get('pO2')} / ${get('LAC')} / ${get('BIC')}`;
+
+                finalHTML += `
                     <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
                         <tr><td colspan="4" style="background-color: #f0f0f0; font-weight: bold; text-align: center;">LABORATORIO ${formatDate(s.fecha)} (${s.hora})</td></tr>
-                        <tr><td style="font-weight: bold; width: 20%;">Hto/Hb</td><td style="width: 30%;">${get('Hto')}/${get('Hb')}</td><td style="font-weight: bold; width: 20%;">Bil T/D</td><td style="width: 30%;">${get('BT')}/${get('BD')}</td></tr>
-                        <tr><td style="font-weight: bold;">Gl. blancos</td><td>${get('GB')}</td><td style="font-weight: bold;">GOT/GPT/FAL</td><td>${get('GOT')}/${get('GPT')}/${get('FAL')}</td></tr>
-                        <tr><td style="font-weight: bold;">Plaquetas</td><td>${get('Plq')}</td><td style="font-weight: bold;">Prot/Alb</td><td>${get('Prot')}/${get('Alb')}</td></tr>
-                        <tr><td style="font-weight: bold;">Urea / Crea</td><td>${get('Urea')}/${get('Crea')}</td><td style="font-weight: bold;">Glucemia</td><td>${get('Glu')}</td></tr>
-                        <tr><td style="font-weight: bold;">TP/KPTT/RIN</td><td>${get('TP')}/${get('KPTT')}/${get('RIN')}</td><td style="font-weight: bold;">IONOGRAMA</td><td>${get('Na')}/${get('K')}/${get('Cl')}</td></tr>
-                        <tr><td style="font-weight: bold;">EAB + LAC</td><td colspan="3">${get('pH')}/${get('pCO2')}/${get('pO2')}/${get('LAC')}/${get('BIC')}</td></tr>
-                    </table><br>`;
+                        <tr><td style="font-weight: bold; width: 20%;">Hto/Hb</td><td style="width: 30%;">${hto_hb}</td><td style="font-weight: bold; width: 20%;">Bil T/D</td><td style="width: 30%;">${bili}</td></tr>
+                        <tr><td style="font-weight: bold;">Gl. blancos</td><td>${wbc}</td><td style="font-weight: bold;">GOT/GPT/FAL</td><td>${enz}</td></tr>
+                        <tr><td style="font-weight: bold;">Plaquetas</td><td>${plaq}</td><td style="font-weight: bold;">Prot/Alb</td><td>${prot}</td></tr>
+                        <tr><td style="font-weight: bold;">Urea / Crea</td><td>${ren}</td><td style="font-weight: bold;">Glucemia</td><td>${glu}</td></tr>
+                        <tr><td style="font-weight: bold;">TP/KPTT/RIN</td><td>${coag}</td><td style="font-weight: bold;">IONOGRAMA</td><td>${iono}</td></tr>
+                        <tr><td style="font-weight: bold;">EAB + LAC</td><td colspan="3">${eab}</td></tr>
+                    </table><br>
+                `;
             });
-            const blob = new Blob([html], { type: 'text/html' });
+
+            const blob = new Blob([finalHTML], { type: 'text/html' });
             navigator.clipboard.write([new ClipboardItem({'text/html': blob})]).then(() => showToast("Tablas Copiadas", "success"));
         }
 
@@ -438,43 +475,15 @@
             const samples = getExportSamples(p);
             let text = "";
             samples.forEach(samp => {
+                const params = samp.parametros || {};
                 let parts = [];
                 CLINICAL_ORDER.forEach(k => { 
-                    const val = getSmartValue(samp.parametros||{}, k);
-                    if(val) parts.push(`${getDisplayLabel(k)} ${val}`);
+                    const val = getSmartValue(params, k);
+                    if(val !== undefined) parts.push(`${getDisplayLabel(k)} ${val}`); 
                 });
                 text += `LAB ${formatDate(samp.fecha)}: ` + parts.join(", ") + "\n\n";
             });
             navigator.clipboard.writeText(text.trim()).then(()=>showToast("Copiado HCLAB", "success"));
-        }
-
-        function downloadArgerichPDF() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p) return;
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.text(`Paciente: ${p}`, 10, 10);
-            const samples = getExportSamples(p);
-            let y = 20;
-            samples.forEach(s => {
-                const par = s.parametros || {};
-                const get = (k) => getSmartValue(par, k) ?? "-";
-                doc.autoTable({ 
-                    startY: y, 
-                    head: [[{ content: `LAB ${formatDate(s.fecha)}`, colSpan: 4, styles: {halign: 'center', fillColor: [220, 220, 220], textColor: 0} }]], 
-                    body: [
-                        [`Hto/Hb: ${get('Hto')}/${get('Hb')}`, `Bil T/D: ${get('BT')}/${get('BD')}`],
-                        [`GB: ${get('GB')}`, `Enz: ${get('GOT')}/${get('GPT')}/${get('FAL')}`],
-                        [`Plq: ${get('Plq')}`, `Prot/Alb: ${get('Prot')}/${get('Alb')}`],
-                        [`Renal: ${get('Urea')}/${get('Crea')}`, `Glu: ${get('Glu')}`],
-                        [`Coag: ${get('TP')}/${get('KPTT')}/${get('RIN')}`, `Iono: ${get('Na')}/${get('K')}/${get('Cl')}`],
-                        [`EAB: ${get('pH')}/${get('pCO2')}/${get('pO2')}/${get('LAC')}/${get('BIC')}`, ""]
-                    ],
-                    theme: 'grid'
-                });
-                y = doc.lastAutoTable.finalY + 10;
-            });
-            doc.save("Argerich.pdf");
         }
 
         function downloadPDF() {
@@ -493,11 +502,14 @@
                 return r;
             });
             doc.setFontSize(14); doc.text(`Historial: ${p}`, 14, 15);
-            doc.autoTable({ startY: 25, head: [head], body: body, theme: 'grid', styles: { fontSize: 7, halign: 'center' }, headStyles: { fillColor: [59, 130, 246] } });
+            doc.autoTable({ 
+                startY: 25, head: [head], body: body, 
+                theme: 'grid', styles: { fontSize: 7, halign: 'center' }, 
+                headStyles: { fillColor: [59, 130, 246] } 
+            });
             doc.save(`Reporte_${p}.pdf`);
         }
 
-        // GESTIÓN
         async function deleteSelected() {
             const ids = getSelectedIds();
             if(!ids.length) return showToast("Seleccione filas", "error");
@@ -510,7 +522,7 @@
         async function mergeSelectedLabs() {
             const p = document.getElementById("patientSelector").value;
             const ids = getSelectedIds();
-            if(!p || ids.length < 2) return showToast("Seleccione 2+ filas", "error");
+            if(!p || ids.length < 2) return showToast("Seleccione al menos 2 filas", "error");
             const samples = labData[p].filter(s => ids.includes(s.id));
             let master = samples[0];
             let newParams = { ...master.parametros };
@@ -521,7 +533,6 @@
             await batch.commit(); showToast("Unificado", "success");
         }
 
-        // MODALS
         function openMergePatientModal() { document.getElementById('mergePatientModal').classList.remove('opacity-0', 'pointer-events-none'); const names = Object.keys(labData).sort(); const s1=document.getElementById('mergeTarget'), s2=document.getElementById('mergeSource'); s1.innerHTML=""; s2.innerHTML=""; names.forEach(n=>{ s1.add(new Option(n,n)); s2.add(new Option(n,n)); }); }
         function closeMergeModal() { document.getElementById('mergePatientModal').classList.add('opacity-0', 'pointer-events-none'); }
         async function executeMergePatients() {
@@ -541,7 +552,27 @@
             const k = localStorage.getItem("my_openai_key_v1");
             if(k) document.getElementById("apiKey").value = k;
             initRealTimeListener();
-            setupPdf();
+            // PDF Listener (LEGACY SAFE)
+            const input=document.getElementById("pdfInput");
+            const textArea=document.getElementById("labInput");
+            input.addEventListener("change",async(e)=>{
+                const file=e.target.files[0]; if(!file) return;
+                textArea.value="⏳ Leyendo...";
+                if(!window.pdfjsLib) return showToast("Error Lib PDF","error");
+                try{
+                    const buffer=await file.arrayBuffer();
+                    const pdf=await pdfjsLib.getDocument(buffer).promise;
+                    let txt="";
+                    for(let i=1; i<=pdf.numPages; i++){
+                        const p=await pdf.getPage(i);
+                        const c=await p.getTextContent();
+                        txt+=c.items.map(item=>item.str).join(" ")+"\n";
+                    }
+                    textArea.value=txt;
+                    showToast("PDF Cargado","success");
+                }catch(err){ textArea.value="Error: "+err.message; }
+            });
+            
             document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
             document.getElementById("patientSelector").addEventListener("change", loadPatientData);
             document.getElementById("paramSelector").addEventListener("change", updateGraph);
