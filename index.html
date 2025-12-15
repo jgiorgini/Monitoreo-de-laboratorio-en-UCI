@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v18.0 (Multi-Muestra)</title>
+    <title>Monitor UCI - v19.0 (Multi-Muestra Estable)</title>
     
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     
@@ -28,7 +28,6 @@
         .glass-panel { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-radius: 0.75rem; }
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow: hidden; }
-        /* Checkbox más grande y visible */
         .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #dc2626; border: 2px solid #cbd5e1; }
     </style>
 </head>
@@ -42,7 +41,7 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v18.0</span></h1>
+                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v19.0</span></h1>
                     <p class="text-slate-500 text-xs mt-0.5">Gestión Integral de Laboratorios (Multi-Muestra)</p>
                 </div>
             </div>
@@ -129,19 +128,14 @@
                 <h3 class="text-sm font-bold text-slate-500 mb-4">Tendencia Evolutiva</h3>
                 <div class="h-64 w-full">
                     <canvas id="evolutionChart"></canvas>
-                </div>
             </div>
-        </section>
+        </div>
 
         <section class="glass-panel overflow-hidden">
             <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                 <div class="flex items-center gap-4">
                     <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
                     <span class="text-xs text-slate-400 hidden md:inline">Selecciona casillas para acciones grupales</span>
-                </div>
-                <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">
-                    <span>👁️</span> Columnas
-                </button>
             </div>
             <div class="table-container">
                 <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
@@ -163,7 +157,6 @@
                 <div class="flex justify-end gap-3 mt-6">
                     <button onclick="closeModal('mergePatientModal')" class="px-4 py-2 text-slate-500 text-sm hover:bg-slate-100 rounded">Cancelar</button>
                     <button onclick="executeMergePatients()" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded hover:bg-indigo-700">Fusionar</button>
-                </div>
             </div>
         </div>
     </div>
@@ -185,10 +178,6 @@
                 <button onclick="applyColumnFilter()" class="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Aplicar</button>
             </div>
         </div>
-        <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="applyColumnFilter()" class="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Aplicar</button>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -200,8 +189,8 @@
         // 2. CONFIG - VARIABLES ACTUALIZADAS Y NUEVA VARIABLE BEb
         const TARGET_PARAMS = ["Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "Glucosa", "Urea", "Creatinina", "Acido_Urico", "HbA1c", "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales", "CPK", "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "BEb", "TSH", "Colesterol_Total", "LDL", "HDL", "Triglicéridos", "TP", "RIN", "KPTT", "aPTT"];
         const ABBR = {"Hematocrito":"Hto", "Hemoglobina":"Hb", "Leucocitos":"GB", "Plaquetas":"Plq", "Urea":"Urea", "Creatinina":"Crea", "Glucosa":"Glu", "HbA1c":"HbA1c", "AU":"AU", "Na":"Na", "K":"K", "Cl":"Cl", "Mg":"Mg", "Ca_Total":"Ca", "Ca_Ionizado":"Ca++", "Fosforo":"P", "BT":"BT", "BD":"BD", "AST_TGO":"GOT", "ALT_TGP":"GPT", "FAL":"FAL", "Albúmina":"Alb", "Prot":"Prot", "CPK":"CPK", "Col":"Col", "LDL":"LDL", "HDL":"HDL", "TG":"TG", "PCR":"PCR", "PCT":"PCT", "TSH":"TSH", "LAC":"LAC", "pH":"pH", "pCO2":"pCO2", "pO2":"pO2", "Bicarbonato":"BIC", "SatO2":"Sat", "BEb":"BEb", "TP":"TP", "RIN":"RIN", "KPTT":"KPTT", "aPTT":"KPTT"};
-        const NORM_MAP = {"Ácido Úrico":"AU", "ACIDO URICO":"AU", "Acido_Urico":"AU", "Bilirrubina_Total":"BT", "BILIRRUBINA_TOTAL":"BT", "Bilirrubina Total":"BT", "Bilirrubina_Directa":"BD", "Bilirrubina Directa":"BD", "Creatinquinasa":"CPK", "CREATINQUINASA":"CPK", "Fosfatasa_Alcalina":"FAL", "Proteinas_Totales":"Prot", "Colesterol_Total":"Col", "Triglicéridos":"TG", "Ácido Láctico":"LAC", "Lactato":"LAC", "Acido_Lactico":"LAC", "Bicarbonato":"BIC", "aPTT":"KPTT", "APTT":"KPTT", "KPTT":"KPTT", "Tiempo de Protrombina":"TP", "TP (Seg)":"TP", "BASE_EXCESS":"BEb", "BEb":"BEb"}; // NORM_MAP actualizado con BEb
-        const CLINICAL_ORDER = ["Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas", "Urea", "Creatinina", "Glucosa", "HbA1c", "AU", "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot", "Col", "LDL", "HDL", "TG", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH", "CPK", "PCR", "PCT", "pH", "pCO2", "pO2", "BEb", "BIC", "SatO2", "LAC", "TP", "RIN", "KPTT"]; // CLINICAL_ORDER actualizado con BEb
+        const NORM_MAP = {"Ácido Úrico":"AU", "ACIDO URICO":"AU", "Acido_Urico":"AU", "Bilirrubina_Total":"BT", "BILIRRUBINA_TOTAL":"BT", "Bilirrubina Total":"BT", "Bilirrubina_Directa":"BD", "Bilirrubina Directa":"BD", "Creatinquinasa":"CPK", "CREATINQUINASA":"CPK", "Fosfatasa_Alcalina":"FAL", "Proteinas_Totales":"Prot", "Colesterol_Total":"Col", "Triglicéridos":"TG", "Ácido Láctico":"LAC", "Lactato":"LAC", "Acido_Lactico":"LAC", "Bicarbonato":"BIC", "aPTT":"KPTT", "APTT":"KPTT", "KPTT":"KPTT", "Tiempo de Protrombina":"TP", "TP (Seg)":"TP", "BASE_EXCESS":"BEb", "BEb":"BEb"}; 
+        const CLINICAL_ORDER = ["Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas", "Urea", "Creatinina", "Glucosa", "HbA1c", "AU", "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot", "Col", "LDL", "HDL", "TG", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH", "CPK", "PCR", "PCT", "pH", "pCO2", "pO2", "BEb", "BIC", "SatO2", "LAC", "TP", "RIN", "KPTT"]; 
         const SAFETY_RANGES = { "K": { min: 1.0, max: 9.0 }, "Na": { min: 100, max: 180 }, "pH": { min: 6.5, max: 8.0 }, "Hb": { min: 2, max: 25 } };
 
         let labData = {}; 
@@ -216,20 +205,19 @@
 
         function formatDate(isoDate) {
             if(!isoDate) return "-";
-            const [y, m, d] = isoDate.split("-");
-            return `${d}/${m}/${y}`;
+            const parts = isoDate.split('-');
+            if (parts.length === 3) {
+                // Asume YYYY-MM-DD
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return isoDate; 
         }
 
         function getCanonicalKey(dirtyKey) {
-            // Asegurar que las claves entrantes estén en mayúsculas para NORM_MAP
-            const cleanKey = dirtyKey.toUpperCase().replace(/\s/g, '_');
-            // Mapear a la clave estándar (ej: ACIDO_URICO -> AU)
+            const cleanKey = dirtyKey.toUpperCase().replace(/\s/g, '_').replace(/-/g, '_');
             if (NORM_MAP[cleanKey]) return NORM_MAP[cleanKey];
-            // Si ya es una clave estándar (ej: Na), se devuelve
             if (TARGET_PARAMS.includes(dirtyKey)) return dirtyKey;
-            // Opción de fallback si el key no se mapea pero existe en TARGET_PARAMS
             if (TARGET_PARAMS.includes(cleanKey)) return cleanKey;
-            
             return dirtyKey;
         }
 
@@ -239,6 +227,9 @@
             if (params[key] !== undefined) return params[key];
             const longKey = Object.keys(ABBR).find(k => ABBR[k] === key);
             if (longKey && params[longKey] !== undefined) return params[longKey];
+            // Intentar con la clave en mayúsculas
+            const upperKey = key.toUpperCase();
+            if (params[upperKey] !== undefined) return params[upperKey];
             return undefined;
         }
 
@@ -250,7 +241,7 @@
             if (label === 'K' || key === 'Potasio') safeKey = 'K';
             if (label === 'Na' || key === 'Sodio') safeKey = 'Na';
             if (label === 'pH') safeKey = 'pH';
-            if (label === 'Hb') safeKey = 'Hb';
+            if (label === 'Hb' || key === 'Hemoglobina') safeKey = 'Hb';
             if (safeKey && SAFETY_RANGES[safeKey]) {
                 if (num < SAFETY_RANGES[safeKey].min || num > SAFETY_RANGES[safeKey].max) return false;
             }
@@ -278,7 +269,6 @@
         }
 
         // --- CORE FUNCTIONS ---
-        // MODIFICADA PARA ACEPTAR ARRAY DE MUESTRAS
         async function processAndUpload() {
             const files = document.getElementById('pdfInput').files;
             const rawText = document.getElementById("labInput").value.trim();
@@ -291,7 +281,6 @@
             const btn = document.getElementById("btnProcesarIA");
             btn.disabled = true; btn.innerText = "Procesando...";
             
-            // Colección de todas las muestras extraídas
             let allSamples = [];
 
             // 1. PROCESAMIENTO DE TEXTO MANUAL
@@ -308,19 +297,19 @@
                     try {
                         const pdfText = await readPdfFile(files[i]);
                         txtArea.value += "PDF Leído. Enviando a IA...\n";
-                        const extractedArray = await extractWithAI(pdfText, apiKey);
-                        // Asegurarse de que el resultado de extractWithAI es un array
+                        
+                        const extractedArray = await extractWithAI(pdfText, apiKey);
+                        // Asegurar que el resultado de extractWithAI es un array
                         if (Array.isArray(extractedArray)) {
                             allSamples.push(...extractedArray);
                         } else if (extractedArray) {
-                            // En caso de que la IA devuelva solo un objeto
                             allSamples.push(extractedArray); 
                         }
 
-                        txtArea.value += `Muestras detectadas: ${Array.isArray(extractedArray) ? extractedArray.length : 1}...\n`;
+                        txtArea.value += `Muestras detectadas en el PDF: ${Array.isArray(extractedArray) ? extractedArray.length : 1}...\n`;
                     } catch (e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
                 }
-                document.getElementById("pdfInput").value = null; // Limpiar input file
+                document.getElementById("pdfInput").value = null; 
             }
 
             // 3. SUBIR TODAS LAS MUESTRAS DETECTADAS
@@ -330,7 +319,8 @@
                     await uploadToFirebase(sample);
                     uploadCount++;
                 } catch (e) {
-                    showToast(`Error subiendo ${sample.paciente}: ${e.message}`, "error");
+                    // Este error ya se maneja en uploadToFirebase con el throw, solo lo mostramos
+                    txtArea.value += `❌ ERROR SUBIDA ${sample.paciente} ${sample.fecha}: ${e.message}\n`; 
                 }
             }
 
@@ -358,26 +348,29 @@
 
         // MODIFICADA PARA PEDIR UN ARRAY DE MUESTRAS
         async function extractWithAI(text, apiKey) {
-            const systemInstruction = `Eres un experto médico. Tu tarea es extraer la información completa de laboratorios del texto proporcionado. El texto puede contener múltiples muestras de diferentes fechas.`;
+            const systemInstruction = `You are a meticulous Medical Expert. Your critical task is to extract all distinct laboratory samples from the provided text. The text, possibly from a merged PDF, may contain MULTIPLE samples with different dates, times, or protocols.`;
             const prompt = `
-                **OUTPUT FORMATO CRÍTICO:** Debes retornar un ARRAY de objetos JSON. Cada objeto en el array corresponde a una muestra única de laboratorio (identificada por su fecha/hora/protocolo). Si solo encuentras una muestra, devuelve un array con ese único objeto.
+                **CRITICAL OUTPUT FORMAT:** Return an ARRAY of JSON objects. Each object must represent a single, distinct laboratory sample (identified by a unique date, time, or protocol). If only one sample is found, return an array containing that single object.
 
-                **FORMATO DE CADA OBJETO:**
-                {
-                  "paciente": "NOMBRE COMPLETO EN MAYÚSCULAS",
-                  "fecha": "YYYY-MM-DD",
-                  "hora": "HH:MM",
-                  "protocolo": "string",
-                  "parametros": { [clave_canonizada]: valor_numerico }
-                }
+                **OBJECT STRUCTURE:**
+                [
+                  {
+                    "paciente": "FULL NAME UPPERCASE",
+                    "fecha": "YYYY-MM-DD",
+                    "hora": "HH:MM",
+                    "protocolo": "string",
+                    "parametros": { "[Canonical_Key]": value_float } 
+                  },
+                  // ... more samples here if detected ...
+                ]
 
-                **REGLAS DE EXTRACCIÓN Y CANONIZACIÓN:**
-                1. Extrae TODOS los parámetros bioquímicos reconocibles del texto.
-                2. Usa coma o punto decimal según lo detectado, pero prioriza la conversión a punto decimal para JS.
-                3. **Canoniza las claves:** Por ejemplo, "CPK", "KPTT", "HbA1c", "Na".
-                4. **Parámetros a buscar (extensiva):** ${TARGET_PARAMS.join(", ")}. Incluye TGO/GOT, TGP/GPT, FAL, BEb.
+                **EXTRACTION RULES:**
+                1. Extract ALL biochemical parameters found.
+                2. Convert all values to FLOATs. If the AI detects a comma, it must convert it to a dot (e.g., 1,60 -> 1.6).
+                3. **Canonization:** Use the provided canonical keys for parameters (e.g., "Hemoglobina", "Na", "KPTT", "BEb").
+                4. **Target Parameters (Extensive list):** ${TARGET_PARAMS.join(", ")}.
 
-                **TEXTO A PROCESAR:**
+                **TEXT TO PROCESS:**
                 """
                 ${text.substring(0, 30000)}
                 """
@@ -391,23 +384,48 @@
                         { role: "system", content: systemInstruction },
                         { role: "user", content: prompt }
                     ], 
-                    temperature: 0.1 // Baja temperatura para mejor adherencia al formato JSON
+                    temperature: 0.1, 
+                    response_format: { type: "json_object" } // Asegurar el formato JSON
                 })
             });
             
             const data = await response.json();
             if (!data.choices || data.choices.length === 0) throw new Error("Respuesta vacía de la IA.");
             
-            const rawJsonText = data.choices[0].message.content.replace(/```json|```/g, "").trim();
-            const extractedArray = JSON.parse(rawJsonText);
+            let rawJsonText = data.choices[0].message.content.replace(/```json|```/g, "").trim();
             
-            // Asegurarse de que el resultado sea un array antes de devolverlo
-            return Array.isArray(extractedArray) ? extractedArray : (extractedArray ? [extractedArray] : []);
+            // La IA puede devolver un objeto contenedor si se le pide 'json_object'
+            // Intentamos parsear directamente. Si falla, asumimos que puede haber un error de estructura y devolvemos el array vacío
+            try {
+                const parsedResult = JSON.parse(rawJsonText);
+                
+                // Si el resultado es directamente un array, lo devolvemos
+                if (Array.isArray(parsedResult)) {
+                    return parsedResult;
+                }
+                
+                // Si el resultado es un objeto contenedor (ej: {"samples": [...]}), intentamos extraer el array
+                const samplesArray = parsedResult.samples || parsedResult.muestras || parsedResult.laboratorios;
+                if (Array.isArray(samplesArray)) {
+                    return samplesArray;
+                }
+                
+                // Si es un objeto simple (una sola muestra), lo envolvemos en un array
+                if (typeof parsedResult === 'object' && parsedResult !== null && parsedResult.paciente) {
+                    return [parsedResult];
+                }
+
+                throw new Error("Formato JSON de IA irreconocible (no es Array ni objeto de muestra).");
+
+            } catch (e) {
+                // Si el JSON.parse falla, devolvemos un error más descriptivo
+                throw new Error(`Error de parsing JSON de la IA: ${e.message}. Texto recibido: ${rawJsonText.substring(0, 500)}`);
+            }
         }
 
         async function uploadToFirebase(result) {
             // Pre-procesamiento de la muestra individual antes de subir
-            if (!result.paciente || result.paciente === "DESCONOCIDO") throw new Error("Paciente no identificado");
+            if (!result.paciente || result.paciente === "DESCONOCIDO" || typeof result.paciente !== 'string') throw new Error("Paciente no identificado/inválido.");
             if (!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
             if (!result.hora) result.hora = "12:00";
             
@@ -415,10 +433,20 @@
             for (const k in result.parametros) {
                 if (result.parametros[k] !== null) {
                     const canonical = getCanonicalKey(k);
-                    if (isValidValue(canonical, result.parametros[k])) cleanParams[canonical] = parseFloat(result.parametros[k]);
+                    // Convertir el valor a float de forma segura
+                    let val = result.parametros[k];
+                    if (typeof val === 'string') {
+                        val = val.replace(',', '.'); // Asegurar punto decimal
+                    }
+                    const numVal = parseFloat(val);
+
+                    if (isValidValue(canonical, numVal)) cleanParams[canonical] = numVal;
                 }
             }
             if (Object.keys(cleanParams).length === 0) throw new Error("No se extrajeron parámetros válidos.");
+
+            // Corregir paciente a mayúsculas y espacios simples
+            result.paciente = result.paciente.toUpperCase().trim().replace(/\s{2,}/g, ' ');
 
             // Verificar duplicados antes de subir
             const patientSamples = labData[result.paciente] || [];
@@ -444,8 +472,10 @@
                 labData = {}; 
                 snapshot.forEach((doc) => {
                     const data = doc.data();
-                    if (!labData[data.paciente]) labData[data.paciente] = [];
-                    labData[data.paciente].push({ ...data, id: doc.id });
+                    // Limpieza de nombre de paciente al cargar
+                    const patientName = data.paciente.toUpperCase().trim().replace(/\s{2,}/g, ' ');
+                    if (!labData[patientName]) labData[patientName] = [];
+                    labData[patientName].push({ ...data, paciente: patientName, id: doc.id });
                 });
                 refreshUI();
             });
@@ -457,12 +487,22 @@
             sel.innerHTML = '<option value="">-- Seleccionar --</option>';
             const sortedPatients = Object.keys(labData).sort();
             sortedPatients.forEach(p => sel.appendChild(new Option(p, p)));
-            if(curr && labData[curr]) { sel.value = curr; loadPatientData(); }
-            else if(sortedPatients.length > 0) { // Cargar el primer paciente si hay datos y no hay selección previa
-                sel.value = sortedPatients[0];
-                loadPatientData();
+            
+            let selectedPatient = curr;
+            if(!curr || !labData[curr]) {
+                if (sortedPatients.length > 0) {
+                    selectedPatient = sortedPatients[0];
+                } else {
+                    document.querySelector("#uciTable tbody").innerHTML = "";
+                    if (chartInstance) chartInstance.destroy();
+                    return;
+                }
             }
-            else { document.querySelector("#uciTable tbody").innerHTML = ""; }
+
+            if(labData[selectedPatient]) { 
+                sel.value = selectedPatient; 
+                loadPatientData(); 
+            }
         }
 
         function loadPatientData() {
@@ -470,11 +510,11 @@
             if(!p || !labData[p]) {
                 document.querySelector("#uciTable tbody").innerHTML = "";
                 document.querySelector("#uciTable thead").innerHTML = "";
+                if (chartInstance) chartInstance.destroy();
                 return;
             }
             const samples = labData[p];
             
-            // Recalcular parámetros visibles y selector de parámetros
             loadParamSelector();
 
             // Usar solo las columnas que están en CLINICAL_ORDER y visibles
@@ -559,17 +599,17 @@
                 const par = s.parametros || {};
                 const get = (k) => getSmartValue(par, k) ?? "-";
                 // ARGERICH GRID EXACTO
-                const hto_hb = `${get('Hto')} / ${get('Hb')}`;
+                const hto_hb = `${get('Hematocrito')} / ${get('Hemoglobina')}`;
                 const bili = `${get('BT')} / ${get('BD')}`;
-                const wbc = get('Leucocitos'); // Usar Leucocitos que es la clave canonizada
+                const wbc = get('Leucocitos'); 
                 const enz = `${get('AST_TGO')} / ${get('ALT_TGP')} / ${get('Fosfatasa_Alcalina')}`;
-                const plaq = get('Plaquetas'); // Usar Plaquetas
+                const plaq = get('Plaquetas'); 
                 const prot = `${get('Proteinas_Totales')} / ${get('Albúmina')}`;
                 const ren = `${get('Urea')} / ${get('Creatinina')}`;
                 const glu = get('Glucosa');
                 const coag = `${get('TP')} / ${get('KPTT')} / ${get('RIN')}`;
                 const iono = `${get('Na')} / ${get('K')} / ${get('Cl')}`;
-                const eab = `${get('pH')} / ${get('pCO2')} / ${get('pO2')} / ${get('Lactato')} / ${get('Bicarbonato')} / ${get('SatO2')}`; // Usar Lactato y Bicarbonato (claves largas)
+                const eab = `${get('pH')} / ${get('pCO2')} / ${get('pO2')} / ${get('Lactato')} / ${get('Bicarbonato')} / ${get('SatO2')}`; 
 
                 finalHTML += `
                     <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
@@ -583,7 +623,7 @@
                     </table><br>`;
             });
             const blob = new Blob([finalHTML], { type: 'text/html' });
-            // Usamos un div temporal para copiar el HTML
+            
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = finalHTML;
             document.body.appendChild(tempDiv);
@@ -605,7 +645,6 @@
             let text = "";
             samples.forEach(samp => {
                 let parts = [];
-                // Respetar filtro de columnas
                 const visibleSorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
                 visibleSorted.forEach(k => { 
                     const val = getSmartValue(samp.parametros||{}, k);
@@ -692,15 +731,18 @@
             const input=document.getElementById("pdfInput");
             const textArea=document.getElementById("labInput");
             input.addEventListener("change",async(e)=>{
-                const file=e.target.files[0]; if(!file)return;
+                const files=e.target.files; if(files.length === 0) return;
                 textArea.value="⏳ Leyendo...";
                 try{
-                    const buffer=await file.arrayBuffer();
-                    // Utilizamos window.pdfjsLib.getDocument para asegurar compatibilidad
-                    const pdf=await window.pdfjsLib.getDocument({data: buffer}).promise;
-                    let t=""; for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i), c=await p.getTextContent(); t+=c.items.map(x=>x.str).join(" ")+"\n";}
-                    textArea.value=t; showToast("PDF Leído","success");
-                }catch(err){ textArea.value="Error: "+err.message; }
+                    let fullText = "";
+                    for (let i = 0; i < files.length; i++) {
+                        textArea.value = `⏳ Leyendo ${files[i].name}...`;
+                        const buffer=await files[i].arrayBuffer();
+                        const pdf=await window.pdfjsLib.getDocument({data: buffer}).promise;
+                        for(let j=1;j<=pdf.numPages;j++){const p=await pdf.getPage(j), c=await p.getTextContent(); fullText+=c.items.map(x=>x.str).join(" ")+"\n";}
+                    }
+                    textArea.value=fullText; showToast("PDF(s) Leído(s)","success");
+                }catch(err){ textArea.value="Error: "+err.message; showToast("Error al leer PDF","error"); }
             });
             // Buttons
             document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
