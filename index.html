@@ -1,595 +1,713 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v17.0 (Smart Delete)</title>
-    
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor UCI - v18.0 (Multi-Muestra)</title>
+    
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script>window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";</script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
-        .table-container { max-height: 600px; overflow-y: auto; scrollbar-width: thin; }
-        thead th { position: sticky; top: 0; z-index: 20; background-color: #f1f5f9; }
-        .glass-panel { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-radius: 0.75rem; }
-        .modal { transition: opacity 0.25s ease; }
-        body.modal-active { overflow: hidden; }
-        /* Checkbox más grande y visible */
-        .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #dc2626; border: 2px solid #cbd5e1; }
-    </style>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        .table-container { max-height: 600px; overflow-y: auto; scrollbar-width: thin; }
+        thead th { position: sticky; top: 0; z-index: 20; background-color: #f1f5f9; }
+        .glass-panel { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-radius: 0.75rem; }
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
+        /* Checkbox más grande y visible */
+        .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #dc2626; border: 2px solid #cbd5e1; }
+    </style>
 </head>
 <body class="p-4 md:p-6 lg:p-8">
 
-    <div class="max-w-7xl mx-auto space-y-6">
-        
-        <header class="glass-panel p-5 flex flex-col md:flex-row justify-between items-center bg-white">
-            <div class="flex items-center gap-3">
-                <div class="bg-indigo-600 text-white p-2 rounded-lg">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                </div>
-                <div>
-                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.0</span></h1>
-                    <p class="text-slate-500 text-xs mt-0.5">Gestión Integral de Laboratorios</p>
-                </div>
-            </div>
-            
-            <div class="mt-4 md:mt-0 flex gap-2">
-                <button onclick="openMergePatientModal()" class="bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    Fusionar Pacientes
-                </button>
-                <details id="configDetails" class="relative group">
-                    <summary class="list-none cursor-pointer bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium border border-slate-200 flex items-center gap-2 transition">
-                        <span>⚙️ API</span>
-                    </summary>
-                    <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 z-50">
-                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">OpenAI API Key</label>
-                        <input type="password" id="apiKey" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="sk-...">
-                    </div>
-                </details>
-            </div>
-        </header>
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <header class="glass-panel p-5 flex flex-col md:flex-row justify-between items-center bg-white">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 text-white p-2 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v18.0</span></h1>
+                    <p class="text-slate-500 text-xs mt-0.5">Gestión Integral de Laboratorios (Multi-Muestra)</p>
+                </div>
+            </div>
+            
+            <div class="mt-4 md:mt-0 flex gap-2">
+                <button onclick="openMergePatientModal()" class="bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Fusionar Pacientes
+                </button>
+                <details id="configDetails" class="relative group">
+                    <summary class="list-none cursor-pointer bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium border border-slate-200 flex items-center gap-2 transition">
+                        <span>⚙️ API</span>
+                    </summary>
+                    <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 z-50">
+                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">OpenAI API Key</label>
+                        <input type="password" id="apiKey" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="sk-...">
+                    </div>
+                </details>
+            </div>
+        </header>
 
-        <section class="glass-panel p-6">
-            <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-4">
-                <div>
-                    <h2 class="text-lg font-bold text-slate-700">Carga de Laboratorio</h2>
-                    <p class="text-xs text-slate-500">Seleccione PDFs o pegue el texto directamente.</p>
-                </div>
-                <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-5 py-2.5 flex items-center gap-2 transition font-medium">
-                    <span>📄 Seleccionar PDFs...</span>
-                    <input type="file" id="pdfInput" accept="application/pdf" multiple class="hidden" onclick="this.value=null;">
-                </label>
-            </div>
-            <textarea id="labInput" rows="2" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none" placeholder="Pegue aquí texto o espere a que se lea el PDF..."></textarea>
-            <div class="mt-4 flex gap-3">
-                <button id="btnProcesarIA" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
-                    <span>✨ Procesar</span>
-                </button>
-                <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-slate-700 text-sm font-medium px-4 py-2 hover:bg-slate-100 rounded-lg transition">Limpiar</button>
-            </div>
-        </section>
+        <section class="glass-panel p-6">
+            <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-700">Carga de Laboratorio</h2>
+                    <p class="text-xs text-slate-500">Seleccione PDFs o pegue el texto directamente.</p>
+                </div>
+                <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-5 py-2.5 flex items-center gap-2 transition font-medium">
+                    <span>📄 Seleccionar PDFs...</span>
+                    <input type="file" id="pdfInput" accept="application/pdf" multiple class="hidden" onclick="this.value=null;">
+                </label>
+            </div>
+            <textarea id="labInput" rows="2" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none" placeholder="Pegue aquí texto o espere a que se lea el PDF..."></textarea>
+            <div class="mt-4 flex gap-3">
+                <button id="btnProcesarIA" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
+                    <span>✨ Procesar</span>
+                </button>
+                <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-slate-700 text-sm font-medium px-4 py-2 hover:bg-slate-100 rounded-lg transition">Limpiar</button>
+            </div>
+        </section>
 
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="glass-panel p-6 flex flex-col justify-between h-full">
-                <div class="space-y-5">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Paciente</label>
-                        <select id="patientSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parámetro</label>
-                        <select id="paramSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
-                    </div>
-                </div>
-                
-                <div class="mt-8 pt-6 border-t border-slate-100">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Acciones sobre Selección</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="copyWordTable()" class="col-span-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm">
-                            <span class="text-lg">📋</span> Copiar Tabla Word
-                        </button>
-                        
-                        <button onclick="mergeSelectedLabs()" class="col-span-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">
-                            <span>🔗</span> Unificar Muestras
-                        </button>
-                        
-                        <button onclick="copyHCLAB()" class="col-span-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
-                            <span>📝</span> HCLAB
-                        </button>
-                        <button onclick="downloadPDF()" class="col-span-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
-                            <span>📄</span> PDF
-                        </button>
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass-panel p-6 flex flex-col justify-between h-full">
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Paciente</label>
+                        <select id="patientSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parámetro</label>
+                        <select id="paramSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
+                    </div>
+                </div>
+                
+                <div class="mt-8 pt-6 border-t border-slate-100">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Acciones sobre Selección</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="copyWordTable()" class="col-span-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm">
+                            <span class="text-lg">📋</span> Copiar Tabla Word
+                        </button>
+                        
+                        <button onclick="mergeSelectedLabs()" class="col-span-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">
+                            <span>🔗</span> Unificar Muestras
+                        </button>
+                        
+                        <button onclick="copyHCLAB()" class="col-span-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
+                            <span>📝</span> HCLAB
+                        </button>
+                        <button onclick="downloadPDF()" class="col-span-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
+                            <span>📄</span> PDF
+                        </button>
 
-                        <button onclick="smartDelete()" class="col-span-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition mt-1">
-                            <span>🗑️</span> Borrar (Filas o Paciente)
-                        </button>
-                    </div>
-                    <div class="mt-3 text-center">
-                        <button onclick="deleteDatabase()" class="text-[10px] text-gray-400 hover:text-red-500 underline decoration-dotted">Reset Base Completa</button>
-                    </div>
-                </div>
-            </div>
+                        <button onclick="smartDelete()" class="col-span-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition mt-1">
+                            <span>🗑️</span> Borrar (Filas o Paciente)
+                        </button>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <button onclick="deleteDatabase()" class="text-[10px] text-gray-400 hover:text-red-500 underline decoration-dotted">Reset Base Completa</button>
+                    </div>
+                </div>
+            </div>
 
-            <div class="lg:col-span-2 glass-panel p-6 relative">
-                <h3 class="text-sm font-bold text-slate-500 mb-4">Tendencia Evolutiva</h3>
-                <div class="h-64 w-full">
-                    <canvas id="evolutionChart"></canvas>
-                </div>
-            </div>
-        </section>
+            <div class="lg:col-span-2 glass-panel p-6 relative">
+                <h3 class="text-sm font-bold text-slate-500 mb-4">Tendencia Evolutiva</h3>
+                <div class="h-64 w-full">
+                    <canvas id="evolutionChart"></canvas>
+                </div>
+            </div>
+        </section>
 
-        <section class="glass-panel overflow-hidden">
-            <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
-                    <span class="text-xs text-slate-400 hidden md:inline">Selecciona casillas para acciones grupales</span>
-                </div>
-                <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">
-                    <span>👁️</span> Columnas
-                </button>
-            </div>
-            <div class="table-container">
-                <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="bg-slate-50 text-slate-500"></thead>
-                    <tbody class="divide-y divide-slate-100 bg-white"></tbody>
-                </table>
-            </div>
-        </section>
-    </div>
+        <section class="glass-panel overflow-hidden">
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
+                    <span class="text-xs text-slate-400 hidden md:inline">Selecciona casillas para acciones grupales</span>
+                </div>
+                <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">
+                    <span>👁️</span> Columnas
+                </button>
+            </div>
+            <div class="table-container">
+                <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50 text-slate-500"></thead>
+                    <tbody class="divide-y divide-slate-100 bg-white"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
 
-    <div id="mergePatientModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
-        <div class="bg-white w-full max-w-md mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95" id="mergeModalContent">
-            <div class="p-6">
-                <h3 class="text-xl font-bold text-slate-800 mb-4">Fusionar Identidades</h3>
-                <div class="space-y-3">
-                    <div><label class="text-xs font-bold text-green-600">PACIENTE CORRECTO</label><select id="mergeTarget" class="w-full p-2 border border-green-200 bg-green-50 rounded"></select></div>
-                    <div><label class="text-xs font-bold text-red-600">PACIENTE DUPLICADO</label><select id="mergeSource" class="w-full p-2 border border-red-200 bg-red-50 rounded"></select></div>
-                </div>
-                <div class="flex justify-end gap-3 mt-6">
-                    <button onclick="closeModal('mergePatientModal')" class="px-4 py-2 text-slate-500 text-sm hover:bg-slate-100 rounded">Cancelar</button>
-                    <button onclick="executeMergePatients()" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded hover:bg-indigo-700">Fusionar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="mergePatientModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
+        <div class="bg-white w-full max-w-md mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95" id="mergeModalContent">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-slate-800 mb-4">Fusionar Identidades</h3>
+                <div class="space-y-3">
+                    <div><label class="text-xs font-bold text-green-600">PACIENTE CORRECTO</label><select id="mergeTarget" class="w-full p-2 border border-green-200 bg-green-50 rounded"></select></div>
+                    <div><label class="text-xs font-bold text-red-600">PACIENTE DUPLICADO</label><select id="mergeSource" class="w-full p-2 border border-red-200 bg-red-50 rounded"></select></div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button onclick="closeModal('mergePatientModal')" class="px-4 py-2 text-slate-500 text-sm hover:bg-slate-100 rounded">Cancelar</button>
+                    <button onclick="executeMergePatients()" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded hover:bg-indigo-700">Fusionar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <div id="columnFilterModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
-        <div class="bg-white w-full max-w-3xl mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95 h-auto max-h-[80vh] flex flex-col">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-slate-800">Variables Visibles</h3>
-                <button onclick="closeModal('columnFilterModal')" class="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            <div class="p-6 overflow-y-auto flex-1">
-                <div class="flex gap-2 mb-4">
-                    <button onclick="toggleAllColumns(true)" class="text-xs bg-slate-100 px-2 py-1 rounded hover:bg-slate-200">Todas</button>
-                    <button onclick="toggleAllColumns(false)" class="text-xs bg-slate-100 px-2 py-1 rounded hover:bg-slate-200">Ninguna</button>
-                </div>
-                <div id="columnsGrid" class="grid grid-cols-3 md:grid-cols-5 gap-2"></div>
-            </div>
-            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="applyColumnFilter()" class="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Aplicar</button>
-            </div>
-        </div>
-    </div>
+    <div id="columnFilterModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
+        <div class="bg-white w-full max-w-3xl mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95 h-auto max-h-[80vh] flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Variables Visibles</h3>
+                <button onclick="closeModal('columnFilterModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <div class="flex gap-2 mb-4">
+                    <button onclick="toggleAllColumns(true)" class="text-xs bg-slate-100 px-2 py-1 rounded hover:bg-slate-200">Todas</button>
+                    <button onclick="toggleAllColumns(false)" class="text-xs bg-slate-100 px-2 py-1 rounded hover:bg-slate-200">Ninguna</button>
+                </div>
+                <div id="columnsGrid" class="grid grid-cols-3 md:grid-cols-5 gap-2"></div>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button onclick="applyColumnFilter()" class="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Aplicar</button>
+            </div>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                <button onclick="applyColumnFilter()" class="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Aplicar</button>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        // 1. FIREBASE
-        const firebaseConfig = { apiKey:"AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8", authDomain:"laboratorios-uco.firebaseapp.com", projectId:"laboratorios-uco", storageBucket:"laboratorios-uco.firebasestorage.app", messagingSenderId:"435400240534", appId:"1:435400240534:web:1cb4c57beb4b69e933c1b7", measurementId:"G-Q0FE3ZD4P7" };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    <script>
+        // 1. FIREBASE
+        const firebaseConfig = { apiKey:"AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8", authDomain:"laboratorios-uco.firebaseapp.com", projectId:"laboratorios-uco", storageBucket:"laboratorios-uco.firebasestorage.app", messagingSenderId:"435400240534", appId:"1:435400240534:web:1cb4c57beb4b69e933c1b7", measurementId:"G-Q0FE3ZD4P7" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        // 2. CONFIG
-        const TARGET_PARAMS = ["Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "Glucosa", "Urea", "Creatinina", "Acido_Urico", "HbA1c", "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales", "CPK", "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "TSH", "Colesterol_Total", "LDL", "HDL", "Triglicéridos", "TP", "RIN", "KPTT", "aPTT"];
-        const ABBR = {"Hematocrito":"Hto", "Hemoglobina":"Hb", "Leucocitos":"GB", "Plaquetas":"Plq", "Urea":"Urea", "Creatinina":"Crea", "Glucosa":"Glu", "HbA1c":"HbA1c", "AU":"AU", "Na":"Na", "K":"K", "Cl":"Cl", "Mg":"Mg", "Ca_Total":"Ca", "Ca_Ionizado":"Ca++", "Fosforo":"P", "BT":"BT", "BD":"BD", "AST_TGO":"GOT", "ALT_TGP":"GPT", "FAL":"FAL", "Albúmina":"Alb", "Prot":"Prot", "CPK":"CPK", "Col":"Col", "LDL":"LDL", "HDL":"HDL", "TG":"TG", "PCR":"PCR", "PCT":"PCT", "TSH":"TSH", "LAC":"LAC", "pH":"pH", "pCO2":"pCO2", "pO2":"pO2", "BIC":"BIC", "SatO2":"Sat", "TP":"TP", "RIN":"RIN", "KPTT":"KPTT", "aPTT":"KPTT"};
-        const NORM_MAP = {"Ácido Úrico":"AU", "ACIDO URICO":"AU", "Acido_Urico":"AU", "Bilirrubina_Total":"BT", "BILIRRUBINA_TOTAL":"BT", "Bilirrubina Total":"BT", "Bilirrubina_Directa":"BD", "Bilirrubina Directa":"BD", "Creatinquinasa":"CPK", "CREATINQUINASA":"CPK", "Fosfatasa_Alcalina":"FAL", "Proteinas_Totales":"Prot", "Colesterol_Total":"Col", "Triglicéridos":"TG", "Ácido Láctico":"LAC", "Lactato":"LAC", "Acido_Lactico":"LAC", "Bicarbonato":"BIC", "aPTT":"KPTT", "APTT":"KPTT", "KPTT":"KPTT", "Tiempo de Protrombina":"TP", "TP (Seg)":"TP"};
-        const CLINICAL_ORDER = ["Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas", "Urea", "Creatinina", "Glucosa", "HbA1c", "AU", "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot", "Col", "LDL", "HDL", "TG", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH", "CPK", "PCR", "PCT", "pH", "pCO2", "pO2", "BIC", "SatO2", "LAC", "TP", "RIN", "KPTT"];
-        const SAFETY_RANGES = { "K": { min: 1.0, max: 9.0 }, "Na": { min: 100, max: 180 }, "pH": { min: 6.5, max: 8.0 }, "Hb": { min: 2, max: 25 } };
+        // 2. CONFIG - VARIABLES ACTUALIZADAS Y NUEVA VARIABLE BEb
+        const TARGET_PARAMS = ["Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "Glucosa", "Urea", "Creatinina", "Acido_Urico", "HbA1c", "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales", "CPK", "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "BEb", "TSH", "Colesterol_Total", "LDL", "HDL", "Triglicéridos", "TP", "RIN", "KPTT", "aPTT"];
+        const ABBR = {"Hematocrito":"Hto", "Hemoglobina":"Hb", "Leucocitos":"GB", "Plaquetas":"Plq", "Urea":"Urea", "Creatinina":"Crea", "Glucosa":"Glu", "HbA1c":"HbA1c", "AU":"AU", "Na":"Na", "K":"K", "Cl":"Cl", "Mg":"Mg", "Ca_Total":"Ca", "Ca_Ionizado":"Ca++", "Fosforo":"P", "BT":"BT", "BD":"BD", "AST_TGO":"GOT", "ALT_TGP":"GPT", "FAL":"FAL", "Albúmina":"Alb", "Prot":"Prot", "CPK":"CPK", "Col":"Col", "LDL":"LDL", "HDL":"HDL", "TG":"TG", "PCR":"PCR", "PCT":"PCT", "TSH":"TSH", "LAC":"LAC", "pH":"pH", "pCO2":"pCO2", "pO2":"pO2", "Bicarbonato":"BIC", "SatO2":"Sat", "BEb":"BEb", "TP":"TP", "RIN":"RIN", "KPTT":"KPTT", "aPTT":"KPTT"};
+        const NORM_MAP = {"Ácido Úrico":"AU", "ACIDO URICO":"AU", "Acido_Urico":"AU", "Bilirrubina_Total":"BT", "BILIRRUBINA_TOTAL":"BT", "Bilirrubina Total":"BT", "Bilirrubina_Directa":"BD", "Bilirrubina Directa":"BD", "Creatinquinasa":"CPK", "CREATINQUINASA":"CPK", "Fosfatasa_Alcalina":"FAL", "Proteinas_Totales":"Prot", "Colesterol_Total":"Col", "Triglicéridos":"TG", "Ácido Láctico":"LAC", "Lactato":"LAC", "Acido_Lactico":"LAC", "Bicarbonato":"BIC", "aPTT":"KPTT", "APTT":"KPTT", "KPTT":"KPTT", "Tiempo de Protrombina":"TP", "TP (Seg)":"TP", "BASE_EXCESS":"BEb", "BEb":"BEb"}; // NORM_MAP actualizado con BEb
+        const CLINICAL_ORDER = ["Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas", "Urea", "Creatinina", "Glucosa", "HbA1c", "AU", "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot", "Col", "LDL", "HDL", "TG", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH", "CPK", "PCR", "PCT", "pH", "pCO2", "pO2", "BEb", "BIC", "SatO2", "LAC", "TP", "RIN", "KPTT"]; // CLINICAL_ORDER actualizado con BEb
+        const SAFETY_RANGES = { "K": { min: 1.0, max: 9.0 }, "Na": { min: 100, max: 180 }, "pH": { min: 6.5, max: 8.0 }, "Hb": { min: 2, max: 25 } };
 
-        let labData = {}; 
-        let chartInstance = null;
-        let visibleColumns = new Set(CLINICAL_ORDER);
+        let labData = {}; 
+        let chartInstance = null;
+        let visibleColumns = new Set(CLINICAL_ORDER);
 
-        // 3. UTILS GLOBALES (NO EN DOMCONTENTLOADED)
-        function showToast(msg, type="info") {
-            let bg = type==="error"?"#ef4444":type==="success"?"#10b981":"#3b82f6";
-            Toastify({ text: msg, duration: 3000, gravity: "top", position: "center", style: { background: bg, borderRadius: "8px" } }).showToast();
-        }
+        // 3. UTILS GLOBALES (NO EN DOMCONTENTLOADED)
+        function showToast(msg, type="info") {
+            let bg = type==="error"?"#ef4444":type==="success"?"#10b981":"#3b82f6";
+            Toastify({ text: msg, duration: 3000, gravity: "top", position: "center", style: { background: bg, borderRadius: "8px" } }).showToast();
+        }
 
-        function formatDate(isoDate) {
-            if(!isoDate) return "-";
-            const [y, m, d] = isoDate.split("-");
-            return `${d}/${m}/${y}`;
-        }
+        function formatDate(isoDate) {
+            if(!isoDate) return "-";
+            const [y, m, d] = isoDate.split("-");
+            return `${d}/${m}/${y}`;
+        }
 
-        function getCanonicalKey(dirtyKey) {
-            if (NORM_MAP[dirtyKey]) return NORM_MAP[dirtyKey];
-            if (ABBR[dirtyKey]) return dirtyKey;
-            return dirtyKey.substring(0, 3).toUpperCase();
-        }
+        function getCanonicalKey(dirtyKey) {
+            // Asegurar que las claves entrantes estén en mayúsculas para NORM_MAP
+            const cleanKey = dirtyKey.toUpperCase().replace(/\s/g, '_');
+            // Mapear a la clave estándar (ej: ACIDO_URICO -> AU)
+            if (NORM_MAP[cleanKey]) return NORM_MAP[cleanKey];
+            // Si ya es una clave estándar (ej: Na), se devuelve
+            if (TARGET_PARAMS.includes(dirtyKey)) return dirtyKey;
+            // Opción de fallback si el key no se mapea pero existe en TARGET_PARAMS
+            if (TARGET_PARAMS.includes(cleanKey)) return cleanKey;
+            
+            return dirtyKey;
+        }
 
-        function getDisplayLabel(key) { return ABBR[key] || key; }
+        function getDisplayLabel(key) { return ABBR[key] || key; }
 
-        function getSmartValue(params, key) {
-            if (params[key] !== undefined) return params[key];
-            const longKey = Object.keys(ABBR).find(k => ABBR[k] === key);
-            if (longKey && params[longKey] !== undefined) return params[longKey];
-            return undefined;
-        }
+        function getSmartValue(params, key) {
+            if (params[key] !== undefined) return params[key];
+            const longKey = Object.keys(ABBR).find(k => ABBR[k] === key);
+            if (longKey && params[longKey] !== undefined) return params[longKey];
+            return undefined;
+        }
 
-        function isValidValue(key, value) {
-            let num = parseFloat(value);
-            if (isNaN(num)) return true; 
-            let safeKey = null;
-            const label = getDisplayLabel(key);
-            if (label === 'K' || key === 'Potasio') safeKey = 'K';
-            if (label === 'Na' || key === 'Sodio') safeKey = 'Na';
-            if (label === 'pH') safeKey = 'pH';
-            if (label === 'Hb') safeKey = 'Hb';
-            if (safeKey && SAFETY_RANGES[safeKey]) {
-                if (num < SAFETY_RANGES[safeKey].min || num > SAFETY_RANGES[safeKey].max) return false;
-            }
-            return true;
-        }
+        function isValidValue(key, value) {
+            let num = parseFloat(value);
+            if (isNaN(num)) return true; 
+            let safeKey = null;
+            const label = getDisplayLabel(key);
+            if (label === 'K' || key === 'Potasio') safeKey = 'K';
+            if (label === 'Na' || key === 'Sodio') safeKey = 'Na';
+            if (label === 'pH') safeKey = 'pH';
+            if (label === 'Hb') safeKey = 'Hb';
+            if (safeKey && SAFETY_RANGES[safeKey]) {
+                if (num < SAFETY_RANGES[safeKey].min || num > SAFETY_RANGES[safeKey].max) return false;
+            }
+            return true;
+        }
 
-        function sortKeysClinically(keysSet) {
-            return Array.from(keysSet).sort((a, b) => {
-                const idxA = CLINICAL_ORDER.indexOf(a);
-                const idxB = CLINICAL_ORDER.indexOf(b);
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                if (idxA !== -1) return -1;
-                if (idxB !== -1) return 1;
-                return a.localeCompare(b);
-            });
-        }
+        function sortKeysClinically(keysSet) {
+            return Array.from(keysSet).sort((a, b) => {
+                const idxA = CLINICAL_ORDER.indexOf(a);
+                const idxB = CLINICAL_ORDER.indexOf(b);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+                return a.localeCompare(b);
+            });
+        }
 
-        function getSelectedIds() {
-            return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id);
-        }
+        function getSelectedIds() {
+            return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id);
+        }
 
-        function getExportSamples(p) {
-            const ids = getSelectedIds();
-            return ids.length > 0 ? labData[p].filter(s => ids.includes(s.id)) : labData[p];
-        }
+        function getExportSamples(p) {
+            const ids = getSelectedIds();
+            return ids.length > 0 ? labData[p].filter(s => ids.includes(s.id)) : labData[p];
+        }
 
-        // --- CORE FUNCTIONS ---
+        // --- CORE FUNCTIONS ---
+        // MODIFICADA PARA ACEPTAR ARRAY DE MUESTRAS
+        async function processAndUpload() {
+            const files = document.getElementById('pdfInput').files;
+            const rawText = document.getElementById("labInput").value.trim();
+            const apiKey = document.getElementById("apiKey").value.trim() || localStorage.getItem("my_openai_key_v1");
+            
+            if (files.length === 0 && rawText.length < 10) return showToast("Seleccione PDF o pegue texto", "error");
+            if (!apiKey) { document.getElementById("configDetails").open = true; return showToast("Falta API Key", "error"); }
+            localStorage.setItem("my_openai_key_v1", apiKey);
 
-        async function processAndUpload() {
-            const files = document.getElementById('pdfInput').files;
-            const rawText = document.getElementById("labInput").value.trim();
-            const apiKey = document.getElementById("apiKey").value.trim() || localStorage.getItem("my_openai_key_v1");
-            
-            if (files.length === 0 && rawText.length < 10) return showToast("Seleccione PDF o pegue texto", "error");
-            if (!apiKey) { document.getElementById("configDetails").open = true; return showToast("Falta API Key", "error"); }
-            localStorage.setItem("my_openai_key_v1", apiKey);
+            const btn = document.getElementById("btnProcesarIA");
+            btn.disabled = true; btn.innerText = "Procesando...";
+            
+            // Colección de todas las muestras extraídas
+            let allSamples = [];
 
-            const btn = document.getElementById("btnProcesarIA");
-            btn.disabled = true; btn.innerText = "Procesando...";
-            
-            // TEXTO MANUAL
-            if (files.length === 0 && rawText.length > 10) {
+            // 1. PROCESAMIENTO DE TEXTO MANUAL
+            if (files.length === 0 && rawText.length > 10) {
+                try {
+                    allSamples = await extractWithAI(rawText, apiKey);
+                } catch (e) { showToast(`Error en la extracción: ${e.message}`, "error"); }
+            } 
+            // 2. PROCESAMIENTO DE ARCHIVOS PDF
+            else {
+                const txtArea = document.getElementById("labInput");
+                for (let i = 0; i < files.length; i++) {
+                    txtArea.value = `>>> PROCESANDO ARCHIVO ${i+1}/${files.length}: ${files[i].name}...\n`;
+                    try {
+                        const pdfText = await readPdfFile(files[i]);
+                        txtArea.value += "PDF Leído. Enviando a IA...\n";
+                        const extractedArray = await extractWithAI(pdfText, apiKey);
+                        // Asegurarse de que el resultado de extractWithAI es un array
+                        if (Array.isArray(extractedArray)) {
+                            allSamples.push(...extractedArray);
+                        } else if (extractedArray) {
+                            // En caso de que la IA devuelva solo un objeto
+                            allSamples.push(extractedArray); 
+                        }
+
+                        txtArea.value += `Muestras detectadas: ${Array.isArray(extractedArray) ? extractedArray.length : 1}...\n`;
+                    } catch (e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
+                }
+                document.getElementById("pdfInput").value = null; // Limpiar input file
+            }
+
+            // 3. SUBIR TODAS LAS MUESTRAS DETECTADAS
+            let uploadCount = 0;
+            for (const sample of allSamples) {
                 try {
-                    const extracted = await extractWithAI(rawText, apiKey);
-                    await uploadToFirebase(extracted);
-                    showToast("Texto Procesado", "success");
-                    document.getElementById("labInput").value = "";
-                } catch (e) { showToast(e.message, "error"); }
-            } 
-            // ARCHIVOS PDF
-            else {
-                const txtArea = document.getElementById("labInput");
-                for (let i = 0; i < files.length; i++) {
-                    txtArea.value = `>>> PROCESANDO ARCHIVO ${i+1}/${files.length}: ${files[i].name}...\n`;
-                    try {
-                        const pdfText = await readPdfFile(files[i]);
-                        txtArea.value += "PDF Leído. Enviando a IA...\n";
-                        const extracted = await extractWithAI(pdfText, apiKey);
-                        await uploadToFirebase(extracted);
-                        txtArea.value += "✅ SUBIDA EXITOSA.\n";
-                    } catch (e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
+                    await uploadToFirebase(sample);
+                    uploadCount++;
+                } catch (e) {
+                    showToast(`Error subiendo ${sample.paciente}: ${e.message}`, "error");
                 }
-                showToast("Cola Finalizada", "success");
             }
-            btn.disabled = false; btn.innerText = "✨ Procesar";
-        }
 
-        async function readPdfFile(file) {
-            const buffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument(buffer).promise;
-            let fullText = "";
-            for(let i=1; i<=pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const content = await page.getTextContent();
-                fullText += content.items.map(item => item.str).join(" ") + "\n";
+            if (uploadCount > 0) {
+                showToast(`Se subieron ${uploadCount} muestras a la base.`, "success");
+            } else {
+                showToast("No se detectaron muestras válidas para subir.", "info");
             }
-            return fullText;
-        }
+            
+            btn.disabled = false; btn.innerText = "✨ Procesar";
+            document.getElementById("labInput").value = "";
+        }
 
-        async function extractWithAI(text, apiKey) {
-            const prompt = `Medical Expert: Extract JSON.
-            JSON: {"paciente": "NAME UPPERCASE", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "protocolo": "string", "parametros": {}}
-            Targets: ${TARGET_PARAMS.join(", ")}. Rules: "aPTT"->"KPTT". "Creatinquinasa"->"CPK".
-            Text: """${text.substring(0, 15000)}"""`;
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], temperature: 0 })
-            });
+        async function readPdfFile(file) {
+            const buffer = await file.arrayBuffer();
+            const pdf = await window.pdfjsLib.getDocument({data: buffer}).promise;
+            let fullText = "";
+            for(let i=1; i<=pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                fullText += content.items.map(item => item.str).join(" ") + "\n";
+            }
+            return fullText;
+        }
+
+        // MODIFICADA PARA PEDIR UN ARRAY DE MUESTRAS
+        async function extractWithAI(text, apiKey) {
+            const systemInstruction = `Eres un experto médico. Tu tarea es extraer la información completa de laboratorios del texto proporcionado. El texto puede contener múltiples muestras de diferentes fechas.`;
+            const prompt = `
+                **OUTPUT FORMATO CRÍTICO:** Debes retornar un ARRAY de objetos JSON. Cada objeto en el array corresponde a una muestra única de laboratorio (identificada por su fecha/hora/protocolo). Si solo encuentras una muestra, devuelve un array con ese único objeto.
+
+                **FORMATO DE CADA OBJETO:**
+                {
+                  "paciente": "NOMBRE COMPLETO EN MAYÚSCULAS",
+                  "fecha": "YYYY-MM-DD",
+                  "hora": "HH:MM",
+                  "protocolo": "string",
+                  "parametros": { [clave_canonizada]: valor_numerico }
+                }
+
+                **REGLAS DE EXTRACCIÓN Y CANONIZACIÓN:**
+                1. Extrae TODOS los parámetros bioquímicos reconocibles del texto.
+                2. Usa coma o punto decimal según lo detectado, pero prioriza la conversión a punto decimal para JS.
+                3. **Canoniza las claves:** Por ejemplo, "CPK", "KPTT", "HbA1c", "Na".
+                4. **Parámetros a buscar (extensiva):** ${TARGET_PARAMS.join(", ")}. Incluye TGO/GOT, TGP/GPT, FAL, BEb.
+
+                **TEXTO A PROCESAR:**
+                """
+                ${text.substring(0, 30000)}
+                """
+                `;
+
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                body: JSON.stringify({ 
+                    model: "gpt-4o-mini", 
+                    messages: [
+                        { role: "system", content: systemInstruction },
+                        { role: "user", content: prompt }
+                    ], 
+                    temperature: 0.1 // Baja temperatura para mejor adherencia al formato JSON
+                })
+            });
+            
             const data = await response.json();
-            return JSON.parse(data.choices[0].message.content.replace(/```json|```/g, "").trim());
-        }
+            if (!data.choices || data.choices.length === 0) throw new Error("Respuesta vacía de la IA.");
+            
+            const rawJsonText = data.choices[0].message.content.replace(/```json|```/g, "").trim();
+            const extractedArray = JSON.parse(rawJsonText);
+            
+            // Asegurarse de que el resultado sea un array antes de devolverlo
+            return Array.isArray(extractedArray) ? extractedArray : (extractedArray ? [extractedArray] : []);
+        }
 
-        async function uploadToFirebase(result) {
-            if (!result.paciente || result.paciente === "DESCONOCIDO") throw new Error("Paciente no identificado");
-            if (!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
-            if (!result.hora) result.hora = "12:00";
+        async function uploadToFirebase(result) {
+            // Pre-procesamiento de la muestra individual antes de subir
+            if (!result.paciente || result.paciente === "DESCONOCIDO") throw new Error("Paciente no identificado");
+            if (!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
+            if (!result.hora) result.hora = "12:00";
+            
             const cleanParams = {};
-            for (const k in result.parametros) {
-                if (result.parametros[k] !== null) {
-                    const canonical = getCanonicalKey(k);
-                    if (isValidValue(canonical, result.parametros[k])) cleanParams[canonical] = result.parametros[k];
-                }
+            for (const k in result.parametros) {
+                if (result.parametros[k] !== null) {
+                    const canonical = getCanonicalKey(k);
+                    if (isValidValue(canonical, result.parametros[k])) cleanParams[canonical] = parseFloat(result.parametros[k]);
+                }
+            }
+            if (Object.keys(cleanParams).length === 0) throw new Error("No se extrajeron parámetros válidos.");
+
+            // Verificar duplicados antes de subir
+            const patientSamples = labData[result.paciente] || [];
+            const isDuplicate = patientSamples.some(sample => 
+                sample.protocolo === result.protocolo && 
+                sample.fecha === result.fecha &&
+                sample.hora === result.hora
+            );
+
+            if (isDuplicate) throw new Error(`Muestra de ${result.fecha} (${result.protocolo}) ya existe.`);
+
+            await db.collection("muestras").add({
+                paciente: result.paciente, fecha: result.fecha, hora: result.hora,
+                protocolo: result.protocolo || "", parametros: cleanParams,
+                timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
+                uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        // UI
+        function initRealTimeListener() {
+            db.collection("muestras").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+                labData = {}; 
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (!labData[data.paciente]) labData[data.paciente] = [];
+                    labData[data.paciente].push({ ...data, id: doc.id });
+                });
+                refreshUI();
+            });
+        }
+
+        function refreshUI() {
+            const sel = document.getElementById("patientSelector");
+            const curr = sel.value;
+            sel.innerHTML = '<option value="">-- Seleccionar --</option>';
+            const sortedPatients = Object.keys(labData).sort();
+            sortedPatients.forEach(p => sel.appendChild(new Option(p, p)));
+            if(curr && labData[curr]) { sel.value = curr; loadPatientData(); }
+            else if(sortedPatients.length > 0) { // Cargar el primer paciente si hay datos y no hay selección previa
+                sel.value = sortedPatients[0];
+                loadPatientData();
             }
-            await db.collection("muestras").add({
-                paciente: result.paciente, fecha: result.fecha, hora: result.hora,
-                protocolo: result.protocolo || "", parametros: cleanParams,
-                timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
-                uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        }
+            else { document.querySelector("#uciTable tbody").innerHTML = ""; }
+        }
 
-        // UI
-        function initRealTimeListener() {
-            db.collection("muestras").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
-                labData = {}; 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (!labData[data.paciente]) labData[data.paciente] = [];
-                    labData[data.paciente].push({ ...data, id: doc.id });
-                });
-                refreshUI();
-            });
-        }
-
-        function refreshUI() {
-            const sel = document.getElementById("patientSelector");
-            const curr = sel.value;
-            sel.innerHTML = '<option value="">-- Seleccionar --</option>';
-            Object.keys(labData).sort().forEach(p => sel.appendChild(new Option(p, p)));
-            if(curr && labData[curr]) { sel.value = curr; loadPatientData(); }
-            else { document.querySelector("#uciTable tbody").innerHTML = ""; }
-        }
-
-        function loadPatientData() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p || !labData[p]) return;
-            const samples = labData[p];
-            
-            // Aplicar filtro de columnas visibles
-            const sorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
-            
-            let h = `<tr><th class="p-3 bg-slate-50 border-b sticky left-0 z-30 w-10"><input type="checkbox" onclick="toggleAll(this)"></th><th class="p-3 text-left text-xs font-bold text-slate-500 bg-slate-50 border-b sticky left-10 z-20">Fecha</th>`;
-            sorted.forEach(k => h += `<th class="p-3 text-center text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b whitespace-nowrap">${getDisplayLabel(k)}</th>`);
-            document.querySelector("#uciTable thead").innerHTML = h + "</tr>";
-
-            let b = "";
-            samples.forEach(s => {
-                let r = `<tr class="hover:bg-blue-50 transition border-b border-slate-100">
-                    <td class="p-3 bg-white sticky left-0 border-r z-10"><input type="checkbox" class="row-select custom-checkbox" data-id="${s.id}"></td>
-                    <td class="p-3 text-sm font-medium text-slate-700 bg-white sticky left-10 border-r whitespace-nowrap">${formatDate(s.fecha)} <span class="text-xs text-slate-400 ml-1">${s.hora}</span></td>`;
-                sorted.forEach(k => r += `<td class="p-3 text-center text-sm text-slate-600">${getSmartValue(s.parametros, k) ?? "-"}</td>`);
-                b += r + "</tr>";
-            });
-            document.querySelector("#uciTable tbody").innerHTML = b;
-            
-            const pSel = document.getElementById("paramSelector");
-            const currP = pSel.value; pSel.innerHTML = "";
-            sorted.forEach(k => pSel.appendChild(new Option(getDisplayLabel(k), k)));
-            if(visibleColumns.has(currP)) pSel.value = currP;
-            updateGraph();
-        }
-
-        function toggleAll(source) { document.querySelectorAll('.row-select').forEach(cb => cb.checked = source.checked); }
-        
-        function updateGraph() {
-            const p = document.getElementById("patientSelector").value;
-            const param = document.getElementById("paramSelector").value;
-            const ctx = document.getElementById("evolutionChart").getContext("2d");
-            if (chartInstance) chartInstance.destroy();
-            if (!p || !param) return;
-            const points = labData[p].map(s => {
-                 const v = getSmartValue(s.parametros, param);
-                 const n = parseFloat(v);
-                 return (!isNaN(n)) ? {x: formatDate(s.fecha)+" "+s.hora, y: n} : null;
-            }).filter(pt => pt !== null);
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: { labels: points.map(pt => pt.x), datasets: [{ label: getDisplayLabel(param), data: points.map(pt => pt.y), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', borderWidth: 2, fill: true }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false } } }
-            });
-        }
-
-        // --- SMART DELETE LOGIC ---
-        async function smartDelete() {
-            const ids = getSelectedIds();
-            const patient = document.getElementById("patientSelector").value;
-            
-            if (!patient) return showToast("Seleccione un paciente", "error");
-
-            // 1. MODO SELECCIÓN (Borrar filas específicas)
-            if (ids.length > 0) {
-                if(!confirm(`¿Borrar las ${ids.length} filas seleccionadas?`)) return;
-                const batch = db.batch();
-                ids.forEach(id => batch.delete(db.collection("muestras").doc(id)));
-                await batch.commit();
-                showToast("Filas eliminadas", "success");
-            } 
-            // 2. MODO PACIENTE (Borrar TODO el historial si no hay selección)
-            else {
-                if(!confirm(`⚠️ ¿Borrar TODO el historial de ${patient}? Esta acción no se puede deshacer.`)) return;
-                const q = await db.collection("muestras").where("paciente", "==", patient).get();
-                const b = db.batch();
-                q.forEach(d => b.delete(d.ref));
-                await b.commit();
-                showToast("Paciente eliminado", "success");
-                document.getElementById("patientSelector").value = ""; // Reset UI
-                refreshUI();
+        function loadPatientData() {
+            const p = document.getElementById("patientSelector").value;
+            if(!p || !labData[p]) {
+                document.querySelector("#uciTable tbody").innerHTML = "";
+                document.querySelector("#uciTable thead").innerHTML = "";
+                return;
             }
-        }
+            const samples = labData[p];
+            
+            // Recalcular parámetros visibles y selector de parámetros
+            loadParamSelector();
 
-        // EXPORTS
-        function copyWordTable() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p) return;
-            const samples = getExportSamples(p);
-            let finalHTML = "";
-            samples.forEach(s => {
-                const par = s.parametros || {};
-                const get = (k) => getSmartValue(par, k) ?? "-";
-                // ARGERICH GRID EXACTO
-                const hto_hb = `${get('Hto')} / ${get('Hb')}`;
-                const bili = `${get('BT')} / ${get('BD')}`;
-                const wbc = get('GB');
-                const enz = `${get('GOT')} / ${get('GPT')} / ${get('FAL')}`;
-                const plaq = get('Plq');
-                const prot = `${get('Prot')} / ${get('Alb')}`;
-                const ren = `${get('Urea')} / ${get('Crea')}`;
-                const glu = get('Glu');
-                const coag = `${get('TP')} / ${get('KPTT')} / ${get('RIN')}`;
-                const iono = `${get('Na')} / ${get('K')} / ${get('Cl')}`;
-                const eab = `${get('pH')} / ${get('pCO2')} / ${get('pO2')} / ${get('LAC')} / ${get('BIC')} / ${get('Sat')}`;
+            // Usar solo las columnas que están en CLINICAL_ORDER y visibles
+            const sorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
+            
+            let h = `<tr><th class="p-3 bg-slate-50 border-b sticky left-0 z-30 w-10"><input type="checkbox" onclick="toggleAll(this)"></th><th class="p-3 text-left text-xs font-bold text-slate-500 bg-slate-50 border-b sticky left-10 z-20">Fecha</th>`;
+            sorted.forEach(k => h += `<th class="p-3 text-center text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b whitespace-nowrap">${getDisplayLabel(k)}</th>`);
+            document.querySelector("#uciTable thead").innerHTML = h + "</tr>";
 
-                finalHTML += `
-                    <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-                        <tr><td colspan="4" style="background-color: #f0f0f0; font-weight: bold; text-align: center;">LABORATORIO ${formatDate(s.fecha)} (${s.hora})</td></tr>
-                        <tr><td style="font-weight:bold;width:20%">Hto/Hb</td><td style="width:30%">${hto_hb}</td><td style="font-weight:bold;width:20%">Bil T/D</td><td style="width:30%">${bili}</td></tr>
-                        <tr><td style="font-weight:bold">Gl. blancos</td><td>${wbc}</td><td style="font-weight:bold">GOT/GPT/FAL</td><td>${enz}</td></tr>
-                        <tr><td style="font-weight:bold">Plaquetas</td><td>${plaq}</td><td style="font-weight:bold">Prot/Alb</td><td>${prot}</td></tr>
-                        <tr><td style="font-weight:bold">Urea/Crea</td><td>${ren}</td><td style="font-weight:bold">Glucemia</td><td>${glu}</td></tr>
-                        <tr><td style="font-weight:bold">TP/KPTT/RIN</td><td>${coag}</td><td style="font-weight:bold">IONOGRAMA</td><td>${iono}</td></tr>
-                        <tr><td style="font-weight:bold">EAB</td><td colspan="3">${eab}</td></tr>
-                    </table><br>`;
-            });
-            const blob = new Blob([finalHTML], { type: 'text/html' });
-            navigator.clipboard.write([new ClipboardItem({'text/html': blob})]).then(() => showToast("Tablas Copiadas", "success"));
-        }
+            let b = "";
+            samples.forEach(s => {
+                let r = `<tr class="hover:bg-blue-50 transition border-b border-slate-100">
+                    <td class="p-3 bg-white sticky left-0 border-r z-10"><input type="checkbox" class="row-select custom-checkbox" data-id="${s.id}"></td>
+                    <td class="p-3 text-sm font-medium text-slate-700 bg-white sticky left-10 border-r whitespace-nowrap">${formatDate(s.fecha)} <span class="text-xs text-slate-400 ml-1">${s.hora}</span></td>`;
+                sorted.forEach(k => r += `<td class="p-3 text-center text-sm text-slate-600">${getSmartValue(s.parametros, k) ?? "-"}</td>`);
+                b += r + "</tr>";
+            });
+            document.querySelector("#uciTable tbody").innerHTML = b;
+            
+            updateGraph();
+        }
 
-        function copyHCLAB() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p) return showToast("Seleccione paciente", "error");
-            const samples = getExportSamples(p);
-            let text = "";
-            samples.forEach(samp => {
-                let parts = [];
-                // Respetar filtro de columnas
-                const visibleSorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
-                visibleSorted.forEach(k => { 
-                    const val = getSmartValue(samp.parametros||{}, k);
-                    if(val) parts.push(`${getDisplayLabel(k)} ${val}`);
-                });
-                text += `LAB ${formatDate(samp.fecha)}: ` + parts.join(", ") + "\n\n";
-            });
-            navigator.clipboard.writeText(text.trim()).then(()=>showToast("Copiado HCLAB", "success"));
-        }
+        function toggleAll(source) { document.querySelectorAll('.row-select').forEach(cb => cb.checked = source.checked); }
+        
+        function updateGraph() {
+            const p = document.getElementById("patientSelector").value;
+            const param = document.getElementById("paramSelector").value;
+            const canvas = document.getElementById("evolutionChart");
+            const ctx = canvas ? canvas.getContext("2d") : null;
+            
+            if (chartInstance) chartInstance.destroy();
+            if (!p || !param || !ctx) return;
+            
+            const points = labData[p].map(s => {
+                 const v = getSmartValue(s.parametros, param);
+                 const n = parseFloat(v);
+                 return (!isNaN(n)) ? {x: formatDate(s.fecha)+" "+s.hora, y: n} : null;
+            }).filter(pt => pt !== null);
+            
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: points.map(pt => pt.x), datasets: [{ label: getDisplayLabel(param), data: points.map(pt => pt.y), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', borderWidth: 2, fill: true }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false } } }
+            });
+        }
 
-        function downloadPDF() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p) return showToast("Seleccione paciente", "error");
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'mm', 'a4');
-            const samples = getExportSamples(p);
-            const sorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
-            const head = ['Fecha', 'Hora', ...sorted.map(k => getDisplayLabel(k))];
-            const body = samples.map(s => {
-                let r = [formatDate(s.fecha), s.hora];
-                sorted.forEach(k => r.push(getSmartValue(s.parametros, k) ?? '-'));
-                return r;
-            });
-            doc.setFontSize(14); doc.text(`Historial: ${p}`, 14, 15);
-            doc.autoTable({ startY: 25, head: [head], body: body, theme: 'grid', styles: { fontSize: 7, halign: 'center' }, headStyles: { fillColor: [59, 130, 246] } });
-            doc.save(`Reporte_${p}.pdf`);
-        }
+        // --- SMART DELETE LOGIC ---
+        async function smartDelete() {
+            const ids = getSelectedIds();
+            const patient = document.getElementById("patientSelector").value;
+            
+            if (!patient) return showToast("Seleccione un paciente", "error");
 
-        // MERGE & MODALS
-        function openMergePatientModal() { document.getElementById('mergePatientModal').classList.remove('opacity-0', 'pointer-events-none'); const names = Object.keys(labData).sort(); const s1=document.getElementById('mergeTarget'), s2=document.getElementById('mergeSource'); s1.innerHTML=""; s2.innerHTML=""; names.forEach(n=>{ s1.add(new Option(n,n)); s2.add(new Option(n,n)); }); }
-        function closeModal(id) { document.getElementById(id).classList.add('opacity-0', 'pointer-events-none'); }
-        async function executeMergePatients() {
-            const t=document.getElementById('mergeTarget').value, s=document.getElementById('mergeSource').value;
-            if(t===s)return alert("Iguales"); if(!confirm("¿Fusionar?"))return;
-            const b=db.batch(); labData[s].forEach(d=>b.update(db.collection("muestras").doc(d.id),{paciente:t}));
-            await b.commit(); showToast("Fusionado", "success"); closeModal('mergePatientModal');
-        }
-        async function mergeSelectedLabs() {
-            const p = document.getElementById("patientSelector").value;
-            const ids = getSelectedIds();
-            if(!p || ids.length < 2) return showToast("Seleccione 2+ filas", "error");
-            const samples = labData[p].filter(s => ids.includes(s.id));
-            let master = samples[0];
-            let newParams = { ...master.parametros };
-            for(let i=1; i<samples.length; i++) newParams = { ...newParams, ...samples[i].parametros };
-            await db.collection("muestras").doc(master.id).update({ parametros: newParams });
-            const batch = db.batch();
-            for(let i=1; i<samples.length; i++) batch.delete(db.collection("muestras").doc(samples[i].id));
-            await batch.commit(); showToast("Unificado", "success");
-        }
-        async function deleteDatabase() {
-            if(prompt("Clave:")!=="D3l.e@TE$alL") return alert("Incorrecto");
-            const q=await db.collection("muestras").get(); const b=db.batch(); q.forEach(d=>b.delete(d.ref)); await b.commit();
-            showToast("Base Limpia", "success");
-        }
+            // 1. MODO SELECCIÓN (Borrar filas específicas)
+            if (ids.length > 0) {
+                if(!confirm(`¿Borrar las ${ids.length} filas seleccionadas?`)) return;
+                const batch = db.batch();
+                ids.forEach(id => batch.delete(db.collection("muestras").doc(id)));
+                await batch.commit();
+                showToast("Filas eliminadas", "success");
+            } 
+            // 2. MODO PACIENTE (Borrar TODO el historial si no hay selección)
+            else {
+                if(!confirm(`⚠️ ¿Borrar TODO el historial de ${patient}? Esta acción no se puede deshacer.`)) return;
+                const q = await db.collection("muestras").where("paciente", "==", patient).get();
+                const b = db.batch();
+                q.forEach(d => b.delete(d.ref));
+                await b.commit();
+                showToast("Paciente eliminado", "success");
+                document.getElementById("patientSelector").value = ""; // Reset UI
+                refreshUI();
+            }
+        }
 
-        // COLUMN FILTER
-        function openColumnFilter() {
-            const grid = document.getElementById("columnsGrid"); grid.innerHTML = "";
-            CLINICAL_ORDER.forEach(k => {
-                const checked = visibleColumns.has(k) ? "checked" : "";
-                grid.innerHTML += `<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" class="col-check custom-checkbox" value="${k}" ${checked}><span>${getDisplayLabel(k)}</span></label>`;
-            });
-            document.getElementById('columnFilterModal').classList.remove('opacity-0', 'pointer-events-none');
-        }
-        function toggleAllColumns(state) { document.querySelectorAll('.col-check').forEach(cb => cb.checked = state); }
-        function applyColumnFilter() {
-            visibleColumns = new Set(); document.querySelectorAll('.col-check:checked').forEach(cb => visibleColumns.add(cb.value));
-            closeModal('columnFilterModal'); loadPatientData();
-        }
+        // EXPORTS
+        function copyWordTable() {
+            const p = document.getElementById("patientSelector").value;
+            if(!p) return;
+            const samples = getExportSamples(p);
+            let finalHTML = "";
+            samples.forEach(s => {
+                const par = s.parametros || {};
+                const get = (k) => getSmartValue(par, k) ?? "-";
+                // ARGERICH GRID EXACTO
+                const hto_hb = `${get('Hto')} / ${get('Hb')}`;
+                const bili = `${get('BT')} / ${get('BD')}`;
+                const wbc = get('Leucocitos'); // Usar Leucocitos que es la clave canonizada
+                const enz = `${get('AST_TGO')} / ${get('ALT_TGP')} / ${get('Fosfatasa_Alcalina')}`;
+                const plaq = get('Plaquetas'); // Usar Plaquetas
+                const prot = `${get('Proteinas_Totales')} / ${get('Albúmina')}`;
+                const ren = `${get('Urea')} / ${get('Creatinina')}`;
+                const glu = get('Glucosa');
+                const coag = `${get('TP')} / ${get('KPTT')} / ${get('RIN')}`;
+                const iono = `${get('Na')} / ${get('K')} / ${get('Cl')}`;
+                const eab = `${get('pH')} / ${get('pCO2')} / ${get('pO2')} / ${get('Lactato')} / ${get('Bicarbonato')} / ${get('SatO2')}`; // Usar Lactato y Bicarbonato (claves largas)
 
-        // INIT
-        document.addEventListener("DOMContentLoaded", () => {
-            const k = localStorage.getItem("my_openai_key_v1");
-            if(k) document.getElementById("apiKey").value = k;
-            initRealTimeListener();
-            // PDF Listener Setup
-            const input=document.getElementById("pdfInput");
-            const textArea=document.getElementById("labInput");
-            input.addEventListener("change",async(e)=>{
-                const file=e.target.files[0]; if(!file)return;
-                textArea.value="⏳ Leyendo...";
-                try{
-                    const buffer=await file.arrayBuffer();
-                    const pdf=await pdfjsLib.getDocument(buffer).promise;
-                    let t=""; for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i), c=await p.getTextContent(); t+=c.items.map(x=>x.str).join(" ")+"\n";}
-                    textArea.value=t; showToast("PDF Leído","success");
-                }catch(err){ textArea.value="Error: "+err.message; }
-            });
-            // Buttons
-            document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
-            document.getElementById("patientSelector").addEventListener("change", loadPatientData);
-            document.getElementById("paramSelector").addEventListener("change", updateGraph);
-            document.getElementById("btnLimpiarEntrada").addEventListener("click", () => document.getElementById("labInput").value = "");
-        });
-    </script>
+                finalHTML += `
+                    <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
+                        <tr><td colspan="4" style="background-color: #f0f0f0; font-weight: bold; text-align: center;">LABORATORIO ${formatDate(s.fecha)} (${s.hora})</td></tr>
+                        <tr><td style="font-weight:bold;width:20%">Hto/Hb</td><td style="width:30%">${hto_hb}</td><td style="font-weight:bold;width:20%">Bil T/D</td><td style="width:30%">${bili}</td></tr>
+                        <tr><td style="font-weight:bold">Gl. blancos</td><td>${wbc}</td><td style="font-weight:bold">GOT/GPT/FAL</td><td>${enz}</td></tr>
+                        <tr><td style="font-weight:bold">Plaquetas</td><td>${plaq}</td><td style="font-weight:bold">Prot/Alb</td><td>${prot}</td></tr>
+                        <tr><td style="font-weight:bold">Urea/Crea</td><td>${ren}</td><td style="font-weight:bold">Glucemia</td><td>${glu}</td></tr>
+                        <tr><td style="font-weight:bold">TP/KPTT/RIN</td><td>${coag}</td><td style="font-weight:bold">IONOGRAMA</td><td>${iono}</td></tr>
+                        <tr><td style="font-weight:bold">EAB</td><td colspan="3">${eab}</td></tr>
+                    </table><br>`;
+            });
+            const blob = new Blob([finalHTML], { type: 'text/html' });
+            // Usamos un div temporal para copiar el HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = finalHTML;
+            document.body.appendChild(tempDiv);
+            const range = document.createRange();
+            range.selectNodeContents(tempDiv);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            document.execCommand('copy');
+            document.body.removeChild(tempDiv);
+
+            showToast("Tablas Copiadas", "success");
+        }
+
+        function copyHCLAB() {
+            const p = document.getElementById("patientSelector").value;
+            if(!p) return showToast("Seleccione paciente", "error");
+            const samples = getExportSamples(p);
+            let text = "";
+            samples.forEach(samp => {
+                let parts = [];
+                // Respetar filtro de columnas
+                const visibleSorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
+                visibleSorted.forEach(k => { 
+                    const val = getSmartValue(samp.parametros||{}, k);
+                    if(val) parts.push(`${getDisplayLabel(k)} ${val}`);
+                });
+                text += `LAB ${formatDate(samp.fecha)}: ` + parts.join(", ") + "\n\n";
+            });
+            navigator.clipboard.writeText(text.trim()).then(()=>showToast("Copiado HCLAB", "success"));
+        }
+
+        function downloadPDF() {
+            const p = document.getElementById("patientSelector").value;
+            if(!p) return showToast("Seleccione paciente", "error");
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4');
+            const samples = getExportSamples(p);
+            const sorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
+            const head = ['Fecha', 'Hora', ...sorted.map(k => getDisplayLabel(k))];
+            const body = samples.map(s => {
+                let r = [formatDate(s.fecha), s.hora];
+                sorted.forEach(k => r.push(getSmartValue(s.parametros, k) ?? '-'));
+                return r;
+            });
+            doc.setFontSize(14); doc.text(`Historial: ${p}`, 14, 15);
+            doc.autoTable({ startY: 25, head: [head], body: body, theme: 'grid', styles: { fontSize: 7, halign: 'center' }, headStyles: { fillColor: [59, 130, 246] } });
+            doc.save(`Reporte_${p}.pdf`);
+        }
+
+        // MERGE & MODALS
+        function openMergePatientModal() { 
+            document.getElementById('mergePatientModal').classList.remove('opacity-0', 'pointer-events-none'); 
+            const names = Object.keys(labData).sort(); 
+            const s1=document.getElementById('mergeTarget'), s2=document.getElementById('mergeSource'); 
+            s1.innerHTML=""; s2.innerHTML=""; 
+            names.forEach(n=>{ s1.add(new Option(n,n)); s2.add(new Option(n,n)); }); 
+        }
+        function closeModal(id) { document.getElementById(id).classList.add('opacity-0', 'pointer-events-none'); }
+        async function executeMergePatients() {
+            const t=document.getElementById('mergeTarget').value, s=document.getElementById('mergeSource').value;
+            if(t===s)return alert("Iguales"); if(!confirm("¿Fusionar?"))return;
+            const b=db.batch(); labData[s].forEach(d=>b.update(db.collection("muestras").doc(d.id),{paciente:t}));
+            await b.commit(); showToast("Fusionado", "success"); closeModal('mergePatientModal');
+        }
+        async function mergeSelectedLabs() {
+            const p = document.getElementById("patientSelector").value;
+            const ids = getSelectedIds();
+            if(!p || ids.length < 2) return showToast("Seleccione 2+ filas", "error");
+            const samples = labData[p].filter(s => ids.includes(s.id));
+            let master = samples[0];
+            let newParams = { ...master.parametros };
+            for(let i=1; i<samples.length; i++) newParams = { ...newParams, ...samples[i].parametros };
+            await db.collection("muestras").doc(master.id).update({ parametros: newParams });
+            const batch = db.batch();
+            for(let i=1; i<samples.length; i++) batch.delete(db.collection("muestras").doc(samples[i].id));
+            await batch.commit(); showToast("Unificado", "success");
+        }
+        async function deleteDatabase() {
+            if(prompt("Clave:")!=="D3l.e@TE$alL") return alert("Incorrecto");
+            const q=await db.collection("muestras").get(); const b=db.batch(); q.forEach(d=>b.delete(d.ref)); await b.commit();
+            showToast("Base Limpia", "success");
+        }
+
+        // COLUMN FILTER
+        function openColumnFilter() {
+            const grid = document.getElementById("columnsGrid"); grid.innerHTML = "";
+            CLINICAL_ORDER.forEach(k => {
+                const checked = visibleColumns.has(k) ? "checked" : "";
+                grid.innerHTML += `<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" class="col-check custom-checkbox" value="${k}" ${checked}><span>${getDisplayLabel(k)}</span></label>`;
+            });
+            document.getElementById('columnFilterModal').classList.remove('opacity-0', 'pointer-events-none');
+        }
+        function toggleAllColumns(state) { document.querySelectorAll('.col-check').forEach(cb => cb.checked = state); }
+        function applyColumnFilter() {
+            visibleColumns = new Set(); document.querySelectorAll('.col-check:checked').forEach(cb => visibleColumns.add(cb.value));
+            closeModal('columnFilterModal'); loadPatientData();
+        }
+
+        // INIT
+        document.addEventListener("DOMContentLoaded", () => {
+            const k = localStorage.getItem("my_openai_key_v1");
+            if(k) document.getElementById("apiKey").value = k;
+            initRealTimeListener();
+            // PDF Listener Setup
+            const input=document.getElementById("pdfInput");
+            const textArea=document.getElementById("labInput");
+            input.addEventListener("change",async(e)=>{
+                const file=e.target.files[0]; if(!file)return;
+                textArea.value="⏳ Leyendo...";
+                try{
+                    const buffer=await file.arrayBuffer();
+                    // Utilizamos window.pdfjsLib.getDocument para asegurar compatibilidad
+                    const pdf=await window.pdfjsLib.getDocument({data: buffer}).promise;
+                    let t=""; for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i), c=await p.getTextContent(); t+=c.items.map(x=>x.str).join(" ")+"\n";}
+                    textArea.value=t; showToast("PDF Leído","success");
+                }catch(err){ textArea.value="Error: "+err.message; }
+            });
+            // Buttons
+            document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
+            document.getElementById("patientSelector").addEventListener("change", loadPatientData);
+            document.getElementById("paramSelector").addEventListener("change", updateGraph);
+            document.getElementById("btnLimpiarEntrada").addEventListener("click", () => document.getElementById("labInput").value = "");
+        });
+    </script>
 </body>
 </html>
