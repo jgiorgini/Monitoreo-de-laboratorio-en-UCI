@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v19.1 (Stable)</title>
+    <title>Monitor UCI - v17.5 (Stable)</title>
     
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     
@@ -12,7 +12,7 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
@@ -20,7 +20,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";</script>
 
-    <!-- jsPDF -->
+    <!-- jsPDF & AutoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
@@ -32,9 +32,6 @@
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow: hidden; }
         .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #dc2626; border: 2px solid #cbd5e1; }
-        /* Animación suave para carga */
-        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
-        .animate-pulse-soft { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
 </head>
 <body class="p-4 md:p-6 lg:p-8">
@@ -44,12 +41,12 @@
         <!-- HEADER -->
         <header class="glass-panel p-5 flex flex-col md:flex-row justify-between items-center bg-white">
             <div class="flex items-center gap-3">
-                <div class="bg-indigo-600 text-white p-2 rounded-lg shadow-sm">
+                <div class="bg-indigo-600 text-white p-2 rounded-lg">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v19.1 Stable</span></h1>
-                    <p class="text-slate-500 text-xs mt-0.5">Gestión Integral - Multi-Muestra Robusta</p>
+                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.5</span></h1>
+                    <p class="text-slate-500 text-xs mt-0.5">Versión Estable + Soporte Multi-Fecha</p>
                 </div>
             </div>
             
@@ -70,30 +67,29 @@
             </div>
         </header>
 
-        <!-- CARGA DE DATOS -->
+        <!-- INPUT SECTION -->
         <section class="glass-panel p-6">
             <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-4">
                 <div>
                     <h2 class="text-lg font-bold text-slate-700">Carga de Laboratorio</h2>
-                    <p class="text-xs text-slate-500">Seleccione PDFs (incluso con múltiples fechas/páginas) o pegue texto.</p>
+                    <p class="text-xs text-slate-500">Seleccione PDFs (incluso con múltiples fechas) o pegue texto.</p>
                 </div>
                 <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-5 py-2.5 flex items-center gap-2 transition font-medium">
                     <span>📄 Seleccionar PDFs...</span>
                     <input type="file" id="pdfInput" accept="application/pdf" multiple class="hidden" onclick="this.value=null;">
                 </label>
             </div>
-            <textarea id="labInput" rows="3" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none" placeholder="El texto extraído aparecerá aquí..."></textarea>
+            <textarea id="labInput" rows="2" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none" placeholder="Pegue aquí texto o espere a que se lea el PDF..."></textarea>
             <div class="mt-4 flex gap-3">
                 <button id="btnProcesarIA" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
-                    <span>✨ Procesar con IA</span>
+                    <span>✨ Procesar</span>
                 </button>
                 <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-slate-700 text-sm font-medium px-4 py-2 hover:bg-slate-100 rounded-lg transition">Limpiar</button>
             </div>
         </section>
 
-        <!-- PANEL CENTRAL -->
+        <!-- DASHBOARD -->
         <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- CONTROLES -->
             <div class="glass-panel p-6 flex flex-col justify-between h-full">
                 <div class="space-y-5">
                     <div>
@@ -107,7 +103,7 @@
                 </div>
                 
                 <div class="mt-8 pt-6 border-t border-slate-100">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Acciones</h3>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Acciones sobre Selección</h3>
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="copyWordTable()" class="col-span-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm">
                             <span class="text-lg">📋</span> Copiar Tabla Word
@@ -125,7 +121,7 @@
                         </button>
 
                         <button onclick="smartDelete()" class="col-span-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition mt-1">
-                            <span>🗑️</span> Borrar
+                            <span>🗑️</span> Borrar (Filas o Paciente)
                         </button>
                     </div>
                     <div class="mt-3 text-center">
@@ -134,7 +130,6 @@
                 </div>
             </div>
 
-            <!-- GRAFICO -->
             <div class="lg:col-span-2 glass-panel p-6 relative">
                 <h3 class="text-sm font-bold text-slate-500 mb-4">Tendencia Evolutiva</h3>
                 <div class="h-64 w-full">
@@ -143,7 +138,7 @@
             </div>
         </section>
 
-        <!-- TABLA COMPLETA -->
+        <!-- TABLE SECTION -->
         <section class="glass-panel overflow-hidden">
             <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
                 <div class="flex items-center gap-4">
@@ -163,7 +158,7 @@
         </section>
     </div>
 
-    <!-- MODAL FUSIONAR -->
+    <!-- MODALS -->
     <div id="mergePatientModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
         <div class="bg-white w-full max-w-md mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95" id="mergeModalContent">
             <div class="p-6">
@@ -180,7 +175,6 @@
         </div>
     </div>
 
-    <!-- MODAL COLUMNAS -->
     <div id="columnFilterModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
         <div class="bg-white w-full max-w-3xl mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95 h-auto max-h-[80vh] flex flex-col">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
@@ -201,30 +195,30 @@
     </div>
 
     <script>
-        // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
+        // --- 1. CONFIGURACIÓN FIREBASE ---
         const firebaseConfig = { apiKey:"AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8", authDomain:"laboratorios-uco.firebaseapp.com", projectId:"laboratorios-uco", storageBucket:"laboratorios-uco.firebasestorage.app", messagingSenderId:"435400240534", appId:"1:435400240534:web:1cb4c57beb4b69e933c1b7", measurementId:"G-Q0FE3ZD4P7" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Lista de parámetros objetivo (Incluye nuevos del PDF SAVAN)
+        // --- 2. CONFIGURACIÓN CLÍNICA (Actualizada con BEb, SatO2, Glucosa Plasmatica) ---
         const TARGET_PARAMS = ["Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "Glucosa", "Urea", "Creatinina", "Acido_Urico", "HbA1c", "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales", "CPK", "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "BEb", "TSH", "Colesterol_Total", "LDL", "HDL", "Triglicéridos", "TP", "RIN", "KPTT", "aPTT"];
         
         const ABBR = {"Hematocrito":"Hto", "Hemoglobina":"Hb", "Leucocitos":"GB", "Plaquetas":"Plq", "Urea":"Urea", "Creatinina":"Crea", "Glucosa":"Glu", "HbA1c":"HbA1c", "AU":"AU", "Na":"Na", "K":"K", "Cl":"Cl", "Mg":"Mg", "Ca_Total":"Ca", "Ca_Ionizado":"Ca++", "Fosforo":"P", "BT":"BT", "BD":"BD", "AST_TGO":"GOT", "ALT_TGP":"GPT", "FAL":"FAL", "Albúmina":"Alb", "Prot":"Prot", "CPK":"CPK", "Col":"Col", "LDL":"LDL", "HDL":"HDL", "TG":"TG", "PCR":"PCR", "PCT":"PCT", "TSH":"TSH", "LAC":"LAC", "pH":"pH", "pCO2":"pCO2", "pO2":"pO2", "Bicarbonato":"BIC", "SatO2":"Sat", "BEb":"BEb", "TP":"TP", "RIN":"RIN", "KPTT":"KPTT", "aPTT":"KPTT"};
         
-        // Mapeo normalizado (incluye variantes PDF)
         const NORM_MAP = {
             "Ácido Úrico":"AU", "ACIDO URICO":"AU", "Acido_Urico":"AU", "Bilirrubina_Total":"BT", "BILIRRUBINA_TOTAL":"BT", "Bilirrubina Total":"BT", "Bilirrubina_Directa":"BD", "Bilirrubina Directa":"BD", "Creatinquinasa":"CPK", "CREATINQUINASA":"CPK", "Fosfatasa_Alcalina":"FAL", "Proteinas_Totales":"Prot", "Colesterol_Total":"Col", "Triglicéridos":"TG", "Ácido Láctico":"LAC", "Lactato":"LAC", "Acido_Lactico":"LAC", "Bicarbonato":"BIC", "aPTT":"KPTT", "APTT":"KPTT", "KPTT":"KPTT", "Tiempo de Protrombina":"TP", "TP (Seg)":"TP",
-            "BEb":"BEb", "BASE_EXCESS":"BEb", "% Saturación 02 (c)":"SatO2", "Saturacion 02":"SatO2", "Glucosa Plasmática":"Glu" 
+            "BEb":"BEb", "BASE_EXCESS":"BEb", "% Saturación 02 (c)":"SatO2", "Saturacion 02":"SatO2", "Glucosa Plasmática":"Glu" // Mapeos especiales
         };
-        
+
         const CLINICAL_ORDER = ["Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas", "Urea", "Creatinina", "Glucosa", "HbA1c", "AU", "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot", "Col", "LDL", "HDL", "TG", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH", "CPK", "PCR", "PCT", "pH", "pCO2", "pO2", "BEb", "BIC", "SatO2", "LAC", "TP", "RIN", "KPTT"];
+        
         const SAFETY_RANGES = { "K": { min: 1.0, max: 9.0 }, "Na": { min: 100, max: 180 }, "pH": { min: 6.5, max: 8.0 }, "Hb": { min: 2, max: 25 } };
 
         let labData = {}; 
         let chartInstance = null;
         let visibleColumns = new Set(CLINICAL_ORDER);
 
-        // --- 2. UTILIDADES ---
+        // --- 3. UTILS ---
         function showToast(msg, type="info") {
             let bg = type==="error"?"#ef4444":type==="success"?"#10b981":"#3b82f6";
             Toastify({ text: msg, duration: 3000, gravity: "top", position: "center", style: { background: bg, borderRadius: "8px" } }).showToast();
@@ -233,7 +227,7 @@
         function formatDate(isoDate) {
             if(!isoDate) return "-";
             const parts = isoDate.split("-");
-            if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`; 
+            if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
             return isoDate;
         }
 
@@ -269,7 +263,10 @@
             return true;
         }
 
-        // --- 3. LÓGICA PRINCIPAL (IA + UPLOAD) ---
+        function getSelectedIds() { return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id); }
+        function getExportSamples(p) { const ids = getSelectedIds(); return ids.length > 0 ? labData[p].filter(s => ids.includes(s.id)) : labData[p]; }
+
+        // --- 4. CORE: PROCESAMIENTO Y UPLOAD ---
 
         async function processAndUpload() {
             const files = document.getElementById('pdfInput').files;
@@ -283,24 +280,26 @@
             const btn = document.getElementById("btnProcesarIA");
             btn.disabled = true; btn.innerText = "Procesando...";
             
+            // Colección de muestras
             let samplesToUpload = [];
 
-            // 1. TEXTO MANUAL
+            // Opción 1: Texto Manual
             if (files.length === 0 && rawText.length > 10) {
                 try {
                     const extracted = await extractWithAI(rawText, apiKey);
                     samplesToUpload.push(...extracted);
                 } catch (e) { showToast("Error IA: " + e.message, "error"); }
             } 
-            // 2. ARCHIVOS PDF
+            // Opción 2: PDF(s)
             else {
                 const txtArea = document.getElementById("labInput");
                 for (let i = 0; i < files.length; i++) {
-                    txtArea.value = `>>> LEYENDO ARCHIVO ${i+1}: ${files[i].name}...\n`;
+                    txtArea.value = `>>> LEYENDO ARCHIVO ${files[i].name}...\n`;
                     try {
                         const pdfText = await readPdfFile(files[i]);
-                        txtArea.value += "Texto extraído. Consultando IA para detectar múltiples muestras...\n";
+                        txtArea.value += "Texto extraído. Consultando IA (Multi-Fecha)...\n";
                         
+                        // Aquí llamamos a la IA con el prompt especial para múltiples fechas
                         const extractedArray = await extractWithAI(pdfText, apiKey);
                         samplesToUpload.push(...extractedArray);
                         
@@ -309,14 +308,14 @@
                 }
             }
 
-            // 3. SUBIDA A FIREBASE (Bucle robusto)
+            // Subida a Firebase
             let successCount = 0;
             if (samplesToUpload.length > 0) {
                 for (const sample of samplesToUpload) {
                     try {
                         await uploadToFirebase(sample);
                         successCount++;
-                    } catch (e) { console.error("Error subiendo muestra individual", e); }
+                    } catch (e) { console.error("Error subiendo muestra", e); }
                 }
                 showToast(`Se guardaron ${successCount} reportes exitosamente`, "success");
                 document.getElementById("labInput").value = "";
@@ -325,12 +324,12 @@
                 showToast("No se detectaron reportes válidos.", "error");
             }
 
-            btn.disabled = false; btn.innerText = "✨ Procesar con IA";
+            btn.disabled = false; btn.innerText = "✨ Procesar";
         }
 
         async function readPdfFile(file) {
             const buffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument(buffer).promise;
+            const pdf = await window.pdfjsLib.getDocument({data: buffer}).promise;
             let fullText = "";
             for(let i=1; i<=pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
@@ -340,59 +339,55 @@
             return fullText;
         }
 
-        // LÓGICA DE EXTRACCIÓN ROBUSTA
+        // LÓGICA IA: Solicita explícitamente un objeto JSON con array "muestras"
         async function extractWithAI(text, apiKey) {
-            // Prompt reforzado para exigir JSON con clave 'muestras'
-            const prompt = `
-            Act as a Medical Data Expert. Analyze the following text which may contain MULTIPLE laboratory reports from different dates/times.
+            const prompt = `Medical Expert Task:
+            Analyze the following text which may contain ONE or MULTIPLE laboratory reports from different dates/times.
             
-            Return a JSON object strictly following this structure:
+            Return a JSON OBJECT containing an array under the key "muestras". Each item must be a distinct report object:
             {
               "muestras": [
                   {
                     "paciente": "FULL NAME UPPERCASE",
                     "fecha": "YYYY-MM-DD",
                     "hora": "HH:MM",
-                    "protocolo": "string or empty",
-                    "parametros": { "KEY": number, ... }
-                  }
+                    "protocolo": "string",
+                    "parametros": { "KEY": value_number, ... }
+                  },
+                  ...
               ]
             }
-
-            TARGETS: ${TARGET_PARAMS.join(", ")}.
             
-            RULES:
+            Targets: ${TARGET_PARAMS.join(", ")}.
+            Rules: 
             1. If text contains multiple dates, split them into separate objects.
             2. Map "Glucosa Plasmática" -> "Glucosa".
             3. Map "% Saturación 02" -> "SatO2".
             4. Map "BEb" -> "BEb".
-            5. Convert numbers with comma to dot (e.g. 1,5 -> 1.5).
-
-            TEXT: """${text.substring(0, 30000)}"""`;
+            5. Convert numbers like "1,5" to 1.5.
+            
+            Text: """${text.substring(0, 35000)}"""`;
 
             const response = await fetch("https://api.openai.com/v1/chat/completions", {
                 method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
                 body: JSON.stringify({ 
                     model: "gpt-4o-mini", 
                     messages: [{ role: "user", content: prompt }], 
-                    temperature: 0.1,
+                    temperature: 0.1, 
                     response_format: { type: "json_object" } 
                 })
             });
-            
             const data = await response.json();
-            if(!data.choices) throw new Error("Sin respuesta de IA");
+            const content = data.choices[0].message.content.trim();
             
-            const content = data.choices[0].message.content;
             try {
                 const parsed = JSON.parse(content);
-                // Normalización de respuesta: siempre devolver array
+                // Manejo robusto de la respuesta
                 if (parsed.muestras && Array.isArray(parsed.muestras)) return parsed.muestras;
                 if (Array.isArray(parsed)) return parsed;
-                return [parsed]; // Si devuelve objeto único, envolver
+                return [parsed];
             } catch (e) {
-                console.error("Error parsing JSON", e);
-                throw new Error("Formato JSON inválido recibido de IA");
+                throw new Error("La IA no devolvió un JSON válido.");
             }
         }
 
@@ -408,7 +403,6 @@
                     if (isValidValue(canonical, result.parametros[k])) cleanParams[canonical] = result.parametros[k];
                 }
             }
-            
             await db.collection("muestras").add({
                 paciente: result.paciente, fecha: result.fecha, hora: result.hora,
                 protocolo: result.protocolo || "", parametros: cleanParams,
@@ -417,7 +411,7 @@
             });
         }
 
-        // --- 4. INTERFAZ Y EVENTOS ---
+        // --- 5. INTERFAZ Y EVENTOS ---
         function initRealTimeListener() {
             db.collection("muestras").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
                 labData = {}; 
@@ -459,7 +453,6 @@
             });
             document.querySelector("#uciTable tbody").innerHTML = b;
             
-            // Refrescar selector de gráfico
             const pSel = document.getElementById("paramSelector");
             const currP = pSel.value; pSel.innerHTML = "";
             sorted.forEach(k => pSel.appendChild(new Option(getDisplayLabel(k), k)));
@@ -468,9 +461,7 @@
         }
 
         function toggleAll(source) { document.querySelectorAll('.row-select').forEach(cb => cb.checked = source.checked); }
-        function getSelectedIds() { return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id); }
-        function getExportSamples(p) { const ids = getSelectedIds(); return ids.length > 0 ? labData[p].filter(s => ids.includes(s.id)) : labData[p]; }
-
+        
         function updateGraph() {
             const p = document.getElementById("patientSelector").value;
             const param = document.getElementById("paramSelector").value;
@@ -489,17 +480,17 @@
             });
         }
 
-        // --- 5. FUNCIONES DE MODAL Y HERRAMIENTAS ---
+        // --- FUNCIONES EXTRAS (MODALES, BORRAR, COPIAR) ---
         async function smartDelete() {
             const ids = getSelectedIds();
             const patient = document.getElementById("patientSelector").value;
             if (!patient) return showToast("Seleccione un paciente", "error");
             if (ids.length > 0) {
-                if(!confirm(`¿Borrar ${ids.length} filas?`)) return;
+                if(!confirm(`¿Borrar las ${ids.length} filas seleccionadas?`)) return;
                 const batch = db.batch(); ids.forEach(id => batch.delete(db.collection("muestras").doc(id)));
                 await batch.commit(); showToast("Filas eliminadas", "success");
             } else {
-                if(!confirm(`⚠️ ¿Borrar historial completo de ${patient}?`)) return;
+                if(!confirm(`⚠️ ¿Borrar TODO el historial de ${patient}? Esta acción no se puede deshacer.`)) return;
                 const q = await db.collection("muestras").where("paciente", "==", patient).get();
                 const b = db.batch(); q.forEach(d => b.delete(d.ref));
                 await b.commit(); showToast("Paciente eliminado", "success"); document.getElementById("patientSelector").value = ""; refreshUI();
@@ -514,7 +505,6 @@
             samples.forEach(s => {
                 const par = s.parametros || {};
                 const get = (k) => getSmartValue(par, k) ?? "-";
-                // Grid estilo Argerich
                 const hto_hb = `${get('Hto')} / ${get('Hb')}`;
                 const bili = `${get('BT')} / ${get('BD')}`;
                 const wbc = get('GB');
@@ -539,7 +529,7 @@
                     </table><br>`;
             });
             const blob = new Blob([finalHTML], { type: 'text/html' });
-            navigator.clipboard.write([new ClipboardItem({'text/html': blob})]).then(() => showToast("Copiado al portapapeles", "success"));
+            navigator.clipboard.write([new ClipboardItem({'text/html': blob})]).then(() => showToast("Tablas Copiadas", "success"));
         }
 
         function copyHCLAB() {
@@ -577,7 +567,6 @@
             doc.save(`Reporte_${p}.pdf`);
         }
 
-        // Modales
         function openMergePatientModal() { document.getElementById('mergePatientModal').classList.remove('opacity-0', 'pointer-events-none'); const names = Object.keys(labData).sort(); const s1=document.getElementById('mergeTarget'), s2=document.getElementById('mergeSource'); s1.innerHTML=""; s2.innerHTML=""; names.forEach(n=>{ s1.add(new Option(n,n)); s2.add(new Option(n,n)); }); }
         function closeModal(id) { document.getElementById(id).classList.add('opacity-0', 'pointer-events-none'); }
         async function executeMergePatients() {
@@ -624,7 +613,23 @@
             if(k) document.getElementById("apiKey").value = k;
             initRealTimeListener();
             
-            // Listeners
+            const input=document.getElementById("pdfInput");
+            const textArea=document.getElementById("labInput");
+            input.addEventListener("change",async(e)=>{
+                const files=e.target.files; if(files.length === 0) return;
+                textArea.value="⏳ Leyendo...";
+                try{
+                    let fullText = "";
+                    for (let i = 0; i < files.length; i++) {
+                        textArea.value = `⏳ Leyendo ${files[i].name}...`;
+                        const buffer=await files[i].arrayBuffer();
+                        const pdf=await window.pdfjsLib.getDocument({data: buffer}).promise;
+                        for(let j=1;j<=pdf.numPages;j++){const p=await pdf.getPage(j), c=await p.getTextContent(); fullText+=c.items.map(x=>x.str).join(" ")+"\n";}
+                    }
+                    textArea.value=fullText; showToast("PDF(s) Leído(s)","success");
+                }catch(err){ textArea.value="Error: "+err.message; showToast("Error al leer PDF","error"); }
+            });
+
             document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
             document.getElementById("patientSelector").addEventListener("change", loadPatientData);
             document.getElementById("paramSelector").addEventListener("change", updateGraph);
