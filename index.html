@@ -442,8 +442,8 @@ appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
             const samples = labData[p];
             const sorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
             
-            let h = `<tr><th class="p-3 bg-slate-50 border-b sticky left-0 z-30 w-10"><input type="checkbox" onclick="toggleAll(this)"></th><th class="p-3 text-left text-xs font-bold text-slate-500 bg-slate-50 border-b sticky left-10 z-20">Fecha</th>`;
-            sorted.forEach(k => h += `<th class="p-3 text-center text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b whitespace-nowrap">${getDisplayLabel(k)}</th>`);
+            let h = `<tr><th class="p-1 bg-slate-50 border-b sticky left-0 z-30 w-10"><input type="checkbox" onclick="toggleAll(this)"></th><th class="p-1 text-left text-xs font-bold text-slate-500 bg-slate-50 border-b sticky left-10 z-20">Fecha</th>`;
+            sorted.forEach(k => h += `<th class="p-1 text-center text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b whitespace-nowrap">${getDisplayLabel(k)}</th>`);
             document.querySelector("#uciTable thead").innerHTML = h + "</tr>";
 
             let b = "";
