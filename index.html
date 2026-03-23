@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v17.8</title>
+    <title>Monitor UCI - v17.9</title>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -45,8 +45,8 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
             <div>
-                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.8</span></h1>
-                <p class="text-slate-500 text-xs mt-0.5">Columnas dinámicas · Valores críticos · Delta · Export Excel</p>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.9</span></h1>
+                <p class="text-slate-500 text-xs mt-0.5">Columnas dinámicas · Valores críticos · Delta · Excel · Fix Word/PDF</p>
             </div>
         </div>
         <div class="mt-4 md:mt-0 flex gap-2 flex-wrap justify-end">
@@ -681,48 +681,130 @@ function copyWordTable() {
     const p = document.getElementById("patientSelector").value;
     if (!p) return;
     const samples = getExportSamples(p);
-    let finalHTML = "";
+
+    // Estilos base para celdas — centrado horizontal y vertical, altura automática
+    const tdBase = `style="padding:4px 6px;vertical-align:middle;text-align:center;height:auto;min-height:18px;"`;
+    const tdLabel = `style="padding:4px 6px;vertical-align:middle;text-align:left;font-weight:bold;min-width:110px;white-space:nowrap;background-color:#f5f5f5;"`;
+    const tdValue = `style="padding:4px 6px;vertical-align:middle;text-align:center;min-width:130px;"`;
+    const tdHeader = `style="padding:5px 6px;vertical-align:middle;text-align:center;font-weight:bold;background-color:#e8e8e8;font-size:10.5pt;"`;
+
+    // Wrapper externo para forzar ancho completo en Word
+    const tableStyle = `style="border-collapse:collapse;width:100%;table-layout:fixed;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:16px;"`;
+
+    let finalHTML = `<div style="width:100%;margin:0;padding:0;">`;
+
     samples.forEach(s => {
         const par = s.parametros || {};
         const get = (k) => getSmartValue(par, k) ?? "-";
 
-        // Helper para marcar críticos en rojo en Word
+        // Helper: valor con color rojo si crítico
         const getStyled = (k) => {
             const val = getSmartValue(par, k);
             if (val === undefined || val === null) return "-";
             const crit = isCritical(k, val);
-            return crit ? `<span style="color:#dc2626;font-weight:bold">${val}</span>` : val;
+            return crit
+                ? `<span style="color:#dc2626;font-weight:bold;">${val}</span>`
+                : `${val}`;
         };
 
-        const hto_hb   = `${getStyled('Hto')} / ${getStyled('Hb')}`;
-        const bili     = `${getStyled('BT')} / ${getStyled('BD')}`;
-        const wbc      = getStyled('GB');
-        const enz      = `${getStyled('GOT')} / ${getStyled('GPT')} / ${getStyled('FAL')}`;
-        const plaq     = getStyled('Plq');
-        const prot     = `${getStyled('Prot')} / ${getStyled('Alb')}`;
-        const ren      = `${getStyled('Urea')} / ${getStyled('Crea')}`;
-        const glu      = getStyled('Glu');
-        const coag     = `${getStyled('TP')} / ${getStyled('KPTT')} / ${getStyled('RIN')}`;
-        // IONOGRAMA AMPLIADO: Na/K/Cl/Mg/Ca/P
-        const iono     = `${getStyled('Na')} / ${getStyled('K')} / ${getStyled('Cl')} / Mg ${getStyled('Mg')} / Ca ${getStyled('Ca_Total')} / Ca++ ${getStyled('Ca_Ionizado')} / P ${getStyled('Fosforo')}`;
-        // EAB con BEb
-        const eab      = `pH ${getStyled('pH')} / pCO2 ${getStyled('pCO2')} / pO2 ${getStyled('pO2')} / BEb ${getStyled('BEb')} / BIC ${getStyled('BIC')} / Sat ${getStyled('Sat')} / LAC ${getStyled('LAC')}`;
-        // Inmunosupresores
-        const tacro    = get('Tacrolimus') !== "-" || get('Everolimus') !== "-";
-        const inmunoRow = tacro ? `<tr><td style="font-weight:bold">Inmunosup.</td><td colspan="3">Tacro ${getStyled('Tacrolimus')} / Evero ${getStyled('Everolimus')}</td></tr>` : "";
+        // Helper: muestra solo si al menos uno de los valores existe
+        const hasAny = (...keys) => keys.some(k => {
+            const v = getSmartValue(par, k);
+            return v !== undefined && v !== null;
+        });
+
+        const hto_hb = `${getStyled('Hto')} / ${getStyled('Hb')}`;
+        const bili   = `${getStyled('BT')} / ${getStyled('BD')}`;
+        const wbc    = getStyled('GB');
+        const enz    = `${getStyled('GOT')} / ${getStyled('GPT')} / ${getStyled('FAL')}`;
+        const plaq   = getStyled('Plq');
+        const prot   = `${getStyled('Prot')} / ${getStyled('Alb')}`;
+        const ren    = `${getStyled('Urea')} / ${getStyled('Crea')}`;
+        const glu    = getStyled('Glu');
+        const coag   = `${getStyled('TP')} / ${getStyled('KPTT')} / ${getStyled('RIN')}`;
+
+        // Ionograma: mostrar solo los electrolitos disponibles
+        let ionoParts = [];
+        if (hasAny('Na'))          ionoParts.push(`Na ${getStyled('Na')}`);
+        if (hasAny('K'))           ionoParts.push(`K ${getStyled('K')}`);
+        if (hasAny('Cl'))          ionoParts.push(`Cl ${getStyled('Cl')}`);
+        if (hasAny('Mg'))          ionoParts.push(`Mg ${getStyled('Mg')}`);
+        if (hasAny('Ca_Total'))    ionoParts.push(`Ca ${getStyled('Ca_Total')}`);
+        if (hasAny('Ca_Ionizado')) ionoParts.push(`Ca++ ${getStyled('Ca_Ionizado')}`);
+        if (hasAny('Fosforo'))     ionoParts.push(`P ${getStyled('Fosforo')}`);
+        const iono = ionoParts.length > 0 ? ionoParts.join(' / ') : '-';
+
+        // EAB: mostrar solo los disponibles
+        let eabParts = [];
+        if (hasAny('pH'))          eabParts.push(`pH ${getStyled('pH')}`);
+        if (hasAny('pCO2'))        eabParts.push(`pCO2 ${getStyled('pCO2')}`);
+        if (hasAny('pO2'))         eabParts.push(`pO2 ${getStyled('pO2')}`);
+        if (hasAny('BEb'))         eabParts.push(`BEb ${getStyled('BEb')}`);
+        if (hasAny('BIC'))         eabParts.push(`BIC ${getStyled('BIC')}`);
+        if (hasAny('SatO2'))       eabParts.push(`Sat ${getStyled('Sat')}`);
+        if (hasAny('LAC'))         eabParts.push(`LAC ${getStyled('LAC')}`);
+        const eab = eabParts.length > 0 ? eabParts.join(' / ') : '-';
+        const showEab = eabParts.length > 0;
+
+        // Inmunosupresores: fila solo si hay datos
+        const hasTacro = hasAny('Tacrolimus');
+        const hasEvero = hasAny('Everolimus');
+        const showInmuno = hasTacro || hasEvero;
+        let inmuParts = [];
+        if (hasTacro) inmuParts.push(`Tacro ${getStyled('Tacrolimus')}`);
+        if (hasEvero) inmuParts.push(`Evero ${getStyled('Everolimus')}`);
+        const inmunoRow = showInmuno
+            ? `<tr>
+                <td ${tdLabel}>Inmunosup.</td>
+                <td colspan="3" ${tdValue}>${inmuParts.join(' / ')}</td>
+               </tr>`
+            : "";
 
         finalHTML += `
-        <table border="1" style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:20px;">
-            <tr><td colspan="4" style="background-color:#f0f0f0;font-weight:bold;text-align:center;">LABORATORIO ${formatDate(s.fecha)} (${s.hora})</td></tr>
-            <tr><td style="font-weight:bold;width:20%">Hto/Hb</td><td style="width:30%">${hto_hb}</td><td style="font-weight:bold;width:20%">Bil T/D</td><td style="width:30%">${bili}</td></tr>
-            <tr><td style="font-weight:bold">Gl. blancos</td><td>${wbc}</td><td style="font-weight:bold">GOT/GPT/FAL</td><td>${enz}</td></tr>
-            <tr><td style="font-weight:bold">Plaquetas</td><td>${plaq}</td><td style="font-weight:bold">Prot/Alb</td><td>${prot}</td></tr>
-            <tr><td style="font-weight:bold">Urea/Crea</td><td>${ren}</td><td style="font-weight:bold">Glucemia</td><td>${glu}</td></tr>
-            <tr><td style="font-weight:bold">TP/KPTT/RIN</td><td>${coag}</td><td style="font-weight:bold">IONOGRAMA</td><td>${iono}</td></tr>
-            <tr><td style="font-weight:bold">EAB</td><td colspan="3">${eab}</td></tr>
+        <table ${tableStyle} border="1">
+            <tr>
+                <td colspan="4" ${tdHeader}>LABORATORIO ${formatDate(s.fecha)} &nbsp;&nbsp;(${s.hora})</td>
+            </tr>
+            <tr>
+                <td ${tdLabel}>Hto / Hb</td>
+                <td ${tdValue}>${hto_hb}</td>
+                <td ${tdLabel}>Bil T / D</td>
+                <td ${tdValue}>${bili}</td>
+            </tr>
+            <tr>
+                <td ${tdLabel}>Gl. blancos</td>
+                <td ${tdValue}>${wbc}</td>
+                <td ${tdLabel}>GOT / GPT / FAL</td>
+                <td ${tdValue}>${enz}</td>
+            </tr>
+            <tr>
+                <td ${tdLabel}>Plaquetas</td>
+                <td ${tdValue}>${plaq}</td>
+                <td ${tdLabel}>Prot / Alb</td>
+                <td ${tdValue}>${prot}</td>
+            </tr>
+            <tr>
+                <td ${tdLabel}>Urea / Crea</td>
+                <td ${tdValue}>${ren}</td>
+                <td ${tdLabel}>Glucemia</td>
+                <td ${tdValue}>${glu}</td>
+            </tr>
+            <tr>
+                <td ${tdLabel}>TP / KPTT / RIN</td>
+                <td ${tdValue}>${coag}</td>
+                <td ${tdLabel}>IONOGRAMA</td>
+                <td ${tdValue}>${iono}</td>
+            </tr>
+            ${showEab ? `<tr>
+                <td ${tdLabel}>EAB</td>
+                <td colspan="3" ${tdValue}>${eab}</td>
+            </tr>` : ''}
             ${inmunoRow}
-        </table><br>`;
+        </table>
+        <p style="margin:4px 0;">&nbsp;</p>`;
     });
+
+    finalHTML += `</div>`;
 
     const blob = new Blob([finalHTML], {type:'text/html'});
     navigator.clipboard.write([new ClipboardItem({'text/html':blob})]).then(()=>showToast("Tablas copiadas","success"));
@@ -752,14 +834,33 @@ function downloadPDF() {
     const doc = new jsPDF('l','mm','a4');
     const samples = getExportSamples(p);
     const allCols = getAllVisibleColumns();
-    const head = ['Fecha','Hora',...allCols.map(k=>getDisplayLabel(k))];
+
+    // FIX v17.9: filtrar columnas que no tienen NINGÚN valor en ninguna fila
+    const colsWithData = allCols.filter(k =>
+        samples.some(s => {
+            const v = getSmartValue(s.parametros, k);
+            return v !== undefined && v !== null && v !== "";
+        })
+    );
+
+    const head = ['Fecha','Hora',...colsWithData.map(k=>getDisplayLabel(k))];
     const body = samples.map(s => {
         let r = [formatDate(s.fecha), s.hora];
-        allCols.forEach(k => r.push(getSmartValue(s.parametros,k)??'-'));
+        colsWithData.forEach(k => r.push(getSmartValue(s.parametros,k)??'-'));
         return r;
     });
-    doc.setFontSize(14); doc.text(`Historial: ${p}`, 14, 15);
-    doc.autoTable({ startY:25, head:[head], body:body, theme:'grid', styles:{fontSize:7,halign:'center'}, headStyles:{fillColor:[59,130,246]} });
+    doc.setFontSize(11);
+    doc.text(`Historial: ${p}`, 14, 12);
+    doc.autoTable({
+        startY: 20,
+        head: [head],
+        body: body,
+        theme: 'grid',
+        styles: { fontSize: 6.5, halign: 'center', valign: 'middle', cellPadding: 1.5 },
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 6.5 },
+        columnStyles: { 0: { halign: 'left', cellWidth: 18 }, 1: { cellWidth: 10 } },
+        margin: { left: 8, right: 8 }
+    });
     doc.save(`Reporte_${p}.pdf`);
 }
 
