@@ -3,780 +3,895 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v17.6 (Argerich Fix)</title>
-    
+    <title>Monitor UCI - v17.7</title>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-check-compat.js"></script>
-
-    <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";</script>
-
-    <!-- jsPDF & AutoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
         .table-container { max-height: 600px; overflow-y: auto; scrollbar-width: thin; }
         thead th { position: sticky; top: 0; z-index: 20; background-color: #f1f5f9; }
-        .glass-panel { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-radius: 0.75rem; }
+        .glass-panel { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-radius: 0.75rem; }
         .modal { transition: opacity 0.25s ease; }
-        body.modal-active { overflow: hidden; }
-        .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #dc2626; border: 2px solid #cbd5e1; }
+        .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #dc2626; }
+        /* Valores críticos */
+        .val-critical { color: #dc2626 !important; font-weight: 700; }
+        /* Delta */
+        .delta-up { color: #dc2626; font-size: 10px; }
+        .delta-down { color: #2563eb; font-size: 10px; }
+        .delta-neutral { color: #94a3b8; font-size: 10px; }
+        /* Sección dinámica en filtro */
+        .col-section-title { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 12px; margin-bottom: 4px; grid-column: 1/-1; }
     </style>
 </head>
 <body class="p-4 md:p-6 lg:p-8">
+<div class="max-w-7xl mx-auto space-y-6">
 
-    <div class="max-w-7xl mx-auto space-y-6">
-        
-        <!-- HEADER -->
-        <header class="glass-panel p-5 flex flex-col md:flex-row justify-between items-center bg-white">
-            <div class="flex items-center gap-3">
-                <div class="bg-indigo-600 text-white p-2 rounded-lg">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+    <!-- HEADER -->
+    <header class="glass-panel p-5 flex flex-col md:flex-row justify-between items-center bg-white">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.7</span></h1>
+                <p class="text-slate-500 text-xs mt-0.5">Columnas dinámicas · Valores críticos · Delta · Fix Argerich</p>
+            </div>
+        </div>
+        <div class="mt-4 md:mt-0 flex gap-2 flex-wrap justify-end">
+            <!-- Selector de hospital -->
+            <select id="hospitalSelector" class="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-400 outline-none">
+                <option value="argerich">🏥 Argerich</option>
+                <option value="aleman">🏥 Alemán</option>
+                <option value="otro">🏥 Otro</option>
+            </select>
+            <button onclick="openMergePatientModal()" class="bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                Fusionar
+            </button>
+            <details id="configDetails" class="relative">
+                <summary class="list-none cursor-pointer bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium border border-slate-200 flex items-center gap-2">⚙️ API</summary>
+                <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 z-50">
+                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">OpenAI API Key</label>
+                    <input type="password" id="apiKey" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="sk-...">
+                </div>
+            </details>
+        </div>
+    </header>
+
+    <!-- INPUT -->
+    <section class="glass-panel p-6">
+        <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-slate-700">Carga de Laboratorio</h2>
+                <p class="text-xs text-slate-500">Seleccione PDFs o pegue texto. El hospital seleccionado determina rangos críticos.</p>
+            </div>
+            <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-5 py-2.5 flex items-center gap-2 font-medium">
+                <span>📄 Seleccionar PDFs...</span>
+                <input type="file" id="pdfInput" accept="application/pdf" multiple class="hidden" onclick="this.value=null;">
+            </label>
+        </div>
+        <textarea id="labInput" rows="2" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:bg-white focus:border-blue-400 outline-none resize-none" placeholder="Pegue texto o espere a que se lea el PDF..."></textarea>
+        <div class="mt-4 flex gap-3">
+            <button id="btnProcesarIA" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md transition flex items-center gap-2">✨ Procesar</button>
+            <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-slate-700 text-sm font-medium px-4 py-2 hover:bg-slate-100 rounded-lg transition">Limpiar</button>
+        </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="glass-panel p-6 flex flex-col justify-between">
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Paciente</label>
+                    <select id="patientSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.6</span></h1>
-                    <p class="text-slate-500 text-xs mt-0.5">Versión Estable + Fix Ionograma Argerich</p>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parámetro</label>
+                    <select id="paramSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
                 </div>
             </div>
-            
-            <div class="mt-4 md:mt-0 flex gap-2">
-                <button onclick="openMergePatientModal()" class="bg-white border border-slate-300 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    Fusionar Pacientes
-                </button>
-                <details id="configDetails" class="relative group">
-                    <summary class="list-none cursor-pointer bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium border border-slate-200 flex items-center gap-2 transition">
-                        <span>⚙️ API</span>
-                    </summary>
-                    <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 z-50">
-                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">OpenAI API Key</label>
-                        <input type="password" id="apiKey" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm mb-2 focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="sk-...">
-                    </div>
-                </details>
-            </div>
-        </header>
-
-        <!-- INPUT SECTION -->
-        <section class="glass-panel p-6">
-            <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-4">
-                <div>
-                    <h2 class="text-lg font-bold text-slate-700">Carga de Laboratorio</h2>
-                    <p class="text-xs text-slate-500">Seleccione PDFs (incluso con múltiples fechas) o pegue texto.</p>
+            <div class="mt-8 pt-6 border-t border-slate-100">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Acciones</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="copyWordTable()" class="col-span-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">📋 Copiar Tabla Word</button>
+                    <button onclick="mergeSelectedLabs()" class="col-span-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">🔗 Unificar Muestras</button>
+                    <button onclick="copyHCLAB()" class="col-span-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">📝 HCLAB</button>
+                    <button onclick="downloadPDF()" class="col-span-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">📄 PDF</button>
+                    <button onclick="smartDelete()" class="col-span-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition mt-1">🗑️ Borrar (Filas o Paciente)</button>
                 </div>
-                <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-5 py-2.5 flex items-center gap-2 transition font-medium">
-                    <span>📄 Seleccionar PDFs...</span>
-                    <input type="file" id="pdfInput" accept="application/pdf" multiple class="hidden" onclick="this.value=null;">
-                </label>
-            </div>
-            <textarea id="labInput" rows="2" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none" placeholder="Pegue aquí texto o espere a que se lea el PDF..."></textarea>
-            <div class="mt-4 flex gap-3">
-                <button id="btnProcesarIA" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition flex items-center gap-2">
-                    <span>✨ Procesar</span>
-                </button>
-                <button id="btnLimpiarEntrada" class="text-slate-500 hover:text-slate-700 text-sm font-medium px-4 py-2 hover:bg-slate-100 rounded-lg transition">Limpiar</button>
-            </div>
-        </section>
-
-        <!-- DASHBOARD -->
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="glass-panel p-6 flex flex-col justify-between h-full">
-                <div class="space-y-5">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Paciente</label>
-                        <select id="patientSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parámetro</label>
-                        <select id="paramSelector" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none appearance-none"></select>
-                    </div>
-                </div>
-                
-                <div class="mt-8 pt-6 border-t border-slate-100">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Acciones sobre Selección</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="copyWordTable()" class="col-span-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm">
-                            <span class="text-lg">📋</span> Copiar Tabla Word
-                        </button>
-                        
-                        <button onclick="mergeSelectedLabs()" class="col-span-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition">
-                            <span>🔗</span> Unificar Muestras
-                        </button>
-                        
-                        <button onclick="copyHCLAB()" class="col-span-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
-                            <span>📝</span> HCLAB
-                        </button>
-                        <button onclick="downloadPDF()" class="col-span-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
-                            <span>📄</span> PDF
-                        </button>
-
-                        <button onclick="smartDelete()" class="col-span-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition mt-1">
-                            <span>🗑️</span> Borrar (Filas o Paciente)
-                        </button>
-                    </div>
-                    <div class="mt-3 text-center">
-                        <button onclick="deleteDatabase()" class="text-[10px] text-gray-400 hover:text-red-500 underline decoration-dotted">Reset Base Completa</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="lg:col-span-2 glass-panel p-6 relative">
-                <h3 class="text-sm font-bold text-slate-500 mb-4">Tendencia Evolutiva</h3>
-                <div class="h-64 w-full">
-                    <canvas id="evolutionChart"></canvas>
-                </div>
-            </div>
-        </section>
-
-        <!-- TABLE SECTION -->
-        <section class="glass-panel overflow-hidden">
-            <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
-                    <span class="text-xs text-slate-400 hidden md:inline">Selecciona casillas para acciones grupales</span>
-                </div>
-                <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">
-                    <span>👁️</span> Columnas
-                </button>
-            </div>
-            <div class="table-container">
-                <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead class="bg-slate-50 text-slate-500"></thead>
-                    <tbody class="divide-y divide-slate-100 bg-white"></tbody>
-                </table>
-            </div>
-        </section>
-    </div>
-
-    <!-- MODALS -->
-    <div id="mergePatientModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
-        <div class="bg-white w-full max-w-md mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95" id="mergeModalContent">
-            <div class="p-6">
-                <h3 class="text-xl font-bold text-slate-800 mb-4">Fusionar Identidades</h3>
-                <div class="space-y-3">
-                    <div><label class="text-xs font-bold text-green-600">PACIENTE CORRECTO</label><select id="mergeTarget" class="w-full p-2 border border-green-200 bg-green-50 rounded"></select></div>
-                    <div><label class="text-xs font-bold text-red-600">PACIENTE DUPLICADO</label><select id="mergeSource" class="w-full p-2 border border-red-200 bg-red-50 rounded"></select></div>
-                </div>
-                <div class="flex justify-end gap-3 mt-6">
-                    <button onclick="closeModal('mergePatientModal')" class="px-4 py-2 text-slate-500 text-sm hover:bg-slate-100 rounded">Cancelar</button>
-                    <button onclick="executeMergePatients()" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded hover:bg-indigo-700">Fusionar</button>
+                <div class="mt-3 text-center">
+                    <button onclick="deleteDatabase()" class="text-[10px] text-gray-400 hover:text-red-500 underline decoration-dotted">Reset Base Completa</button>
                 </div>
             </div>
         </div>
-    </div>
+        <div class="lg:col-span-2 glass-panel p-6">
+            <h3 class="text-sm font-bold text-slate-500 mb-4">Tendencia Evolutiva</h3>
+            <div class="h-64 w-full"><canvas id="evolutionChart"></canvas></div>
+        </div>
+    </section>
 
-    <div id="columnFilterModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
-        <div class="bg-white w-full max-w-3xl mx-4 rounded-xl shadow-2xl overflow-hidden transform transition-all scale-95 h-auto max-h-[80vh] flex flex-col">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-slate-800">Variables Visibles</h3>
-                <button onclick="closeModal('columnFilterModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+    <!-- TABLE -->
+    <section class="glass-panel overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
+                <span class="text-xs text-slate-400 hidden md:inline">Rojo = valor crítico · △ = cambio vs anterior</span>
             </div>
-            <div class="p-6 overflow-y-auto flex-1">
-                <div class="flex gap-2 mb-4">
-                    <button onclick="toggleAllColumns(true)" class="text-xs bg-slate-100 px-2 py-1 rounded hover:bg-slate-200">Todas</button>
-                    <button onclick="toggleAllColumns(false)" class="text-xs bg-slate-100 px-2 py-1 rounded hover:bg-slate-200">Ninguna</button>
-                </div>
-                <div id="columnsGrid" class="grid grid-cols-3 md:grid-cols-5 gap-2"></div>
-            </div>
-            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                <button onclick="applyColumnFilter()" class="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Aplicar</button>
-            </div>
+            <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">👁️ Columnas</button>
+        </div>
+        <div class="table-container">
+            <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50 text-slate-500"></thead>
+                <tbody class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- MODALS -->
+<div id="mergePatientModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
+    <div class="bg-white w-full max-w-md mx-4 rounded-xl shadow-2xl p-6">
+        <h3 class="text-xl font-bold text-slate-800 mb-4">Fusionar Identidades</h3>
+        <div class="space-y-3">
+            <div><label class="text-xs font-bold text-green-600">PACIENTE CORRECTO</label><select id="mergeTarget" class="w-full p-2 border border-green-200 bg-green-50 rounded mt-1"></select></div>
+            <div><label class="text-xs font-bold text-red-600">PACIENTE DUPLICADO</label><select id="mergeSource" class="w-full p-2 border border-red-200 bg-red-50 rounded mt-1"></select></div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+            <button onclick="closeModal('mergePatientModal')" class="px-4 py-2 text-slate-500 text-sm hover:bg-slate-100 rounded">Cancelar</button>
+            <button onclick="executeMergePatients()" class="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded hover:bg-indigo-700">Fusionar</button>
         </div>
     </div>
+</div>
 
-    <script>
-        // --- 1. CONFIGURACIÓN FIREBASE ---
-        const firebaseConfig = { apiKey:"AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8", authDomain:"laboratorios-uco.firebaseapp.com", projectId:"laboratorios-uco", storageBucket:"laboratorios-uco.firebasestorage.app", messagingSenderId:"435400240534", appId:"1:435400240534:web:1cb4c57beb4b69e933c1b7", measurementId:"G-Q0FE3ZD4P7" };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const appCheck = firebase.appCheck();
-        appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
-        const db = firebase.firestore();
+<div id="columnFilterModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
+    <div class="bg-white w-full max-w-3xl mx-4 rounded-xl shadow-2xl max-h-[80vh] flex flex-col">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-slate-800">Variables Visibles</h3>
+            <button onclick="closeModal('columnFilterModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+            <div class="flex gap-2 mb-4">
+                <button onclick="toggleAllColumns(true)" class="text-xs bg-slate-100 px-2 py-1 rounded hover:bg-slate-200">Todas</button>
+                <button onclick="toggleAllColumns(false)" class="text-xs bg-slate-100 px-2 py-1 rounded hover:bg-slate-200">Ninguna</button>
+            </div>
+            <div id="columnsGrid" class="grid grid-cols-3 md:grid-cols-5 gap-2"></div>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+            <button onclick="applyColumnFilter()" class="px-6 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Aplicar</button>
+        </div>
+    </div>
+</div>
 
-        // --- 2. CONFIGURACIÓN CLÍNICA ---
-        const TARGET_PARAMS = ["Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "Glucosa", "Urea", "Creatinina", "Acido_Urico", "HbA1c", "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales", "CPK", "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "BEb", "TSH", "Colesterol_Total", "LDL", "HDL", "Triglicéridos", "TP", "RIN", "KPTT", "aPTT"];
-        
-        const ABBR = {"Hematocrito":"Hto", "Hemoglobina":"Hb", "Leucocitos":"GB", "Plaquetas":"Plq", "Urea":"Urea", "Creatinina":"Crea", "Glucosa":"Glu", "HbA1c":"HbA1c", "AU":"AU", "Na":"Na", "K":"K", "Cl":"Cl", "Mg":"Mg", "Ca_Total":"Ca", "Ca_Ionizado":"Ca++", "Fosforo":"P", "BT":"BT", "BD":"BD", "AST_TGO":"GOT", "ALT_TGP":"GPT", "FAL":"FAL", "Albúmina":"Alb", "Prot":"Prot", "CPK":"CPK", "Col":"Col", "LDL":"LDL", "HDL":"HDL", "TG":"TG", "PCR":"PCR", "PCT":"PCT", "TSH":"TSH", "LAC":"LAC", "pH":"pH", "pCO2":"pCO2", "pO2":"pO2", "Bicarbonato":"BIC", "SatO2":"Sat", "BEb":"BEb", "TP":"TP", "RIN":"RIN", "KPTT":"KPTT", "aPTT":"KPTT"};
-        
-        // =====================================================================
-        // FIX v17.6: NORM_MAP AMPLIADO PARA IONOGRAMA ARGERICH
-        // El Argerich usa nombres completos en español: "Sodio", "Potasio", "Cloro"
-        // en lugar de las abreviaturas "Na", "K", "Cl"
-        // =====================================================================
-        const NORM_MAP = {
-            // --- Mapeos originales ---
-            "Ácido Úrico":"AU", "ACIDO URICO":"AU", "Acido_Urico":"AU",
-            "Bilirrubina_Total":"BT", "BILIRRUBINA_TOTAL":"BT", "Bilirrubina Total":"BT",
-            "Bilirrubina_Directa":"BD", "Bilirrubina Directa":"BD",
-            "Creatinquinasa":"CPK", "CREATINQUINASA":"CPK",
-            "Fosfatasa_Alcalina":"FAL", "Fosfatasa Alcalina":"FAL",
-            "Proteinas_Totales":"Prot", "Proteínas Totales":"Prot", "Proteinas Totales":"Prot",
-            "Colesterol_Total":"Col", "Colesterol":"Col",
-            "Triglicéridos":"TG", "Trigliceridos":"TG",
-            "Ácido Láctico":"LAC", "Lactato":"LAC", "Acido_Lactico":"LAC", "Acido láctico":"LAC", "Acido Lactico":"LAC",
-            "Bicarbonato":"BIC",
-            "aPTT":"KPTT", "APTT":"KPTT", "KPTT":"KPTT",
-            "Tiempo de Protrombina":"TP", "TP (Seg)":"TP",
-            "BEb":"BEb", "BASE_EXCESS":"BEb",
-            "% Saturación 02 (c)":"SatO2", "% Saturacion 02 (c)":"SatO2",
-            "Saturacion 02":"SatO2", "Saturación O2":"SatO2",
-            "Glucosa Plasmática":"Glu", "Glucosa Plasmatica":"Glu",
+<script>
+// ============================================================
+// 1. FIREBASE
+// ============================================================
+const firebaseConfig = { apiKey:"AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8", authDomain:"laboratorios-uco.firebaseapp.com", projectId:"laboratorios-uco", storageBucket:"laboratorios-uco.firebasestorage.app", messagingSenderId:"435400240534", appId:"1:435400240534:web:1cb4c57beb4b69e933c1b7" };
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const appCheck = firebase.appCheck();
+appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
+const db = firebase.firestore();
 
-            // --- FIX ARGERICH: Ionograma con nombres completos en español ---
-            "Sodio":"Na", "SODIO":"Na",
-            "Potasio":"K", "POTASIO":"K",
-            "Cloro":"Cl", "CLORO":"Cl",
+// ============================================================
+// 2. CONFIGURACIÓN CLÍNICA
+// ============================================================
+const TARGET_PARAMS = ["Hemoglobina","Hematocrito","Plaquetas","Leucocitos","Na","K","Cl","Mg","Ca_Total","Ca_Ionizado","Fosforo","Glucosa","Urea","Creatinina","Acido_Urico","HbA1c","BT","BD","AST_TGO","ALT_TGP","Fosfatasa_Alcalina","Albúmina","Proteinas_Totales","CPK","PCR","Procalcitonina","Lactato","pH","pCO2","pO2","Bicarbonato","SatO2","BEb","TSH","Colesterol_Total","LDL","HDL","Triglicéridos","TP","RIN","KPTT","aPTT","Tacrolimus","Everolimus","CMV","BKV","EBV","HbA1c"];
 
-            // --- FIX ARGERICH: Calcio iónico (varias grafías) ---
-            "Calcio iónico":"Ca_Ionizado",
-            "Calcio ionico":"Ca_Ionizado",
-            "Calcio Iónico":"Ca_Ionizado",
-            "Calcio Ionico":"Ca_Ionizado",
-            "Ca_Ionizado":"Ca_Ionizado",
-            "Calcio normalizado":"Ca_Ionizado",
-            "Calcio Normalizado":"Ca_Ionizado",
+const ABBR = {
+    "Hematocrito":"Hto","Hemoglobina":"Hb","Leucocitos":"GB","Plaquetas":"Plq",
+    "Urea":"Urea","Creatinina":"Crea","Glucosa":"Glu","HbA1c":"HbA1c","AU":"AU",
+    "Na":"Na","K":"K","Cl":"Cl","Mg":"Mg","Ca_Total":"Ca","Ca_Ionizado":"Ca++","Fosforo":"P",
+    "BT":"BT","BD":"BD","AST_TGO":"GOT","ALT_TGP":"GPT","FAL":"FAL",
+    "Albúmina":"Alb","Prot":"Prot","CPK":"CPK","Col":"Col","LDL":"LDL","HDL":"HDL","TG":"TG",
+    "PCR":"PCR","PCT":"PCT","TSH":"TSH","LAC":"LAC",
+    "pH":"pH","pCO2":"pCO2","pO2":"pO2","Bicarbonato":"BIC","SatO2":"Sat","BEb":"BEb",
+    "TP":"TP","RIN":"RIN","KPTT":"KPTT","aPTT":"KPTT",
+    // Parámetros trasplante — aparecen como columnas dinámicas con nombre propio
+    "Tacrolimus":"Tacro","Everolimus":"Evero","CMV":"CMV","BKV":"BKV","EBV":"EBV"
+};
 
-            // --- FIX ARGERICH: Calcio total ---
-            "Calcio":"Ca_Total", "CALCIO":"Ca_Total",
-            "Calcio Total":"Ca_Total", "Calcio total":"Ca_Total",
+// ============================================================
+// 3. NORM_MAP — mapeo completo Argerich + general
+// ============================================================
+const NORM_MAP = {
+    "Ácido Úrico":"AU","ACIDO URICO":"AU","Acido_Urico":"AU","Acido Urico":"AU","Ácido úrico":"AU","Ácido urico":"AU",
+    "Bilirrubina_Total":"BT","BILIRRUBINA_TOTAL":"BT","Bilirrubina Total":"BT","Bilirrubina total":"BT",
+    "Bilirrubina_Directa":"BD","Bilirrubina Directa":"BD","Bilirrubina directa":"BD",
+    "Creatinquinasa":"CPK","CREATINQUINASA":"CPK",
+    "Fosfatasa_Alcalina":"FAL","Fosfatasa Alcalina":"FAL","Fosfatasa alcalina":"FAL",
+    "Proteinas_Totales":"Prot","Proteínas Totales":"Prot","Proteinas Totales":"Prot","Proteínas totales":"Prot",
+    "Colesterol_Total":"Col","Colesterol":"Col","COLESTEROL":"Col",
+    "Triglicéridos":"TG","Trigliceridos":"TG","TRIGLICERIDOS":"TG",
+    "Ácido Láctico":"LAC","Lactato":"LAC","Acido_Lactico":"LAC","Acido láctico":"LAC","Acido Lactico":"LAC","LACTATO":"LAC",
+    "Bicarbonato":"BIC","BICARBONATO":"BIC",
+    "aPTT":"KPTT","APTT":"KPTT","KPTT":"KPTT",
+    "Tiempo de Protrombina":"TP","TP (Seg)":"TP","Tiempo de Protrombina (Quick)":"TP",
+    "RIN (Razon Internacional Normalizada)":"RIN",
+    "aPTT (Tiempo Tromboplastina Parcial Activada)":"KPTT",
+    "BEb":"BEb","BASE_EXCESS":"BEb",
+    "% Saturación 02 (c)":"SatO2","% Saturacion 02 (c)":"SatO2","SatO2":"SatO2","% Saturación O2 (c)":"SatO2",
+    "Glucosa Plasmática":"Glu","Glucosa Plasmatica":"Glu","Glucosa":"Glu","GLUCOSA":"Glu",
+    // Argerich ionograma
+    "Sodio":"Na","SODIO":"Na",
+    "Potasio":"K","POTASIO":"K",
+    "Cloro":"Cl","CLORO":"Cl",
+    "Calcio iónico":"Ca_Ionizado","Calcio ionico":"Ca_Ionizado","Calcio Iónico":"Ca_Ionizado","Calcio Ionico":"Ca_Ionizado",
+    "Ca_Ionizado":"Ca_Ionizado","Calcio normalizado":"Ca_Ionizado","Calcio Normalizado":"Ca_Ionizado",
+    "Calcio":"Ca_Total","CALCIO":"Ca_Total","Calcio Total":"Ca_Total","Calcio total":"Ca_Total",
+    "Fósforo":"Fosforo","Fosforo":"Fosforo","FOSFORO":"Fosforo",
+    "Magnesio":"Mg","MAGNESIO":"Mg",
+    "Hemoglobina":"Hemoglobina","HEMOGLOBINA":"Hemoglobina",
+    "Hematocrito":"Hematocrito","HEMATOCRITO":"Hematocrito",
+    "Leucocitos":"Leucocitos","LEUCOCITOS":"Leucocitos",
+    "Recuento de plaquetas":"Plaquetas","Plaquetas":"Plaquetas","PLAQUETAS":"Plaquetas",
+    "pO2":"pO2","pCO2":"pCO2","pH":"pH",
+    "Aspartato Aminotransferasa (GOT)":"AST_TGO","Aspartato Aminotransferasa":"AST_TGO","GOT":"AST_TGO",
+    "Alanina Aminotransferasa (GPT)":"ALT_TGP","Alanina Aminotransferasa":"ALT_TGP","GPT":"ALT_TGP",
+    "Albúmina":"Albúmina","Albumina":"Albúmina","ALBUMINA":"Albúmina",
+    "LDL Colesterol":"LDL","LDL colesterol":"LDL","LDL":"LDL",
+    "Colesterol HDL":"HDL","Colesterol hdl":"HDL","HDL":"HDL",
+    "Urea":"Urea","UREA":"Urea",
+    "Creatinina":"Creatinina","CREATININA":"Creatinina",
+    "Tirotrofina- TSH":"TSH","Tirotrofina TSH":"TSH","TSH":"TSH",
+    "Tacrolimus":"Tacrolimus","TACROLIMUS":"Tacrolimus",
+    "Everolimus":"Everolimus","EVEROLIMUS":"Everolimus",
+    "Acido Urico":"AU"
+};
 
-            // --- FIX ARGERICH: Fósforo ---
-            "Fósforo":"Fosforo", "Fosforo":"Fosforo", "FOSFORO":"Fosforo",
+// ============================================================
+// 4. CLINICAL ORDER (predefinidos)
+// ============================================================
+const CLINICAL_ORDER = ["Hematocrito","Hemoglobina","Leucocitos","Plaquetas","Urea","Creatinina","Glucosa","HbA1c","AU","BT","BD","AST_TGO","ALT_TGP","FAL","Albúmina","Prot","Col","LDL","HDL","TG","Na","K","Cl","Mg","Ca_Total","Ca_Ionizado","Fosforo","TSH","CPK","PCR","PCT","pH","pCO2","pO2","BEb","BIC","SatO2","LAC","TP","RIN","KPTT"];
 
-            // --- FIX ARGERICH: Magnesio ---
-            "Magnesio":"Mg", "MAGNESIO":"Mg",
+// ============================================================
+// 5. RANGOS CRÍTICOS por hospital
+// ============================================================
+const CRITICAL_RANGES = {
+    argerich: {
+        "K":       { min: 3.0,    max: 6.0   },
+        "Na":      { min: 125,    max: 155   },
+        "pH":      { min: 7.20,   max: 7.55  },
+        "Hb":      { min: 7.0,    max: 20    },
+        "Hemoglobina": { min: 7.0, max: 20   },
+        "Glu":     { min: 60,     max: 400   },
+        "Glucosa": { min: 60,     max: 400   },
+        "Crea":    { min: null,   max: 5.0   },
+        "Creatinina": { min: null, max: 5.0  },
+        "LAC":     { min: null,   max: 21    }, // mg/dL
+        "Plq":     { min: 50000, max: 1000000},
+        "Plaquetas": { min: 50000, max: 1000000 }
+    },
+    aleman: {
+        "K":       { min: 3.0,    max: 6.0   },
+        "Na":      { min: 125,    max: 155   },
+        "pH":      { min: 7.20,   max: 7.55  },
+        "Hb":      { min: 7.0,    max: 20    },
+        "Hemoglobina": { min: 7.0, max: 20   },
+        "Glu":     { min: 60,     max: 400   },
+        "Glucosa": { min: 60,     max: 400   },
+        "Crea":    { min: null,   max: 5.0   },
+        "Creatinina": { min: null, max: 5.0  },
+        "LAC":     { min: null,   max: 2.2   }, // mmol/L
+        "Plq":     { min: 50000, max: 1000000},
+        "Plaquetas": { min: 50000, max: 1000000 }
+    },
+    otro: {
+        "K":       { min: 3.0,    max: 6.0   },
+        "Na":      { min: 125,    max: 155   },
+        "pH":      { min: 7.20,   max: 7.55  },
+        "Hb":      { min: 7.0,    max: 20    },
+        "Glu":     { min: 60,     max: 400   },
+        "Crea":    { min: null,   max: 5.0   },
+        "LAC":     { min: null,   max: 4.0   },
+        "Plq":     { min: 50000, max: 1000000}
+    }
+};
 
-            // --- FIX ARGERICH: Hemograma en español ---
-            "Hemoglobina":"Hemoglobina", "HEMOGLOBINA":"Hemoglobina",
-            "Hematocrito":"Hematocrito", "HEMATOCRITO":"Hematocrito",
-            "Leucocitos":"Leucocitos", "LEUCOCITOS":"Leucocitos",
-            "Eritrocitos":"Eritrocitos",
-            "Recuento de plaquetas":"Plaquetas", "Plaquetas":"Plaquetas",
+// ============================================================
+// 6. SAFETY RANGES (para filtrar errores de carga, no alertas)
+// ============================================================
+const SAFETY_RANGES = { "K":{min:1.0,max:9.0},"Na":{min:100,max:180},"pH":{min:6.5,max:8.0},"Hb":{min:2,max:25} };
 
-            // --- FIX ARGERICH: Gasometría ---
-            "pO2":"pO2", "pCO2":"pCO2", "pH":"pH",
-            "% Saturación O2 (c)":"SatO2",
+// ============================================================
+// 7. ESTADO GLOBAL
+// ============================================================
+let labData = {};
+let dynamicColumns = new Set(); // columnas detectadas automáticamente fuera de CLINICAL_ORDER
+let chartInstance = null;
+let visibleColumns = new Set(CLINICAL_ORDER);
+let visibleDynamic = new Set(); // columnas dinámicas visibles
 
-            // --- FIX ARGERICH: Hepatograma ---
-            "Aspartato Aminotransferasa (GOT)":"AST_TGO",
-            "Alanina Aminotransferasa (GPT)":"ALT_TGP",
-            "Aspartato Aminotransferasa":"AST_TGO",
-            "Alanina Aminotransferasa":"ALT_TGP",
-            "GOT":"AST_TGO", "GPT":"ALT_TGP",
-            "Albúmina":"Albúmina", "Albumina":"Albúmina",
-            "Bilirrubina total":"BT",
+// ============================================================
+// 8. UTILS
+// ============================================================
+function showToast(msg, type="info") {
+    const bg = type==="error"?"#ef4444":type==="success"?"#10b981":"#3b82f6";
+    Toastify({ text:msg, duration:3000, gravity:"top", position:"center", style:{background:bg,borderRadius:"8px"} }).showToast();
+}
 
-            // --- FIX ARGERICH: Perfil lipídico ---
-            "LDL Colesterol":"LDL", "LDL colesterol":"LDL",
-            "Colesterol HDL":"HDL", "Colesterol hdl":"HDL",
-            "Colesterol no HDL":"Col",
+function formatDate(d) {
+    if(!d) return "-";
+    const p = d.split("-");
+    return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
 
-            // --- FIX ARGERICH: Coagulograma ---
-            "Tiempo de Protrombina (Quick)":"TP",
-            "RIN (Razon Internacional Normalizada)":"RIN",
-            "aPTT (Tiempo Tromboplastina Parcial Activada)":"KPTT",
+function getHospital() { return document.getElementById("hospitalSelector").value; }
 
-            // --- FIX ARGERICH: Endocrinología ---
-            "Tirotrofina- TSH":"TSH", "Tirotrofina TSH":"TSH",
+function isCritical(key, value) {
+    const hospital = getHospital();
+    const ranges = CRITICAL_RANGES[hospital] || CRITICAL_RANGES.otro;
+    const num = parseFloat(value);
+    if (isNaN(num)) return false;
+    // Buscar por key o por abreviatura
+    const range = ranges[key] || ranges[getDisplayLabel(key)];
+    if (!range) return false;
+    if (range.min !== null && num < range.min) return true;
+    if (range.max !== null && num > range.max) return true;
+    return false;
+}
 
-            // --- FIX ARGERICH: Inmunosupresores ---
-            "Tacrolimus":"Tacrolimus", "Everolimus":"Everolimus",
+function getCanonicalKey(dirtyKey) {
+    const clean = dirtyKey.trim();
+    if (NORM_MAP[clean]) return NORM_MAP[clean];
+    if (NORM_MAP[clean.toUpperCase()]) return NORM_MAP[clean.toUpperCase()];
+    if (ABBR[clean]) return clean;
+    return clean; // mantener nombre original para columnas dinámicas
+}
 
-            // --- FIX ARGERICH: Glucosa ---
-            "Glucosa":"Glucosa",
+function getDisplayLabel(key) { return ABBR[key] || key; }
 
-            // --- FIX ARGERICH: Urea y Creatinina ---
-            "Urea":"Urea", "UREA":"Urea",
-            "Creatinina":"Creatinina", "CREATININA":"Creatinina",
+function getSmartValue(params, key) {
+    if (params[key] !== undefined) return params[key];
+    const longKey = Object.keys(ABBR).find(k => ABBR[k] === key);
+    if (longKey && params[longKey] !== undefined) return params[longKey];
+    return undefined;
+}
 
-            // --- FIX ARGERICH: Ácido úrico ---
-            "Acido Urico":"AU", "Ácido Urico":"AU", "Ácido úrico":"AU",
+function isValidValue(key, value) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return true;
+    let safeKey = null;
+    const label = getDisplayLabel(key);
+    if (label==='K') safeKey='K';
+    if (label==='Na') safeKey='Na';
+    if (label==='pH') safeKey='pH';
+    if (label==='Hb') safeKey='Hb';
+    if (safeKey && SAFETY_RANGES[safeKey]) {
+        if (num < SAFETY_RANGES[safeKey].min || num > SAFETY_RANGES[safeKey].max) return false;
+    }
+    return true;
+}
+
+function getSelectedIds() { return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id); }
+function getExportSamples(p) { const ids = getSelectedIds(); return ids.length>0 ? labData[p].filter(s=>ids.includes(s.id)) : labData[p]; }
+
+// Limpieza de texto del Argerich
+function cleanArgerichText(text) {
+    return text
+        .replace(/(\d+[\.,]?\d*)\s*!/g, '$1')
+        .replace(/Valor confirmado/gi, '')
+        .replace(/Muestra insuficiente/gi, '')
+        .replace(/Muestra mal enrasada/gi, '')
+        .replace(/Muestra mal remitida/gi, '')
+        .replace(/Problemas técnicos/gi, '')
+        .replace(/(\d),(\d)/g, '$1.$2')
+        .replace(/•/g, '')
+        .replace(/% Saturaci[oó]n O2 \(c\)/gi, 'SatO2')
+        .replace(/% Saturaci[oó]n 02 \(c\)/gi, 'SatO2');
+}
+
+// ============================================================
+// 9. DETECCIÓN DE COLUMNAS DINÁMICAS
+// ============================================================
+function detectDynamicColumns(samples) {
+    dynamicColumns = new Set();
+    samples.forEach(s => {
+        Object.keys(s.parametros || {}).forEach(k => {
+            if (!CLINICAL_ORDER.includes(k) && !CLINICAL_ORDER.map(c=>getDisplayLabel(c)).includes(k)) {
+                dynamicColumns.add(k);
+                // Agregar al set visible si es primera vez
+                if (!visibleDynamic.has(k)) visibleDynamic.add(k);
+            }
+        });
+    });
+}
+
+function getAllVisibleColumns() {
+    return [...CLINICAL_ORDER.filter(k=>visibleColumns.has(k)), ...Array.from(dynamicColumns).filter(k=>visibleDynamic.has(k))];
+}
+
+// ============================================================
+// 10. DELTA — variación respecto al laboratorio anterior
+// ============================================================
+function getDelta(samples, idx, key) {
+    if (idx === 0) return null;
+    const curr = parseFloat(getSmartValue(samples[idx].parametros, key));
+    const prev = parseFloat(getSmartValue(samples[idx-1].parametros, key));
+    if (isNaN(curr) || isNaN(prev) || prev === 0) return null;
+    const diff = curr - prev;
+    const pct = Math.abs((diff/prev)*100).toFixed(0);
+    return { diff: diff.toFixed(2), pct, dir: diff > 0 ? "up" : diff < 0 ? "down" : "neutral" };
+}
+
+function renderDelta(delta) {
+    if (!delta) return "";
+    const arrow = delta.dir==="up" ? "▲" : delta.dir==="down" ? "▼" : "–";
+    const cls = `delta-${delta.dir}`;
+    return `<span class="${cls}"> ${arrow}${delta.pct}%</span>`;
+}
+
+// ============================================================
+// 11. PROCESAMIENTO Y UPLOAD
+// ============================================================
+async function processAndUpload() {
+    const files = document.getElementById('pdfInput').files;
+    const rawText = document.getElementById("labInput").value.trim();
+    const apiKey = document.getElementById("apiKey").value.trim() || localStorage.getItem("my_openai_key_v1");
+    if (files.length===0 && rawText.length<10) return showToast("Seleccione PDF o pegue texto","error");
+    if (!apiKey) { document.getElementById("configDetails").open=true; return showToast("Falta API Key","error"); }
+    localStorage.setItem("my_openai_key_v1", apiKey);
+
+    const btn = document.getElementById("btnProcesarIA");
+    btn.disabled=true; btn.innerText="Procesando...";
+    let samplesToUpload = [];
+
+    if (files.length===0 && rawText.length>10) {
+        try {
+            const extracted = await extractWithAI(cleanArgerichText(rawText), apiKey);
+            samplesToUpload.push(...extracted);
+        } catch(e) { showToast("Error IA: "+e.message,"error"); }
+    } else {
+        const txtArea = document.getElementById("labInput");
+        for (let i=0; i<files.length; i++) {
+            txtArea.value = `>>> LEYENDO ${files[i].name}...\n`;
+            try {
+                const pdfText = await readPdfFile(files[i]);
+                const cleanedText = cleanArgerichText(pdfText);
+                txtArea.value += "Texto limpiado. Consultando IA...\n";
+                const extracted = await extractWithAI(cleanedText, apiKey);
+                samplesToUpload.push(...extracted);
+                txtArea.value += `✅ ${extracted.length} muestra(s) detectadas.\n`;
+            } catch(e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
+        }
+    }
+
+    let ok = 0;
+    for (const s of samplesToUpload) {
+        try { await uploadToFirebase(s); ok++; } catch(e) { console.error(e); }
+    }
+    if (ok>0) {
+        showToast(`${ok} reporte(s) guardados`, "success");
+        document.getElementById("labInput").value="";
+        document.getElementById("pdfInput").value=null;
+    } else {
+        showToast("No se detectaron reportes válidos.","error");
+    }
+    btn.disabled=false; btn.innerText="✨ Procesar";
+}
+
+async function readPdfFile(file) {
+    const buffer = await file.arrayBuffer();
+    const pdf = await window.pdfjsLib.getDocument({data:buffer}).promise;
+    let text="";
+    for (let i=1; i<=pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item=>item.str).join(" ")+"\n";
+    }
+    return text;
+}
+
+async function extractWithAI(text, apiKey) {
+    const prompt = `Medical Expert Task:
+Analyze the following laboratory text from Hospital Argerich or Hospital Alemán (Buenos Aires, Argentina).
+It may contain ONE or MULTIPLE reports from different dates/times.
+
+Return a JSON OBJECT with key "muestras" — array of report objects:
+{
+  "muestras": [{
+    "paciente": "FULL NAME UPPERCASE",
+    "fecha": "YYYY-MM-DD",
+    "hora": "HH:MM",
+    "protocolo": "string",
+    "parametros": { "KEY": value_number, ... }
+  }]
+}
+
+Targets: ${TARGET_PARAMS.join(", ")}.
+
+CRITICAL MAPPING RULES (Argerich format):
+1. "Sodio"→"Na", "Potasio"→"K", "Cloro"→"Cl"
+2. "Calcio iónico"/"Calcio normalizado"→"Ca_Ionizado"
+3. "Calcio" alone→"Ca_Total"
+4. "Magnesio"→"Mg", "Fósforo"→"Fosforo"
+5. "Aspartato Aminotransferasa (GOT)"→"AST_TGO"
+6. "Alanina Aminotransferasa (GPT)"→"ALT_TGP"
+7. "Fosfatasa Alcalina"→"Fosfatasa_Alcalina"
+8. "Albúmina"→"Albúmina"
+9. "Glucosa Plasmática"→"Glucosa"
+10. "SatO2"→"SatO2", "BEb"→"BEb"
+11. "Acido láctico"/"Lactato"→"Lactato"
+12. "LDL Colesterol"→"LDL", "Colesterol HDL"→"HDL"
+13. "Ácido Úrico"→"Acido_Urico"
+14. "Tacrolimus"→"Tacrolimus", "Everolimus"→"Everolimus"
+15. "Tirotrofina- TSH"→"TSH"
+16. Multiple protocols/dates → SEPARATE objects in array
+17. IONOGRAMA section inside EAB/GAS → extract all electrolytes
+18. Numeric only: ignore null, non-numeric, or annotation-only values
+
+Text: """${text.substring(0,35000)}"""`;
+
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
+        body: JSON.stringify({ model:"gpt-4o-mini", messages:[{role:"user",content:prompt}], temperature:0.1, response_format:{type:"json_object"} })
+    });
+    const data = await resp.json();
+    const content = data.choices[0].message.content.trim();
+    try {
+        const parsed = JSON.parse(content);
+        if (parsed.muestras && Array.isArray(parsed.muestras)) return parsed.muestras;
+        if (Array.isArray(parsed)) return parsed;
+        return [parsed];
+    } catch(e) { throw new Error("La IA no devolvió JSON válido."); }
+}
+
+async function uploadToFirebase(result) {
+    if (!result.paciente || result.paciente==="DESCONOCIDO") return;
+
+    // FIX v17.7: timestamp robusto
+    let ts;
+    try {
+        const dateStr = result.fecha || new Date().toISOString().split('T')[0];
+        const timeStr = (result.hora && result.hora.match(/^\d{2}:\d{2}/)) ? result.hora : "12:00";
+        ts = new Date(`${dateStr}T${timeStr}:00`).getTime();
+        if (isNaN(ts)) throw new Error();
+    } catch(e) {
+        ts = Date.now();
+    }
+
+    const cleanParams = {};
+    for (const k in result.parametros) {
+        if (result.parametros[k] !== null) {
+            const canonical = getCanonicalKey(k);
+            if (isValidValue(canonical, result.parametros[k])) {
+                cleanParams[canonical] = result.parametros[k];
+            }
+        }
+    }
+
+    await db.collection("muestras").add({
+        paciente: result.paciente,
+        fecha: result.fecha || new Date().toISOString().split('T')[0],
+        hora: result.hora || "12:00",
+        protocolo: result.protocolo || "",
+        parametros: cleanParams,
+        timestamp: ts,
+        uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+// ============================================================
+// 12. INTERFAZ
+// ============================================================
+function initRealTimeListener() {
+    db.collection("muestras").orderBy("timestamp","asc").onSnapshot(snapshot => {
+        labData = {};
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            if (!labData[d.paciente]) labData[d.paciente] = [];
+            labData[d.paciente].push({...d, id:doc.id});
+        });
+        refreshUI();
+    });
+}
+
+function refreshUI() {
+    const sel = document.getElementById("patientSelector");
+    const curr = sel.value;
+    sel.innerHTML = '<option value="">-- Seleccionar --</option>';
+    Object.keys(labData).sort().forEach(p => sel.appendChild(new Option(p,p)));
+    if (curr && labData[curr]) { sel.value=curr; loadPatientData(); }
+    else { document.querySelector("#uciTable tbody").innerHTML=""; }
+}
+
+function loadPatientData() {
+    const p = document.getElementById("patientSelector").value;
+    if (!p || !labData[p]) return;
+    const samples = labData[p];
+
+    // Detectar columnas dinámicas para este paciente
+    detectDynamicColumns(samples);
+
+    const allCols = getAllVisibleColumns();
+
+    // Cabecera
+    let h = `<tr>
+        <th class="p-1 bg-slate-50 border-b sticky left-0 z-30 w-10"><input type="checkbox" onclick="toggleAll(this)"></th>
+        <th class="p-1 text-left text-xs font-bold text-slate-500 bg-slate-50 border-b sticky left-10 z-20 whitespace-nowrap">Fecha</th>`;
+    allCols.forEach(k => {
+        const isDyn = !CLINICAL_ORDER.includes(k);
+        const label = getDisplayLabel(k);
+        h += `<th class="p-1 text-center text-xs font-bold ${isDyn?'text-indigo-500':'text-slate-500'} uppercase bg-slate-50 border-b whitespace-nowrap">${label}${isDyn?' ✦':''}</th>`;
+    });
+    document.querySelector("#uciTable thead").innerHTML = h+"</tr>";
+
+    // Filas
+    let b = "";
+    samples.forEach((s, idx) => {
+        let r = `<tr class="hover:bg-blue-50 transition border-b border-slate-100">
+            <td class="p-1 bg-white sticky left-0 border-r z-10"><input type="checkbox" class="row-select custom-checkbox" data-id="${s.id}"></td>
+            <td class="p-1 text-sm font-medium text-slate-700 bg-white sticky left-10 border-r whitespace-nowrap">${formatDate(s.fecha)} <span class="text-xs text-slate-400 ml-1">${s.hora}</span></td>`;
+        allCols.forEach(k => {
+            const val = getSmartValue(s.parametros, k);
+            const crit = val !== undefined && isCritical(k, val);
+            const delta = getDelta(samples, idx, k);
+            const critClass = crit ? 'val-critical' : 'text-slate-600';
+            r += `<td class="p-1 text-center text-sm ${critClass}">${val ?? '-'}${val !== undefined ? renderDelta(delta) : ''}</td>`;
+        });
+        b += r+"</tr>";
+    });
+    document.querySelector("#uciTable tbody").innerHTML = b;
+
+    // Selector de parámetro para gráfico
+    const pSel = document.getElementById("paramSelector");
+    const currP = pSel.value; pSel.innerHTML="";
+    allCols.forEach(k => pSel.appendChild(new Option(getDisplayLabel(k), k)));
+    if (allCols.includes(currP)) pSel.value = currP;
+    updateGraph();
+}
+
+function toggleAll(source) { document.querySelectorAll('.row-select').forEach(cb=>cb.checked=source.checked); }
+
+function updateGraph() {
+    const p = document.getElementById("patientSelector").value;
+    const param = document.getElementById("paramSelector").value;
+    const ctx = document.getElementById("evolutionChart").getContext("2d");
+    if (chartInstance) chartInstance.destroy();
+    if (!p || !param) return;
+    const points = labData[p].map(s => {
+        const v = getSmartValue(s.parametros, param);
+        const n = parseFloat(v);
+        return !isNaN(n) ? {x:`${formatDate(s.fecha)} ${s.hora}`, y:n} : null;
+    }).filter(pt=>pt!==null);
+    chartInstance = new Chart(ctx, {
+        type:'line',
+        data:{ labels:points.map(pt=>pt.x), datasets:[{ label:getDisplayLabel(param), data:points.map(pt=>pt.y), borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,0.1)', borderWidth:2, fill:true }] },
+        options:{ responsive:true, maintainAspectRatio:false, scales:{x:{display:false}} }
+    });
+}
+
+// ============================================================
+// 13. EXPORTACIONES
+// ============================================================
+function copyWordTable() {
+    const p = document.getElementById("patientSelector").value;
+    if (!p) return;
+    const samples = getExportSamples(p);
+    let finalHTML = "";
+    samples.forEach(s => {
+        const par = s.parametros || {};
+        const get = (k) => getSmartValue(par, k) ?? "-";
+
+        // Helper para marcar críticos en rojo en Word
+        const getStyled = (k) => {
+            const val = getSmartValue(par, k);
+            if (val === undefined || val === null) return "-";
+            const crit = isCritical(k, val);
+            return crit ? `<span style="color:#dc2626;font-weight:bold">${val}</span>` : val;
         };
 
-        const CLINICAL_ORDER = ["Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas", "Urea", "Creatinina", "Glucosa", "HbA1c", "AU", "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot", "Col", "LDL", "HDL", "TG", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH", "CPK", "PCR", "PCT", "pH", "pCO2", "pO2", "BEb", "BIC", "SatO2", "LAC", "TP", "RIN", "KPTT"];
-        
-        const SAFETY_RANGES = { "K": { min: 1.0, max: 9.0 }, "Na": { min: 100, max: 180 }, "pH": { min: 6.5, max: 8.0 }, "Hb": { min: 2, max: 25 } };
+        const hto_hb   = `${getStyled('Hto')} / ${getStyled('Hb')}`;
+        const bili     = `${getStyled('BT')} / ${getStyled('BD')}`;
+        const wbc      = getStyled('GB');
+        const enz      = `${getStyled('GOT')} / ${getStyled('GPT')} / ${getStyled('FAL')}`;
+        const plaq     = getStyled('Plq');
+        const prot     = `${getStyled('Prot')} / ${getStyled('Alb')}`;
+        const ren      = `${getStyled('Urea')} / ${getStyled('Crea')}`;
+        const glu      = getStyled('Glu');
+        const coag     = `${getStyled('TP')} / ${getStyled('KPTT')} / ${getStyled('RIN')}`;
+        // IONOGRAMA AMPLIADO: Na/K/Cl/Mg/Ca/P
+        const iono     = `${getStyled('Na')} / ${getStyled('K')} / ${getStyled('Cl')} / Mg ${getStyled('Mg')} / Ca ${getStyled('Ca_Total')} / Ca++ ${getStyled('Ca_Ionizado')} / P ${getStyled('Fosforo')}`;
+        // EAB con BEb
+        const eab      = `pH ${getStyled('pH')} / pCO2 ${getStyled('pCO2')} / pO2 ${getStyled('pO2')} / BEb ${getStyled('BEb')} / BIC ${getStyled('BIC')} / Sat ${getStyled('Sat')} / LAC ${getStyled('LAC')}`;
+        // Inmunosupresores
+        const tacro    = get('Tacrolimus') !== "-" || get('Everolimus') !== "-";
+        const inmunoRow = tacro ? `<tr><td style="font-weight:bold">Inmunosup.</td><td colspan="3">Tacro ${getStyled('Tacrolimus')} / Evero ${getStyled('Everolimus')}</td></tr>` : "";
 
-        let labData = {}; 
-        let chartInstance = null;
-        let visibleColumns = new Set(CLINICAL_ORDER);
+        finalHTML += `
+        <table border="1" style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:20px;">
+            <tr><td colspan="4" style="background-color:#f0f0f0;font-weight:bold;text-align:center;">LABORATORIO ${formatDate(s.fecha)} (${s.hora})</td></tr>
+            <tr><td style="font-weight:bold;width:20%">Hto/Hb</td><td style="width:30%">${hto_hb}</td><td style="font-weight:bold;width:20%">Bil T/D</td><td style="width:30%">${bili}</td></tr>
+            <tr><td style="font-weight:bold">Gl. blancos</td><td>${wbc}</td><td style="font-weight:bold">GOT/GPT/FAL</td><td>${enz}</td></tr>
+            <tr><td style="font-weight:bold">Plaquetas</td><td>${plaq}</td><td style="font-weight:bold">Prot/Alb</td><td>${prot}</td></tr>
+            <tr><td style="font-weight:bold">Urea/Crea</td><td>${ren}</td><td style="font-weight:bold">Glucemia</td><td>${glu}</td></tr>
+            <tr><td style="font-weight:bold">TP/KPTT/RIN</td><td>${coag}</td><td style="font-weight:bold">IONOGRAMA</td><td>${iono}</td></tr>
+            <tr><td style="font-weight:bold">EAB</td><td colspan="3">${eab}</td></tr>
+            ${inmunoRow}
+        </table><br>`;
+    });
 
-        // --- 3. UTILS ---
-        function showToast(msg, type="info") {
-            let bg = type==="error"?"#ef4444":type==="success"?"#10b981":"#3b82f6";
-            Toastify({ text: msg, duration: 3000, gravity: "top", position: "center", style: { background: bg, borderRadius: "8px" } }).showToast();
-        }
+    const blob = new Blob([finalHTML], {type:'text/html'});
+    navigator.clipboard.write([new ClipboardItem({'text/html':blob})]).then(()=>showToast("Tablas copiadas","success"));
+}
 
-        function formatDate(isoDate) {
-            if(!isoDate) return "-";
-            const parts = isoDate.split("-");
-            if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-            return isoDate;
-        }
-
-        function getCanonicalKey(dirtyKey) {
-            const clean = dirtyKey.trim();
-            if (NORM_MAP[clean]) return NORM_MAP[clean];
-            if (NORM_MAP[clean.toUpperCase()]) return NORM_MAP[clean.toUpperCase()];
-            if (ABBR[clean]) return clean;
-            return clean.substring(0, 3).toUpperCase();
-        }
-
-        function getDisplayLabel(key) { return ABBR[key] || key; }
-
-        function getSmartValue(params, key) {
-            if (params[key] !== undefined) return params[key];
-            const longKey = Object.keys(ABBR).find(k => ABBR[k] === key);
-            if (longKey && params[longKey] !== undefined) return params[longKey];
-            return undefined;
-        }
-
-        function isValidValue(key, value) {
-            let num = parseFloat(value);
-            if (isNaN(num)) return true; 
-            let safeKey = null;
-            const label = getDisplayLabel(key);
-            if (label === 'K') safeKey = 'K';
-            if (label === 'Na') safeKey = 'Na';
-            if (label === 'pH') safeKey = 'pH';
-            if (label === 'Hb') safeKey = 'Hb';
-            if (safeKey && SAFETY_RANGES[safeKey]) {
-                if (num < SAFETY_RANGES[safeKey].min || num > SAFETY_RANGES[safeKey].max) return false;
-            }
-            return true;
-        }
-
-        // =====================================================================
-        // FIX v17.6: LIMPIEZA DE TEXTO DEL ARGERICH ANTES DE ENVIAR A LA IA
-        // Elimina caracteres especiales que rompen la extracción numérica
-        // =====================================================================
-        function cleanArgerichText(text) {
-            return text
-                // Elimina el "!" indicador de valor límite: "4.6 !" → "4.6"
-                .replace(/(\d+[\.,]?\d*)\s*!/g, '$1')
-                // Elimina notas de muestra problemáticas
-                .replace(/Valor confirmado/gi, '')
-                .replace(/Muestra insuficiente/gi, '')
-                .replace(/Muestra mal enrasada/gi, '')
-                .replace(/Muestra mal remitida/gi, '')
-                .replace(/Problemas técnicos/gi, '')
-                // Estandariza el separador decimal (coma → punto)
-                .replace(/(\d),(\d)/g, '$1.$2')
-                // Elimina el símbolo "•" que aparece en "MICROBIOLOGI•A"
-                .replace(/•/g, '')
-                // Normaliza el símbolo de porcentaje de saturación de O2
-                .replace(/% Saturaci[oó]n O2 \(c\)/gi, 'SatO2')
-                .replace(/% Saturaci[oó]n 02 \(c\)/gi, 'SatO2');
-        }
-
-        function getSelectedIds() { return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id); }
-        function getExportSamples(p) { const ids = getSelectedIds(); return ids.length > 0 ? labData[p].filter(s => ids.includes(s.id)) : labData[p]; }
-
-        // --- 4. CORE: PROCESAMIENTO Y UPLOAD ---
-
-        async function processAndUpload() {
-            const files = document.getElementById('pdfInput').files;
-            const rawText = document.getElementById("labInput").value.trim();
-            const apiKey = document.getElementById("apiKey").value.trim() || localStorage.getItem("my_openai_key_v1");
-            
-            if (files.length === 0 && rawText.length < 10) return showToast("Seleccione PDF o pegue texto", "error");
-            if (!apiKey) { document.getElementById("configDetails").open = true; return showToast("Falta API Key", "error"); }
-            localStorage.setItem("my_openai_key_v1", apiKey);
-
-            const btn = document.getElementById("btnProcesarIA");
-            btn.disabled = true; btn.innerText = "Procesando...";
-            
-            let samplesToUpload = [];
-
-            if (files.length === 0 && rawText.length > 10) {
-                try {
-                    // Aplicar limpieza Argerich también al texto pegado manualmente
-                    const cleanedText = cleanArgerichText(rawText);
-                    const extracted = await extractWithAI(cleanedText, apiKey);
-                    samplesToUpload.push(...extracted);
-                } catch (e) { showToast("Error IA: " + e.message, "error"); }
-            } else {
-                const txtArea = document.getElementById("labInput");
-                for (let i = 0; i < files.length; i++) {
-                    txtArea.value = `>>> LEYENDO ARCHIVO ${files[i].name}...\n`;
-                    try {
-                        const pdfText = await readPdfFile(files[i]);
-                        
-                        // =====================================================
-                        // FIX v17.6: Aplicar limpieza antes de enviar a la IA
-                        // =====================================================
-                        const cleanedText = cleanArgerichText(pdfText);
-                        
-                        txtArea.value += "Texto extraído y limpiado. Consultando IA (Multi-Fecha)...\n";
-                        const extractedArray = await extractWithAI(cleanedText, apiKey);
-                        samplesToUpload.push(...extractedArray);
-                        txtArea.value += `✅ Se detectaron ${extractedArray.length} muestra(s) en este archivo.\n`;
-                    } catch (e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
-                }
-            }
-
-            let successCount = 0;
-            if (samplesToUpload.length > 0) {
-                for (const sample of samplesToUpload) {
-                    try {
-                        await uploadToFirebase(sample);
-                        successCount++;
-                    } catch (e) { console.error("Error subiendo muestra", e); }
-                }
-                showToast(`Se guardaron ${successCount} reportes exitosamente`, "success");
-                document.getElementById("labInput").value = "";
-                document.getElementById("pdfInput").value = null;
-            } else {
-                showToast("No se detectaron reportes válidos.", "error");
-            }
-
-            btn.disabled = false; btn.innerText = "✨ Procesar";
-        }
-
-        async function readPdfFile(file) {
-            const buffer = await file.arrayBuffer();
-            const pdf = await window.pdfjsLib.getDocument({data: buffer}).promise;
-            let fullText = "";
-            for(let i=1; i<=pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const content = await page.getTextContent();
-                fullText += content.items.map(item => item.str).join(" ") + "\n";
-            }
-            return fullText;
-        }
-
-        // =====================================================================
-        // FIX v17.6: PROMPT ACTUALIZADO CON INSTRUCCIONES ESPECÍFICAS ARGERICH
-        // =====================================================================
-        async function extractWithAI(text, apiKey) {
-            const prompt = `Medical Expert Task:
-            Analyze the following text which may contain ONE or MULTIPLE laboratory reports from different dates/times.
-            This text comes from Hospital Argerich (Buenos Aires, Argentina).
-            
-            Return a JSON OBJECT containing an array under the key "muestras". Each item must be a distinct report object:
-            {
-              "muestras": [
-                  {
-                    "paciente": "FULL NAME UPPERCASE",
-                    "fecha": "YYYY-MM-DD",
-                    "hora": "HH:MM",
-                    "protocolo": "string",
-                    "parametros": { "KEY": value_number, ... }
-                  },
-                  ...
-              ]
-            }
-            
-            Targets: ${TARGET_PARAMS.join(", ")}.
-            
-            CRITICAL MAPPING RULES FOR ARGERICH FORMAT:
-            1. IONOGRAM section: "Sodio" → "Na", "Potasio" → "K", "Cloro" → "Cl"
-            2. "Calcio iónico" or "Calcio ionico" or "Calcio normalizado" → "Ca_Ionizado"
-            3. "Calcio" alone → "Ca_Total"
-            4. "Magnesio" → "Mg", "Fósforo" or "Fosforo" → "Fosforo"
-            5. "Aspartato Aminotransferasa (GOT)" → "AST_TGO"
-            6. "Alanina Aminotransferasa (GPT)" → "ALT_TGP"
-            7. "Fosfatasa Alcalina" → "Fosfatasa_Alcalina"
-            8. "Albúmina" or "Albumina" → "Albúmina"
-            9. "Glucosa Plasmática" → "Glucosa"
-            10. "SatO2" → "SatO2" (already normalized)
-            11. "BEb" → "BEb"
-            12. "Acido láctico" or "Acido Lactico" → "Lactato"
-            13. "LDL Colesterol" → "LDL", "Colesterol HDL" → "HDL", "Colesterol" alone → "Colesterol_Total"
-            14. "Triglicéridos" → "Triglicéridos"
-            15. "Ácido Úrico" or "Acido Urico" → "Acido_Urico"
-            16. "Tiempo de Protrombina (Quick)" → "TP"
-            17. "RIN (Razon Internacional Normalizada)" → "RIN"
-            18. "aPTT (Tiempo Tromboplastina Parcial Activada)" → "aPTT"
-            
-            PARSING RULES:
-            - If text contains multiple protocols/dates, split into SEPARATE objects
-            - Values already cleaned: just extract the number
-            - Convert "1,5" to 1.5 (comma decimal separator)
-            - Ignore null, empty, or non-numeric values
-            - "IONOGRAMA" section may appear inside GAS/EAB section — extract all electrolytes
-            - Multiple protocols in ONE PDF = multiple objects in the array
-            
-            Text: """${text.substring(0, 35000)}"""`;
-
-            const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                body: JSON.stringify({ 
-                    model: "gpt-4o-mini", 
-                    messages: [{ role: "user", content: prompt }], 
-                    temperature: 0.1, 
-                    response_format: { type: "json_object" } 
-                })
-            });
-            const data = await response.json();
-            const content = data.choices[0].message.content.trim();
-            
-            try {
-                const parsed = JSON.parse(content);
-                if (parsed.muestras && Array.isArray(parsed.muestras)) return parsed.muestras;
-                if (Array.isArray(parsed)) return parsed;
-                return [parsed];
-            } catch (e) {
-                throw new Error("La IA no devolvió un JSON válido.");
-            }
-        }
-
-        async function uploadToFirebase(result) {
-            if (!result.paciente || result.paciente === "DESCONOCIDO") return;
-            if (!result.fecha) result.fecha = new Date().toISOString().split('T')[0];
-            if (!result.hora) result.hora = "12:00";
-            
-            const cleanParams = {};
-            for (const k in result.parametros) {
-                if (result.parametros[k] !== null) {
-                    const canonical = getCanonicalKey(k);
-                    if (isValidValue(canonical, result.parametros[k])) cleanParams[canonical] = result.parametros[k];
-                }
-            }
-            await db.collection("muestras").add({
-                paciente: result.paciente, fecha: result.fecha, hora: result.hora,
-                protocolo: result.protocolo || "", parametros: cleanParams,
-                timestamp: new Date(result.fecha + "T" + result.hora).getTime(),
-                uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        }
-
-        // --- 5. INTERFAZ Y EVENTOS ---
-        function initRealTimeListener() {
-            db.collection("muestras").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
-                labData = {}; 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (!labData[data.paciente]) labData[data.paciente] = [];
-                    labData[data.paciente].push({ ...data, id: doc.id });
-                });
-                refreshUI();
-            });
-        }
-
-        function refreshUI() {
-            const sel = document.getElementById("patientSelector");
-            const curr = sel.value;
-            sel.innerHTML = '<option value="">-- Seleccionar --</option>';
-            Object.keys(labData).sort().forEach(p => sel.appendChild(new Option(p, p)));
-            if(curr && labData[curr]) { sel.value = curr; loadPatientData(); }
-            else { document.querySelector("#uciTable tbody").innerHTML = ""; }
-        }
-
-        function loadPatientData() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p || !labData[p]) return;
-            const samples = labData[p];
-            const sorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
-            
-            let h = `<tr><th class="p-1 bg-slate-50 border-b sticky left-0 z-30 w-10"><input type="checkbox" onclick="toggleAll(this)"></th><th class="p-1 text-left text-xs font-bold text-slate-500 bg-slate-50 border-b sticky left-10 z-20">Fecha</th>`;
-            sorted.forEach(k => h += `<th class="p-1 text-center text-xs font-bold text-slate-500 uppercase bg-slate-50 border-b whitespace-nowrap">${getDisplayLabel(k)}</th>`);
-            document.querySelector("#uciTable thead").innerHTML = h + "</tr>";
-
-            let b = "";
-            samples.forEach(s => {
-                let r = `<tr class="hover:bg-blue-50 transition border-b border-slate-100">
-                    <td class="p-1 bg-white sticky left-0 border-r z-10"><input type="checkbox" class="row-select custom-checkbox" data-id="${s.id}"></td>
-                    <td class="p-1 text-sm font-medium text-slate-700 bg-white sticky left-10 border-r whitespace-nowrap">${formatDate(s.fecha)} <span class="text-xs text-slate-400 ml-1">${s.hora}</span></td>`;
-                sorted.forEach(k => r += `<td class="p-1 text-center text-sm text-slate-600">${getSmartValue(s.parametros, k) ?? "-"}</td>`);
-                b += r + "</tr>";
-            });
-            document.querySelector("#uciTable tbody").innerHTML = b;
-            
-            const pSel = document.getElementById("paramSelector");
-            const currP = pSel.value; pSel.innerHTML = "";
-            sorted.forEach(k => pSel.appendChild(new Option(getDisplayLabel(k), k)));
-            if(visibleColumns.has(currP)) pSel.value = currP;
-            updateGraph();
-        }
-
-        function toggleAll(source) { document.querySelectorAll('.row-select').forEach(cb => cb.checked = source.checked); }
-        
-        function updateGraph() {
-            const p = document.getElementById("patientSelector").value;
-            const param = document.getElementById("paramSelector").value;
-            const ctx = document.getElementById("evolutionChart").getContext("2d");
-            if (chartInstance) chartInstance.destroy();
-            if (!p || !param) return;
-            const points = labData[p].map(s => {
-                 const v = getSmartValue(s.parametros, param);
-                 const n = parseFloat(v);
-                 return (!isNaN(n)) ? {x: formatDate(s.fecha)+" "+s.hora, y: n} : null;
-            }).filter(pt => pt !== null);
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: { labels: points.map(pt => pt.x), datasets: [{ label: getDisplayLabel(param), data: points.map(pt => pt.y), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', borderWidth: 2, fill: true }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false } } }
-            });
-        }
-
-        // --- FUNCIONES EXTRAS ---
-        async function smartDelete() {
-            const ids = getSelectedIds();
-            const patient = document.getElementById("patientSelector").value;
-            if (!patient) return showToast("Seleccione un paciente", "error");
-            if (ids.length > 0) {
-                if(!confirm(`¿Borrar las ${ids.length} filas seleccionadas?`)) return;
-                const batch = db.batch(); ids.forEach(id => batch.delete(db.collection("muestras").doc(id)));
-                await batch.commit(); showToast("Filas eliminadas", "success");
-            } else {
-                if(!confirm(`⚠️ ¿Borrar TODO el historial de ${patient}? Esta acción no se puede deshacer.`)) return;
-                const q = await db.collection("muestras").where("paciente", "==", patient).get();
-                const b = db.batch(); q.forEach(d => b.delete(d.ref));
-                await b.commit(); showToast("Paciente eliminado", "success"); document.getElementById("patientSelector").value = ""; refreshUI();
-            }
-        }
-
-        function copyWordTable() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p) return;
-            const samples = getExportSamples(p);
-            let finalHTML = "";
-            samples.forEach(s => {
-                const par = s.parametros || {};
-                const get = (k) => getSmartValue(par, k) ?? "-";
-                const hto_hb = `${get('Hto')} / ${get('Hb')}`;
-                const bili = `${get('BT')} / ${get('BD')}`;
-                const wbc = get('GB');
-                const enz = `${get('GOT')} / ${get('GPT')} / ${get('FAL')}`;
-                const plaq = get('Plq');
-                const prot = `${get('Prot')} / ${get('Alb')}`;
-                const ren = `${get('Urea')} / ${get('Crea')}`;
-                const glu = get('Glu');
-                const coag = `${get('TP')} / ${get('KPTT')} / ${get('RIN')}`;
-                const iono = `${get('Na')} / ${get('K')} / ${get('Cl')}`;
-                const eab = `${get('pH')} / ${get('pCO2')} / ${get('pO2')} / ${get('LAC')} / ${get('BIC')} / ${get('Sat')}`;
-
-                finalHTML += `
-                    <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-                        <tr><td colspan="4" style="background-color: #f0f0f0; font-weight: bold; text-align: center;">LABORATORIO ${formatDate(s.fecha)} (${s.hora})</td></tr>
-                        <tr><td style="font-weight:bold;width:20%">Hto/Hb</td><td style="width:30%">${hto_hb}</td><td style="font-weight:bold;width:20%">Bil T/D</td><td style="width:30%">${bili}</td></tr>
-                        <tr><td style="font-weight:bold">Gl. blancos</td><td>${wbc}</td><td style="font-weight:bold">GOT/GPT/FAL</td><td>${enz}</td></tr>
-                        <tr><td style="font-weight:bold">Plaquetas</td><td>${plaq}</td><td style="font-weight:bold">Prot/Alb</td><td>${prot}</td></tr>
-                        <tr><td style="font-weight:bold">Urea/Crea</td><td>${ren}</td><td style="font-weight:bold">Glucemia</td><td>${glu}</td></tr>
-                        <tr><td style="font-weight:bold">TP/KPTT/RIN</td><td>${coag}</td><td style="font-weight:bold">IONOGRAMA</td><td>${iono}</td></tr>
-                        <tr><td style="font-weight:bold">EAB</td><td colspan="3">${eab}</td></tr>
-                    </table><br>`;
-            });
-            const blob = new Blob([finalHTML], { type: 'text/html' });
-            navigator.clipboard.write([new ClipboardItem({'text/html': blob})]).then(() => showToast("Tablas Copiadas", "success"));
-        }
-
-        function copyHCLAB() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p) return showToast("Seleccione paciente", "error");
-            const samples = getExportSamples(p);
-            let text = "";
-            samples.forEach(samp => {
-                let parts = [];
-                const visibleSorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
-                visibleSorted.forEach(k => { 
-                    const val = getSmartValue(samp.parametros||{}, k);
-                    if(val) parts.push(`${getDisplayLabel(k)} ${val}`);
-                });
-                text += `LAB ${formatDate(samp.fecha)}: ` + parts.join(", ") + "\n\n";
-            });
-            navigator.clipboard.writeText(text.trim()).then(()=>showToast("Copiado HCLAB", "success"));
-        }
-
-        function downloadPDF() {
-            const p = document.getElementById("patientSelector").value;
-            if(!p) return showToast("Seleccione paciente", "error");
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'mm', 'a4');
-            const samples = getExportSamples(p);
-            const sorted = CLINICAL_ORDER.filter(k => visibleColumns.has(k));
-            const head = ['Fecha', 'Hora', ...sorted.map(k => getDisplayLabel(k))];
-            const body = samples.map(s => {
-                let r = [formatDate(s.fecha), s.hora];
-                sorted.forEach(k => r.push(getSmartValue(s.parametros, k) ?? '-'));
-                return r;
-            });
-            doc.setFontSize(14); doc.text(`Historial: ${p}`, 14, 15);
-            doc.autoTable({ startY: 25, head: [head], body: body, theme: 'grid', styles: { fontSize: 7, halign: 'center' }, headStyles: { fillColor: [59, 130, 246] } });
-            doc.save(`Reporte_${p}.pdf`);
-        }
-
-        function openMergePatientModal() { document.getElementById('mergePatientModal').classList.remove('opacity-0', 'pointer-events-none'); const names = Object.keys(labData).sort(); const s1=document.getElementById('mergeTarget'), s2=document.getElementById('mergeSource'); s1.innerHTML=""; s2.innerHTML=""; names.forEach(n=>{ s1.add(new Option(n,n)); s2.add(new Option(n,n)); }); }
-        function closeModal(id) { document.getElementById(id).classList.add('opacity-0', 'pointer-events-none'); }
-        async function executeMergePatients() {
-            const t=document.getElementById('mergeTarget').value, s=document.getElementById('mergeSource').value;
-            if(t===s)return alert("Iguales"); if(!confirm("¿Fusionar?"))return;
-            const b=db.batch(); labData[s].forEach(d=>b.update(db.collection("muestras").doc(d.id),{paciente:t}));
-            await b.commit(); showToast("Fusionado", "success"); closeModal('mergePatientModal');
-        }
-        async function mergeSelectedLabs() {
-            const p = document.getElementById("patientSelector").value;
-            const ids = getSelectedIds();
-            if(!p || ids.length < 2) return showToast("Seleccione 2+ filas", "error");
-            const samples = labData[p].filter(s => ids.includes(s.id));
-            let master = samples[0];
-            let newParams = { ...master.parametros };
-            for(let i=1; i<samples.length; i++) newParams = { ...newParams, ...samples[i].parametros };
-            await db.collection("muestras").doc(master.id).update({ parametros: newParams });
-            const batch = db.batch(); for(let i=1; i<samples.length; i++) batch.delete(db.collection("muestras").doc(samples[i].id));
-            await batch.commit(); showToast("Unificado", "success");
-        }
-        async function deleteDatabase() {
-            if(prompt("Clave:")!=="D3l.e@TE$alL") return alert("Incorrecto");
-            const q=await db.collection("muestras").get(); const b=db.batch(); q.forEach(d=>b.delete(d.ref)); await b.commit();
-            showToast("Base Limpia", "success");
-        }
-
-        function openColumnFilter() {
-            const grid = document.getElementById("columnsGrid"); grid.innerHTML = "";
-            CLINICAL_ORDER.forEach(k => {
-                const checked = visibleColumns.has(k) ? "checked" : "";
-                grid.innerHTML += `<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" class="col-check custom-checkbox" value="${k}" ${checked}><span>${getDisplayLabel(k)}</span></label>`;
-            });
-            document.getElementById('columnFilterModal').classList.remove('opacity-0', 'pointer-events-none');
-        }
-        function toggleAllColumns(state) { document.querySelectorAll('.col-check').forEach(cb => cb.checked = state); }
-        function applyColumnFilter() {
-            visibleColumns = new Set(); document.querySelectorAll('.col-check:checked').forEach(cb => visibleColumns.add(cb.value));
-            closeModal('columnFilterModal'); loadPatientData();
-        }
-
-        // Init
-        document.addEventListener("DOMContentLoaded", () => {
-            const k = localStorage.getItem("my_openai_key_v1");
-            if(k) document.getElementById("apiKey").value = k;
-            initRealTimeListener();
-            
-            const input=document.getElementById("pdfInput");
-            const textArea=document.getElementById("labInput");
-            input.addEventListener("change",async(e)=>{
-                const files=e.target.files; if(files.length === 0) return;
-                textArea.value="⏳ Leyendo...";
-                try{
-                    let fullText = "";
-                    for (let i = 0; i < files.length; i++) {
-                        textArea.value = `⏳ Leyendo ${files[i].name}...`;
-                        const buffer=await files[i].arrayBuffer();
-                        const pdf=await window.pdfjsLib.getDocument({data: buffer}).promise;
-                        for(let j=1;j<=pdf.numPages;j++){const p=await pdf.getPage(j), c=await p.getTextContent(); fullText+=c.items.map(x=>x.str).join(" ")+"\n";}
-                    }
-                    // Aplicar limpieza al previsualizar el texto
-                    textArea.value=cleanArgerichText(fullText);
-                    showToast("PDF(s) Leído(s) y limpiados","success");
-                }catch(err){ textArea.value="Error: "+err.message; showToast("Error al leer PDF","error"); }
-            });
-
-            document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
-            document.getElementById("patientSelector").addEventListener("change", loadPatientData);
-            document.getElementById("paramSelector").addEventListener("change", updateGraph);
-            document.getElementById("btnLimpiarEntrada").addEventListener("click", () => document.getElementById("labInput").value = "");
+function copyHCLAB() {
+    const p = document.getElementById("patientSelector").value;
+    if (!p) return showToast("Seleccione paciente","error");
+    const samples = getExportSamples(p);
+    let text = "";
+    samples.forEach(samp => {
+        let parts = [];
+        const allCols = getAllVisibleColumns();
+        allCols.forEach(k => {
+            const val = getSmartValue(samp.parametros||{}, k);
+            if (val !== undefined) parts.push(`${getDisplayLabel(k)} ${val}`);
         });
-    </script>
+        text += `LAB ${formatDate(samp.fecha)}: ` + parts.join(", ") + "\n\n";
+    });
+    navigator.clipboard.writeText(text.trim()).then(()=>showToast("Copiado HCLAB","success"));
+}
+
+function downloadPDF() {
+    const p = document.getElementById("patientSelector").value;
+    if (!p) return showToast("Seleccione paciente","error");
+    const {jsPDF} = window.jspdf;
+    const doc = new jsPDF('l','mm','a4');
+    const samples = getExportSamples(p);
+    const allCols = getAllVisibleColumns();
+    const head = ['Fecha','Hora',...allCols.map(k=>getDisplayLabel(k))];
+    const body = samples.map(s => {
+        let r = [formatDate(s.fecha), s.hora];
+        allCols.forEach(k => r.push(getSmartValue(s.parametros,k)??'-'));
+        return r;
+    });
+    doc.setFontSize(14); doc.text(`Historial: ${p}`, 14, 15);
+    doc.autoTable({ startY:25, head:[head], body:body, theme:'grid', styles:{fontSize:7,halign:'center'}, headStyles:{fillColor:[59,130,246]} });
+    doc.save(`Reporte_${p}.pdf`);
+}
+
+// ============================================================
+// 14. ACCIONES (borrar, fusionar, etc.)
+// ============================================================
+async function smartDelete() {
+    const ids = getSelectedIds();
+    const patient = document.getElementById("patientSelector").value;
+    if (!patient) return showToast("Seleccione un paciente","error");
+    if (ids.length>0) {
+        if (!confirm(`¿Borrar las ${ids.length} filas seleccionadas?`)) return;
+        const batch = db.batch(); ids.forEach(id=>batch.delete(db.collection("muestras").doc(id)));
+        await batch.commit(); showToast("Filas eliminadas","success");
+    } else {
+        if (!confirm(`⚠️ ¿Borrar TODO el historial de ${patient}?`)) return;
+        const q = await db.collection("muestras").where("paciente","==",patient).get();
+        const b = db.batch(); q.forEach(d=>b.delete(d.ref));
+        await b.commit(); showToast("Paciente eliminado","success");
+        document.getElementById("patientSelector").value=""; refreshUI();
+    }
+}
+
+function openMergePatientModal() {
+    document.getElementById('mergePatientModal').classList.remove('opacity-0','pointer-events-none');
+    const names = Object.keys(labData).sort();
+    const s1=document.getElementById('mergeTarget'), s2=document.getElementById('mergeSource');
+    s1.innerHTML=""; s2.innerHTML="";
+    names.forEach(n=>{ s1.add(new Option(n,n)); s2.add(new Option(n,n)); });
+}
+function closeModal(id) { document.getElementById(id).classList.add('opacity-0','pointer-events-none'); }
+async function executeMergePatients() {
+    const t=document.getElementById('mergeTarget').value, s=document.getElementById('mergeSource').value;
+    if (t===s) return alert("Son iguales");
+    if (!confirm("¿Fusionar?")) return;
+    const b=db.batch(); labData[s].forEach(d=>b.update(db.collection("muestras").doc(d.id),{paciente:t}));
+    await b.commit(); showToast("Fusionado","success"); closeModal('mergePatientModal');
+}
+async function mergeSelectedLabs() {
+    const p = document.getElementById("patientSelector").value;
+    const ids = getSelectedIds();
+    if (!p || ids.length<2) return showToast("Seleccione 2+ filas","error");
+    const samples = labData[p].filter(s=>ids.includes(s.id));
+    let master = samples[0];
+    let newParams = {...master.parametros};
+    for (let i=1; i<samples.length; i++) newParams = {...newParams,...samples[i].parametros};
+    await db.collection("muestras").doc(master.id).update({parametros:newParams});
+    const batch=db.batch(); for(let i=1;i<samples.length;i++) batch.delete(db.collection("muestras").doc(samples[i].id));
+    await batch.commit(); showToast("Unificado","success");
+}
+async function deleteDatabase() {
+    if (prompt("Clave:")!=="D3l.e@TE$alL") return alert("Incorrecto");
+    const q=await db.collection("muestras").get(); const b=db.batch(); q.forEach(d=>b.delete(d.ref)); await b.commit();
+    showToast("Base limpiada","success");
+}
+
+// ============================================================
+// 15. FILTRO DE COLUMNAS — incluye sección dinámica
+// ============================================================
+function openColumnFilter() {
+    const grid = document.getElementById("columnsGrid");
+    grid.innerHTML = "";
+
+    // Columnas predefinidas
+    grid.innerHTML += `<div class="col-section-title col-span-3 md:col-span-5">Parámetros estándar</div>`;
+    CLINICAL_ORDER.forEach(k => {
+        const checked = visibleColumns.has(k) ? "checked" : "";
+        grid.innerHTML += `<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-slate-50 p-1 rounded">
+            <input type="checkbox" class="col-check custom-checkbox" value="${k}" data-type="standard" ${checked}>
+            <span>${getDisplayLabel(k)}</span></label>`;
+    });
+
+    // Columnas dinámicas
+    if (dynamicColumns.size > 0) {
+        grid.innerHTML += `<div class="col-section-title col-span-3 md:col-span-5 text-indigo-500">Variables adicionales ✦</div>`;
+        dynamicColumns.forEach(k => {
+            const checked = visibleDynamic.has(k) ? "checked" : "";
+            grid.innerHTML += `<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-indigo-50 p-1 rounded">
+                <input type="checkbox" class="col-check-dyn custom-checkbox" value="${k}" data-type="dynamic" ${checked}>
+                <span class="text-indigo-600">${getDisplayLabel(k)}</span></label>`;
+        });
+    }
+
+    document.getElementById('columnFilterModal').classList.remove('opacity-0','pointer-events-none');
+}
+function toggleAllColumns(state) {
+    document.querySelectorAll('.col-check').forEach(cb=>cb.checked=state);
+    document.querySelectorAll('.col-check-dyn').forEach(cb=>cb.checked=state);
+}
+function applyColumnFilter() {
+    visibleColumns = new Set();
+    document.querySelectorAll('.col-check:checked').forEach(cb=>visibleColumns.add(cb.value));
+    visibleDynamic = new Set();
+    document.querySelectorAll('.col-check-dyn:checked').forEach(cb=>visibleDynamic.add(cb.value));
+    closeModal('columnFilterModal');
+    loadPatientData();
+}
+
+// ============================================================
+// 16. INIT
+// ============================================================
+document.addEventListener("DOMContentLoaded", () => {
+    const k = localStorage.getItem("my_openai_key_v1");
+    if (k) document.getElementById("apiKey").value = k;
+    initRealTimeListener();
+
+    const input = document.getElementById("pdfInput");
+    const textArea = document.getElementById("labInput");
+
+    input.addEventListener("change", async(e) => {
+        const files = e.target.files;
+        if (files.length===0) return;
+        textArea.value="⏳ Leyendo...";
+        try {
+            let fullText="";
+            for (let i=0; i<files.length; i++) {
+                textArea.value=`⏳ Leyendo ${files[i].name}...`;
+                const buffer=await files[i].arrayBuffer();
+                const pdf=await window.pdfjsLib.getDocument({data:buffer}).promise;
+                for(let j=1;j<=pdf.numPages;j++){
+                    const pg=await pdf.getPage(j), c=await pg.getTextContent();
+                    fullText+=c.items.map(x=>x.str).join(" ")+"\n";
+                }
+            }
+            textArea.value=cleanArgerichText(fullText);
+            showToast("PDF leído y limpiado","success");
+        } catch(err) { textArea.value="Error: "+err.message; showToast("Error al leer PDF","error"); }
+    });
+
+    document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
+    document.getElementById("patientSelector").addEventListener("change", loadPatientData);
+    document.getElementById("paramSelector").addEventListener("change", updateGraph);
+    document.getElementById("btnLimpiarEntrada").addEventListener("click", ()=>document.getElementById("labInput").value="");
+    document.getElementById("hospitalSelector").addEventListener("change", loadPatientData);
+});
+</script>
 </body>
 </html>
