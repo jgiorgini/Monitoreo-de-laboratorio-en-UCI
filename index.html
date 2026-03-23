@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v17.9</title>
+    <title>Monitor UCI - v17.10</title>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -45,8 +45,8 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
             <div>
-                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.9</span></h1>
-                <p class="text-slate-500 text-xs mt-0.5">Columnas dinámicas · Valores críticos · Delta · Excel · Fix Word/PDF</p>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.10</span></h1>
+                <p class="text-slate-500 text-xs mt-0.5">Columnas dinámicas · Valores críticos · Delta · Excel · Comparación Word</p>
             </div>
         </div>
         <div class="mt-4 md:mt-0 flex gap-2 flex-wrap justify-end">
@@ -680,134 +680,168 @@ function updateGraph() {
 function copyWordTable() {
     const p = document.getElementById("patientSelector").value;
     if (!p) return;
-    const samples = getExportSamples(p);
 
-    // Estilos base para celdas — centrado horizontal y vertical, altura automática
-    const tdBase = `style="padding:4px 6px;vertical-align:middle;text-align:center;height:auto;min-height:18px;"`;
-    const tdLabel = `style="padding:4px 6px;vertical-align:middle;text-align:left;font-weight:bold;min-width:110px;white-space:nowrap;background-color:#f5f5f5;"`;
-    const tdValue = `style="padding:4px 6px;vertical-align:middle;text-align:center;min-width:130px;"`;
-    const tdHeader = `style="padding:5px 6px;vertical-align:middle;text-align:center;font-weight:bold;background-color:#e8e8e8;font-size:10.5pt;"`;
+    // Obtener muestras seleccionadas
+    const allSamples = getExportSamples(p);
 
-    // Wrapper externo para forzar ancho completo en Word
-    const tableStyle = `style="border-collapse:collapse;width:100%;table-layout:fixed;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:16px;"`;
+    // Modo comparación: exactamente 2 seleccionadas
+    const selectedIds = getSelectedIds();
+    const isCompare = selectedIds.length === 2;
 
-    let finalHTML = `<div style="width:100%;margin:0;padding:0;">`;
+    // En modo comparación: newer = índice mayor de timestamp, older = el otro
+    let newerSample, olderSample;
+    if (isCompare) {
+        const s0 = labData[p].find(s => s.id === selectedIds[0]);
+        const s1 = labData[p].find(s => s.id === selectedIds[1]);
+        if (!s0 || !s1) return showToast("Error al localizar muestras", "error");
+        // Ordenar por timestamp
+        [newerSample, olderSample] = s0.timestamp >= s1.timestamp ? [s0, s1] : [s1, s0];
+    }
 
-    samples.forEach(s => {
-        const par = s.parametros || {};
-        const get = (k) => getSmartValue(par, k) ?? "-";
+    // Estilos base
+    const tdLabel  = \`style="padding:4px 6px;vertical-align:middle;text-align:left;font-weight:bold;min-width:110px;white-space:nowrap;background-color:#f5f5f5;"\`;
+    const tdValue  = \`style="padding:4px 6px;vertical-align:middle;text-align:center;min-width:130px;"\`;
+    const tdHeader = \`style="padding:5px 6px;vertical-align:middle;text-align:center;font-weight:bold;background-color:#e8e8e8;font-size:10.5pt;"\`;
+    const tableStyle = \`style="border-collapse:collapse;width:100%;table-layout:fixed;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:16px;"\`;
 
-        // Helper: valor con color rojo si crítico
-        const getStyled = (k) => {
-            const val = getSmartValue(par, k);
-            if (val === undefined || val === null) return "-";
-            const crit = isCritical(k, val);
-            return crit
-                ? `<span style="color:#dc2626;font-weight:bold;">${val}</span>`
-                : `${val}`;
-        };
+    // Helper: valor con color rojo si crítico
+    const getStyled = (par, k) => {
+        const val = getSmartValue(par, k);
+        if (val === undefined || val === null) return null;
+        const crit = isCritical(k, val);
+        return crit
+            ? \`<span style="color:#dc2626;font-weight:bold;">\${val}</span>\`
+            : \`\${val}\`;
+    };
 
-        // Helper: muestra solo si al menos uno de los valores existe
-        const hasAny = (...keys) => keys.some(k => {
-            const v = getSmartValue(par, k);
-            return v !== undefined && v !== null;
-        });
+    // Helper: valor anterior entre paréntesis, letra pequeña, gris
+    const getOldStyled = (par, k) => {
+        const val = getSmartValue(par, k);
+        if (val === undefined || val === null) return null;
+        const crit = isCritical(k, val);
+        const color = crit ? '#dc2626' : '#666666';
+        return \`<span style="font-size:8pt;color:\${color};">(\${val})</span>\`;
+    };
 
-        const hto_hb = `${getStyled('Hto')} / ${getStyled('Hb')}`;
-        const bili   = `${getStyled('BT')} / ${getStyled('BD')}`;
-        const wbc    = getStyled('GB');
-        const enz    = `${getStyled('GOT')} / ${getStyled('GPT')} / ${getStyled('FAL')}`;
-        const plaq   = getStyled('Plq');
-        const prot   = `${getStyled('Prot')} / ${getStyled('Alb')}`;
-        const ren    = `${getStyled('Urea')} / ${getStyled('Crea')}`;
-        const glu    = getStyled('Glu');
-        const coag   = `${getStyled('TP')} / ${getStyled('KPTT')} / ${getStyled('RIN')}`;
+    // Helper: combina valor nuevo + viejo si modo comparación
+    const cell = (par, oldPar, k) => {
+        const newVal = getStyled(par, k);
+        const display = newVal !== null ? newVal : '-';
+        if (!isCompare || !oldPar) return display;
+        const oldVal = getOldStyled(oldPar, k);
+        return oldVal !== null ? \`\${display} \${oldVal}\` : display;
+    };
 
-        // Ionograma: mostrar solo los electrolitos disponibles
+    // Helper: verifica si al menos uno de los parámetros tiene dato
+    const hasAny = (par, ...keys) => keys.some(k => {
+        const v = getSmartValue(par, k);
+        return v !== undefined && v !== null;
+    });
+
+    let finalHTML = \`<div style="width:100%;margin:0;padding:0;">\`;
+
+    // En modo comparación: solo renderizar la muestra más reciente con valores del pasado
+    const samplesToRender = isCompare ? [newerSample] : allSamples;
+
+    samplesToRender.forEach(s => {
+        const par    = s.parametros || {};
+        const oldPar = isCompare ? (olderSample.parametros || {}) : null;
+
+        // Encabezado: fecha actual + nota de comparación si aplica
+        const compareNote = isCompare
+            ? \` &nbsp;<span style="font-size:8.5pt;font-weight:normal;color:#555;">(entre paréntesis: \${formatDate(olderSample.fecha)})</span>\`
+            : '';
+
+        const hto_hb = cell(par, oldPar, 'Hto') + ' / ' + cell(par, oldPar, 'Hb');
+        const bili   = cell(par, oldPar, 'BT') + ' / ' + cell(par, oldPar, 'BD');
+        const wbc    = cell(par, oldPar, 'GB');
+        const enz    = cell(par, oldPar, 'GOT') + ' / ' + cell(par, oldPar, 'GPT') + ' / ' + cell(par, oldPar, 'FAL');
+        const plaq   = cell(par, oldPar, 'Plq');
+        const prot   = cell(par, oldPar, 'Prot') + ' / ' + cell(par, oldPar, 'Alb');
+        const ren    = cell(par, oldPar, 'Urea') + ' / ' + cell(par, oldPar, 'Crea');
+        const glu    = cell(par, oldPar, 'Glu');
+        const coag   = cell(par, oldPar, 'TP') + ' / ' + cell(par, oldPar, 'KPTT') + ' / ' + cell(par, oldPar, 'RIN');
+
+        // Ionograma dinámico
         let ionoParts = [];
-        if (hasAny('Na'))          ionoParts.push(`Na ${getStyled('Na')}`);
-        if (hasAny('K'))           ionoParts.push(`K ${getStyled('K')}`);
-        if (hasAny('Cl'))          ionoParts.push(`Cl ${getStyled('Cl')}`);
-        if (hasAny('Mg'))          ionoParts.push(`Mg ${getStyled('Mg')}`);
-        if (hasAny('Ca_Total'))    ionoParts.push(`Ca ${getStyled('Ca_Total')}`);
-        if (hasAny('Ca_Ionizado')) ionoParts.push(`Ca++ ${getStyled('Ca_Ionizado')}`);
-        if (hasAny('Fosforo'))     ionoParts.push(`P ${getStyled('Fosforo')}`);
+        if (hasAny(par, 'Na'))          ionoParts.push(\`Na \${cell(par, oldPar, 'Na')}\`);
+        if (hasAny(par, 'K'))           ionoParts.push(\`K \${cell(par, oldPar, 'K')}\`);
+        if (hasAny(par, 'Cl'))          ionoParts.push(\`Cl \${cell(par, oldPar, 'Cl')}\`);
+        if (hasAny(par, 'Mg'))          ionoParts.push(\`Mg \${cell(par, oldPar, 'Mg')}\`);
+        if (hasAny(par, 'Ca_Total'))    ionoParts.push(\`Ca \${cell(par, oldPar, 'Ca_Total')}\`);
+        if (hasAny(par, 'Ca_Ionizado')) ionoParts.push(\`Ca++ \${cell(par, oldPar, 'Ca_Ionizado')}\`);
+        if (hasAny(par, 'Fosforo'))     ionoParts.push(\`P \${cell(par, oldPar, 'Fosforo')}\`);
         const iono = ionoParts.length > 0 ? ionoParts.join(' / ') : '-';
 
-        // EAB: mostrar solo los disponibles
+        // EAB dinámico
         let eabParts = [];
-        if (hasAny('pH'))          eabParts.push(`pH ${getStyled('pH')}`);
-        if (hasAny('pCO2'))        eabParts.push(`pCO2 ${getStyled('pCO2')}`);
-        if (hasAny('pO2'))         eabParts.push(`pO2 ${getStyled('pO2')}`);
-        if (hasAny('BEb'))         eabParts.push(`BEb ${getStyled('BEb')}`);
-        if (hasAny('BIC'))         eabParts.push(`BIC ${getStyled('BIC')}`);
-        if (hasAny('SatO2'))       eabParts.push(`Sat ${getStyled('Sat')}`);
-        if (hasAny('LAC'))         eabParts.push(`LAC ${getStyled('LAC')}`);
+        if (hasAny(par, 'pH'))     eabParts.push(\`pH \${cell(par, oldPar, 'pH')}\`);
+        if (hasAny(par, 'pCO2'))   eabParts.push(\`pCO2 \${cell(par, oldPar, 'pCO2')}\`);
+        if (hasAny(par, 'pO2'))    eabParts.push(\`pO2 \${cell(par, oldPar, 'pO2')}\`);
+        if (hasAny(par, 'BEb'))    eabParts.push(\`BEb \${cell(par, oldPar, 'BEb')}\`);
+        if (hasAny(par, 'BIC'))    eabParts.push(\`BIC \${cell(par, oldPar, 'BIC')}\`);
+        if (hasAny(par, 'SatO2'))  eabParts.push(\`Sat \${cell(par, oldPar, 'SatO2')}\`);
+        if (hasAny(par, 'LAC'))    eabParts.push(\`LAC \${cell(par, oldPar, 'LAC')}\`);
         const eab = eabParts.length > 0 ? eabParts.join(' / ') : '-';
         const showEab = eabParts.length > 0;
 
-        // Inmunosupresores: fila solo si hay datos
-        const hasTacro = hasAny('Tacrolimus');
-        const hasEvero = hasAny('Everolimus');
+        // Inmunosupresores
+        const hasTacro = hasAny(par, 'Tacrolimus');
+        const hasEvero = hasAny(par, 'Everolimus');
         const showInmuno = hasTacro || hasEvero;
         let inmuParts = [];
-        if (hasTacro) inmuParts.push(`Tacro ${getStyled('Tacrolimus')}`);
-        if (hasEvero) inmuParts.push(`Evero ${getStyled('Everolimus')}`);
+        if (hasTacro) inmuParts.push(\`Tacro \${cell(par, oldPar, 'Tacrolimus')}\`);
+        if (hasEvero) inmuParts.push(\`Evero \${cell(par, oldPar, 'Everolimus')}\`);
         const inmunoRow = showInmuno
-            ? `<tr>
-                <td ${tdLabel}>Inmunosup.</td>
-                <td colspan="3" ${tdValue}>${inmuParts.join(' / ')}</td>
-               </tr>`
+            ? \`<tr><td \${tdLabel}>Inmunosup.</td><td colspan="3" \${tdValue}>\${inmuParts.join(' / ')}</td></tr>\`
             : "";
 
-        finalHTML += `
-        <table ${tableStyle} border="1">
+        finalHTML += \`
+        <table \${tableStyle} border="1">
             <tr>
-                <td colspan="4" ${tdHeader}>LABORATORIO ${formatDate(s.fecha)} &nbsp;&nbsp;(${s.hora})</td>
+                <td colspan="4" \${tdHeader}>
+                    LABORATORIO \${formatDate(s.fecha)} &nbsp;(\${s.hora})\${compareNote}
+                </td>
             </tr>
             <tr>
-                <td ${tdLabel}>Hto / Hb</td>
-                <td ${tdValue}>${hto_hb}</td>
-                <td ${tdLabel}>Bil T / D</td>
-                <td ${tdValue}>${bili}</td>
+                <td \${tdLabel}>Hto / Hb</td><td \${tdValue}>\${hto_hb}</td>
+                <td \${tdLabel}>Bil T / D</td><td \${tdValue}>\${bili}</td>
             </tr>
             <tr>
-                <td ${tdLabel}>Gl. blancos</td>
-                <td ${tdValue}>${wbc}</td>
-                <td ${tdLabel}>GOT / GPT / FAL</td>
-                <td ${tdValue}>${enz}</td>
+                <td \${tdLabel}>Gl. blancos</td><td \${tdValue}>\${wbc}</td>
+                <td \${tdLabel}>GOT / GPT / FAL</td><td \${tdValue}>\${enz}</td>
             </tr>
             <tr>
-                <td ${tdLabel}>Plaquetas</td>
-                <td ${tdValue}>${plaq}</td>
-                <td ${tdLabel}>Prot / Alb</td>
-                <td ${tdValue}>${prot}</td>
+                <td \${tdLabel}>Plaquetas</td><td \${tdValue}>\${plaq}</td>
+                <td \${tdLabel}>Prot / Alb</td><td \${tdValue}>\${prot}</td>
             </tr>
             <tr>
-                <td ${tdLabel}>Urea / Crea</td>
-                <td ${tdValue}>${ren}</td>
-                <td ${tdLabel}>Glucemia</td>
-                <td ${tdValue}>${glu}</td>
+                <td \${tdLabel}>Urea / Crea</td><td \${tdValue}>\${ren}</td>
+                <td \${tdLabel}>Glucemia</td><td \${tdValue}>\${glu}</td>
             </tr>
             <tr>
-                <td ${tdLabel}>TP / KPTT / RIN</td>
-                <td ${tdValue}>${coag}</td>
-                <td ${tdLabel}>IONOGRAMA</td>
-                <td ${tdValue}>${iono}</td>
+                <td \${tdLabel}>TP / KPTT / RIN</td><td \${tdValue}>\${coag}</td>
+                <td \${tdLabel}>IONOGRAMA</td><td \${tdValue}>\${iono}</td>
             </tr>
-            ${showEab ? `<tr>
-                <td ${tdLabel}>EAB</td>
-                <td colspan="3" ${tdValue}>${eab}</td>
-            </tr>` : ''}
-            ${inmunoRow}
+            \${showEab ? \`<tr>
+                <td \${tdLabel}>EAB</td>
+                <td colspan="3" \${tdValue}>\${eab}</td>
+            </tr>\` : ''}
+            \${inmunoRow}
         </table>
-        <p style="margin:4px 0;">&nbsp;</p>`;
+        <p style="margin:4px 0;">&nbsp;</p>\`;
     });
 
-    finalHTML += `</div>`;
+    finalHTML += \`</div>\`;
 
     const blob = new Blob([finalHTML], {type:'text/html'});
-    navigator.clipboard.write([new ClipboardItem({'text/html':blob})]).then(()=>showToast("Tablas copiadas","success"));
+    navigator.clipboard.write([new ClipboardItem({'text/html':blob})]).then(() => {
+        if (isCompare) {
+            showToast(\`Tabla comparativa copiada (\${formatDate(newerSample.fecha)} vs \${formatDate(olderSample.fecha)})\`, "success");
+        } else {
+            showToast("Tablas copiadas", "success");
+        }
+    });
 }
 
 function copyHCLAB() {
