@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v17.5 (Stable)</title>
+    <title>Monitor UCI - v17.6 (Argerich Fix)</title>
     
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     
@@ -46,8 +46,8 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.5</span></h1>
-                    <p class="text-slate-500 text-xs mt-0.5">Versión Estable + Soporte Multi-Fecha</p>
+                    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.6</span></h1>
+                    <p class="text-slate-500 text-xs mt-0.5">Versión Estable + Fix Ionograma Argerich</p>
                 </div>
             </div>
             
@@ -200,17 +200,107 @@
         const firebaseConfig = { apiKey:"AIzaSyAnQUto5Kqs-YvPsDL-ZIPVHIzwxaZ-Kw8", authDomain:"laboratorios-uco.firebaseapp.com", projectId:"laboratorios-uco", storageBucket:"laboratorios-uco.firebasestorage.app", messagingSenderId:"435400240534", appId:"1:435400240534:web:1cb4c57beb4b69e933c1b7", measurementId:"G-Q0FE3ZD4P7" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const appCheck = firebase.appCheck();
-appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
+        appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
         const db = firebase.firestore();
 
-        // --- 2. CONFIGURACIÓN CLÍNICA (Actualizada con BEb, SatO2, Glucosa Plasmatica) ---
+        // --- 2. CONFIGURACIÓN CLÍNICA ---
         const TARGET_PARAMS = ["Hemoglobina", "Hematocrito", "Plaquetas", "Leucocitos", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "Glucosa", "Urea", "Creatinina", "Acido_Urico", "HbA1c", "BT", "BD", "AST_TGO", "ALT_TGP", "Fosfatasa_Alcalina", "Albúmina", "Proteinas_Totales", "CPK", "PCR", "Procalcitonina", "Lactato", "pH", "pCO2", "pO2", "Bicarbonato", "SatO2", "BEb", "TSH", "Colesterol_Total", "LDL", "HDL", "Triglicéridos", "TP", "RIN", "KPTT", "aPTT"];
         
         const ABBR = {"Hematocrito":"Hto", "Hemoglobina":"Hb", "Leucocitos":"GB", "Plaquetas":"Plq", "Urea":"Urea", "Creatinina":"Crea", "Glucosa":"Glu", "HbA1c":"HbA1c", "AU":"AU", "Na":"Na", "K":"K", "Cl":"Cl", "Mg":"Mg", "Ca_Total":"Ca", "Ca_Ionizado":"Ca++", "Fosforo":"P", "BT":"BT", "BD":"BD", "AST_TGO":"GOT", "ALT_TGP":"GPT", "FAL":"FAL", "Albúmina":"Alb", "Prot":"Prot", "CPK":"CPK", "Col":"Col", "LDL":"LDL", "HDL":"HDL", "TG":"TG", "PCR":"PCR", "PCT":"PCT", "TSH":"TSH", "LAC":"LAC", "pH":"pH", "pCO2":"pCO2", "pO2":"pO2", "Bicarbonato":"BIC", "SatO2":"Sat", "BEb":"BEb", "TP":"TP", "RIN":"RIN", "KPTT":"KPTT", "aPTT":"KPTT"};
         
+        // =====================================================================
+        // FIX v17.6: NORM_MAP AMPLIADO PARA IONOGRAMA ARGERICH
+        // El Argerich usa nombres completos en español: "Sodio", "Potasio", "Cloro"
+        // en lugar de las abreviaturas "Na", "K", "Cl"
+        // =====================================================================
         const NORM_MAP = {
-            "Ácido Úrico":"AU", "ACIDO URICO":"AU", "Acido_Urico":"AU", "Bilirrubina_Total":"BT", "BILIRRUBINA_TOTAL":"BT", "Bilirrubina Total":"BT", "Bilirrubina_Directa":"BD", "Bilirrubina Directa":"BD", "Creatinquinasa":"CPK", "CREATINQUINASA":"CPK", "Fosfatasa_Alcalina":"FAL", "Proteinas_Totales":"Prot", "Colesterol_Total":"Col", "Triglicéridos":"TG", "Ácido Láctico":"LAC", "Lactato":"LAC", "Acido_Lactico":"LAC", "Bicarbonato":"BIC", "aPTT":"KPTT", "APTT":"KPTT", "KPTT":"KPTT", "Tiempo de Protrombina":"TP", "TP (Seg)":"TP",
-            "BEb":"BEb", "BASE_EXCESS":"BEb", "% Saturación 02 (c)":"SatO2", "Saturacion 02":"SatO2", "Glucosa Plasmática":"Glu" // Mapeos especiales
+            // --- Mapeos originales ---
+            "Ácido Úrico":"AU", "ACIDO URICO":"AU", "Acido_Urico":"AU",
+            "Bilirrubina_Total":"BT", "BILIRRUBINA_TOTAL":"BT", "Bilirrubina Total":"BT",
+            "Bilirrubina_Directa":"BD", "Bilirrubina Directa":"BD",
+            "Creatinquinasa":"CPK", "CREATINQUINASA":"CPK",
+            "Fosfatasa_Alcalina":"FAL", "Fosfatasa Alcalina":"FAL",
+            "Proteinas_Totales":"Prot", "Proteínas Totales":"Prot", "Proteinas Totales":"Prot",
+            "Colesterol_Total":"Col", "Colesterol":"Col",
+            "Triglicéridos":"TG", "Trigliceridos":"TG",
+            "Ácido Láctico":"LAC", "Lactato":"LAC", "Acido_Lactico":"LAC", "Acido láctico":"LAC", "Acido Lactico":"LAC",
+            "Bicarbonato":"BIC",
+            "aPTT":"KPTT", "APTT":"KPTT", "KPTT":"KPTT",
+            "Tiempo de Protrombina":"TP", "TP (Seg)":"TP",
+            "BEb":"BEb", "BASE_EXCESS":"BEb",
+            "% Saturación 02 (c)":"SatO2", "% Saturacion 02 (c)":"SatO2",
+            "Saturacion 02":"SatO2", "Saturación O2":"SatO2",
+            "Glucosa Plasmática":"Glu", "Glucosa Plasmatica":"Glu",
+
+            // --- FIX ARGERICH: Ionograma con nombres completos en español ---
+            "Sodio":"Na", "SODIO":"Na",
+            "Potasio":"K", "POTASIO":"K",
+            "Cloro":"Cl", "CLORO":"Cl",
+
+            // --- FIX ARGERICH: Calcio iónico (varias grafías) ---
+            "Calcio iónico":"Ca_Ionizado",
+            "Calcio ionico":"Ca_Ionizado",
+            "Calcio Iónico":"Ca_Ionizado",
+            "Calcio Ionico":"Ca_Ionizado",
+            "Ca_Ionizado":"Ca_Ionizado",
+            "Calcio normalizado":"Ca_Ionizado",
+            "Calcio Normalizado":"Ca_Ionizado",
+
+            // --- FIX ARGERICH: Calcio total ---
+            "Calcio":"Ca_Total", "CALCIO":"Ca_Total",
+            "Calcio Total":"Ca_Total", "Calcio total":"Ca_Total",
+
+            // --- FIX ARGERICH: Fósforo ---
+            "Fósforo":"Fosforo", "Fosforo":"Fosforo", "FOSFORO":"Fosforo",
+
+            // --- FIX ARGERICH: Magnesio ---
+            "Magnesio":"Mg", "MAGNESIO":"Mg",
+
+            // --- FIX ARGERICH: Hemograma en español ---
+            "Hemoglobina":"Hemoglobina", "HEMOGLOBINA":"Hemoglobina",
+            "Hematocrito":"Hematocrito", "HEMATOCRITO":"Hematocrito",
+            "Leucocitos":"Leucocitos", "LEUCOCITOS":"Leucocitos",
+            "Eritrocitos":"Eritrocitos",
+            "Recuento de plaquetas":"Plaquetas", "Plaquetas":"Plaquetas",
+
+            // --- FIX ARGERICH: Gasometría ---
+            "pO2":"pO2", "pCO2":"pCO2", "pH":"pH",
+            "% Saturación O2 (c)":"SatO2",
+
+            // --- FIX ARGERICH: Hepatograma ---
+            "Aspartato Aminotransferasa (GOT)":"AST_TGO",
+            "Alanina Aminotransferasa (GPT)":"ALT_TGP",
+            "Aspartato Aminotransferasa":"AST_TGO",
+            "Alanina Aminotransferasa":"ALT_TGP",
+            "GOT":"AST_TGO", "GPT":"ALT_TGP",
+            "Albúmina":"Albúmina", "Albumina":"Albúmina",
+            "Bilirrubina total":"BT",
+
+            // --- FIX ARGERICH: Perfil lipídico ---
+            "LDL Colesterol":"LDL", "LDL colesterol":"LDL",
+            "Colesterol HDL":"HDL", "Colesterol hdl":"HDL",
+            "Colesterol no HDL":"Col",
+
+            // --- FIX ARGERICH: Coagulograma ---
+            "Tiempo de Protrombina (Quick)":"TP",
+            "RIN (Razon Internacional Normalizada)":"RIN",
+            "aPTT (Tiempo Tromboplastina Parcial Activada)":"KPTT",
+
+            // --- FIX ARGERICH: Endocrinología ---
+            "Tirotrofina- TSH":"TSH", "Tirotrofina TSH":"TSH",
+
+            // --- FIX ARGERICH: Inmunosupresores ---
+            "Tacrolimus":"Tacrolimus", "Everolimus":"Everolimus",
+
+            // --- FIX ARGERICH: Glucosa ---
+            "Glucosa":"Glucosa",
+
+            // --- FIX ARGERICH: Urea y Creatinina ---
+            "Urea":"Urea", "UREA":"Urea",
+            "Creatinina":"Creatinina", "CREATININA":"Creatinina",
+
+            // --- FIX ARGERICH: Ácido úrico ---
+            "Acido Urico":"AU", "Ácido Urico":"AU", "Ácido úrico":"AU",
         };
 
         const CLINICAL_ORDER = ["Hematocrito", "Hemoglobina", "Leucocitos", "Plaquetas", "Urea", "Creatinina", "Glucosa", "HbA1c", "AU", "BT", "BD", "AST_TGO", "ALT_TGP", "FAL", "Albúmina", "Prot", "Col", "LDL", "HDL", "TG", "Na", "K", "Cl", "Mg", "Ca_Total", "Ca_Ionizado", "Fosforo", "TSH", "CPK", "PCR", "PCT", "pH", "pCO2", "pO2", "BEb", "BIC", "SatO2", "LAC", "TP", "RIN", "KPTT"];
@@ -266,6 +356,29 @@ appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
             return true;
         }
 
+        // =====================================================================
+        // FIX v17.6: LIMPIEZA DE TEXTO DEL ARGERICH ANTES DE ENVIAR A LA IA
+        // Elimina caracteres especiales que rompen la extracción numérica
+        // =====================================================================
+        function cleanArgerichText(text) {
+            return text
+                // Elimina el "!" indicador de valor límite: "4.6 !" → "4.6"
+                .replace(/(\d+[\.,]?\d*)\s*!/g, '$1')
+                // Elimina notas de muestra problemáticas
+                .replace(/Valor confirmado/gi, '')
+                .replace(/Muestra insuficiente/gi, '')
+                .replace(/Muestra mal enrasada/gi, '')
+                .replace(/Muestra mal remitida/gi, '')
+                .replace(/Problemas técnicos/gi, '')
+                // Estandariza el separador decimal (coma → punto)
+                .replace(/(\d),(\d)/g, '$1.$2')
+                // Elimina el símbolo "•" que aparece en "MICROBIOLOGI•A"
+                .replace(/•/g, '')
+                // Normaliza el símbolo de porcentaje de saturación de O2
+                .replace(/% Saturaci[oó]n O2 \(c\)/gi, 'SatO2')
+                .replace(/% Saturaci[oó]n 02 \(c\)/gi, 'SatO2');
+        }
+
         function getSelectedIds() { return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id); }
         function getExportSamples(p) { const ids = getSelectedIds(); return ids.length > 0 ? labData[p].filter(s => ids.includes(s.id)) : labData[p]; }
 
@@ -283,35 +396,35 @@ appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
             const btn = document.getElementById("btnProcesarIA");
             btn.disabled = true; btn.innerText = "Procesando...";
             
-            // Colección de muestras
             let samplesToUpload = [];
 
-            // Opción 1: Texto Manual
             if (files.length === 0 && rawText.length > 10) {
                 try {
-                    const extracted = await extractWithAI(rawText, apiKey);
+                    // Aplicar limpieza Argerich también al texto pegado manualmente
+                    const cleanedText = cleanArgerichText(rawText);
+                    const extracted = await extractWithAI(cleanedText, apiKey);
                     samplesToUpload.push(...extracted);
                 } catch (e) { showToast("Error IA: " + e.message, "error"); }
-            } 
-            // Opción 2: PDF(s)
-            else {
+            } else {
                 const txtArea = document.getElementById("labInput");
                 for (let i = 0; i < files.length; i++) {
                     txtArea.value = `>>> LEYENDO ARCHIVO ${files[i].name}...\n`;
                     try {
                         const pdfText = await readPdfFile(files[i]);
-                        txtArea.value += "Texto extraído. Consultando IA (Multi-Fecha)...\n";
                         
-                        // Aquí llamamos a la IA con el prompt especial para múltiples fechas
-                        const extractedArray = await extractWithAI(pdfText, apiKey);
+                        // =====================================================
+                        // FIX v17.6: Aplicar limpieza antes de enviar a la IA
+                        // =====================================================
+                        const cleanedText = cleanArgerichText(pdfText);
+                        
+                        txtArea.value += "Texto extraído y limpiado. Consultando IA (Multi-Fecha)...\n";
+                        const extractedArray = await extractWithAI(cleanedText, apiKey);
                         samplesToUpload.push(...extractedArray);
-                        
                         txtArea.value += `✅ Se detectaron ${extractedArray.length} muestra(s) en este archivo.\n`;
                     } catch (e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
                 }
             }
 
-            // Subida a Firebase
             let successCount = 0;
             if (samplesToUpload.length > 0) {
                 for (const sample of samplesToUpload) {
@@ -342,10 +455,13 @@ appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
             return fullText;
         }
 
-        // LÓGICA IA: Solicita explícitamente un objeto JSON con array "muestras"
+        // =====================================================================
+        // FIX v17.6: PROMPT ACTUALIZADO CON INSTRUCCIONES ESPECÍFICAS ARGERICH
+        // =====================================================================
         async function extractWithAI(text, apiKey) {
             const prompt = `Medical Expert Task:
             Analyze the following text which may contain ONE or MULTIPLE laboratory reports from different dates/times.
+            This text comes from Hospital Argerich (Buenos Aires, Argentina).
             
             Return a JSON OBJECT containing an array under the key "muestras". Each item must be a distinct report object:
             {
@@ -362,12 +478,34 @@ appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
             }
             
             Targets: ${TARGET_PARAMS.join(", ")}.
-            Rules: 
-            1. If text contains multiple dates, split them into separate objects.
-            2. Map "Glucosa Plasmática" -> "Glucosa".
-            3. Map "% Saturación 02" -> "SatO2".
-            4. Map "BEb" -> "BEb".
-            5. Convert numbers like "1,5" to 1.5.
+            
+            CRITICAL MAPPING RULES FOR ARGERICH FORMAT:
+            1. IONOGRAM section: "Sodio" → "Na", "Potasio" → "K", "Cloro" → "Cl"
+            2. "Calcio iónico" or "Calcio ionico" or "Calcio normalizado" → "Ca_Ionizado"
+            3. "Calcio" alone → "Ca_Total"
+            4. "Magnesio" → "Mg", "Fósforo" or "Fosforo" → "Fosforo"
+            5. "Aspartato Aminotransferasa (GOT)" → "AST_TGO"
+            6. "Alanina Aminotransferasa (GPT)" → "ALT_TGP"
+            7. "Fosfatasa Alcalina" → "Fosfatasa_Alcalina"
+            8. "Albúmina" or "Albumina" → "Albúmina"
+            9. "Glucosa Plasmática" → "Glucosa"
+            10. "SatO2" → "SatO2" (already normalized)
+            11. "BEb" → "BEb"
+            12. "Acido láctico" or "Acido Lactico" → "Lactato"
+            13. "LDL Colesterol" → "LDL", "Colesterol HDL" → "HDL", "Colesterol" alone → "Colesterol_Total"
+            14. "Triglicéridos" → "Triglicéridos"
+            15. "Ácido Úrico" or "Acido Urico" → "Acido_Urico"
+            16. "Tiempo de Protrombina (Quick)" → "TP"
+            17. "RIN (Razon Internacional Normalizada)" → "RIN"
+            18. "aPTT (Tiempo Tromboplastina Parcial Activada)" → "aPTT"
+            
+            PARSING RULES:
+            - If text contains multiple protocols/dates, split into SEPARATE objects
+            - Values already cleaned: just extract the number
+            - Convert "1,5" to 1.5 (comma decimal separator)
+            - Ignore null, empty, or non-numeric values
+            - "IONOGRAMA" section may appear inside GAS/EAB section — extract all electrolytes
+            - Multiple protocols in ONE PDF = multiple objects in the array
             
             Text: """${text.substring(0, 35000)}"""`;
 
@@ -385,7 +523,6 @@ appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
             
             try {
                 const parsed = JSON.parse(content);
-                // Manejo robusto de la respuesta
                 if (parsed.muestras && Array.isArray(parsed.muestras)) return parsed.muestras;
                 if (Array.isArray(parsed)) return parsed;
                 return [parsed];
@@ -483,7 +620,7 @@ appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
             });
         }
 
-        // --- FUNCIONES EXTRAS (MODALES, BORRAR, COPIAR) ---
+        // --- FUNCIONES EXTRAS ---
         async function smartDelete() {
             const ids = getSelectedIds();
             const patient = document.getElementById("patientSelector").value;
@@ -629,7 +766,9 @@ appCheck.activate("6LenVkEsAAAAAEfMJlds1ELgF50OQm8s2RZ7_sWC", true);
                         const pdf=await window.pdfjsLib.getDocument({data: buffer}).promise;
                         for(let j=1;j<=pdf.numPages;j++){const p=await pdf.getPage(j), c=await p.getTextContent(); fullText+=c.items.map(x=>x.str).join(" ")+"\n";}
                     }
-                    textArea.value=fullText; showToast("PDF(s) Leído(s)","success");
+                    // Aplicar limpieza al previsualizar el texto
+                    textArea.value=cleanArgerichText(fullText);
+                    showToast("PDF(s) Leído(s) y limpiados","success");
                 }catch(err){ textArea.value="Error: "+err.message; showToast("Error al leer PDF","error"); }
             });
 
