@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v17.10</title>
+    <title>Monitor UCI - v17.11</title>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -45,8 +45,8 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
             <div>
-                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.10</span></h1>
-                <p class="text-slate-500 text-xs mt-0.5">Columnas dinámicas · Valores críticos · Delta · Excel · Comparación Word</p>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.11</span></h1>
+                <p class="text-slate-500 text-xs mt-0.5">Columnas dinámicas · Valores críticos · Delta · Excel · Detección duplicados</p>
             </div>
         </div>
         <div class="mt-4 md:mt-0 flex gap-2 flex-wrap justify-end">
@@ -584,6 +584,194 @@ async function uploadToFirebase(result) {
     });
 }
 
+
+// ============================================================
+// DETECCIÓN DE DUPLICADOS — Algoritmo de similitud de nombres
+// Compara todos los pacientes entre sí al cargar datos
+// ============================================================
+
+// Distancia de Levenshtein normalizada (0 = idéntico, 1 = completamente diferente)
+function levenshteinSimilarity(a, b) {
+    a = a.toUpperCase().trim();
+    b = b.toUpperCase().trim();
+    if (a === b) return 1.0;
+    if (a.length === 0 || b.length === 0) return 0.0;
+
+    var matrix = [];
+    for (var i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (var j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+    for (var i = 1; i <= b.length; i++) {
+        for (var j = 1; j <= a.length; j++) {
+            if (b.charAt(i-1) === a.charAt(j-1)) {
+                matrix[i][j] = matrix[i-1][j-1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i-1][j-1] + 1,
+                    matrix[i][j-1] + 1,
+                    matrix[i-1][j] + 1
+                );
+            }
+        }
+    }
+    var dist = matrix[b.length][a.length];
+    var maxLen = Math.max(a.length, b.length);
+    return 1 - (dist / maxLen);
+}
+
+// Similitud por tokens: "RITA SANTILLAN" vs "SANTILLAN RITA VANESA"
+// Verifica si todos los tokens de A están contenidos en B o viceversa
+function tokenSimilarity(a, b) {
+    var tokA = a.toUpperCase().trim().split(/\s+/);
+    var tokB = b.toUpperCase().trim().split(/\s+/);
+    var shorter = tokA.length <= tokB.length ? tokA : tokB;
+    var longer  = tokA.length <= tokB.length ? tokB : tokA;
+    var matches = shorter.filter(function(t) { return longer.indexOf(t) !== -1; });
+    return matches.length / shorter.length;
+}
+
+// Función principal: detectar pares duplicados
+function detectDuplicatePatients() {
+    var names = Object.keys(labData);
+    if (names.length < 2) return;
+
+    var SIMILARITY_THRESHOLD = 0.75; // 75% de similitud mínima
+    var duplicatePairs = [];
+    var alreadyReported = new Set();
+
+    for (var i = 0; i < names.length; i++) {
+        for (var j = i + 1; j < names.length; j++) {
+            var a = names[i];
+            var b = names[j];
+            var pairKey = a + '||' + b;
+            if (alreadyReported.has(pairKey)) continue;
+
+            var lev  = levenshteinSimilarity(a, b);
+            var tok  = tokenSimilarity(a, b);
+            var maxSim = Math.max(lev, tok);
+
+            if (maxSim >= SIMILARITY_THRESHOLD) {
+                duplicatePairs.push({ a: a, b: b, sim: maxSim });
+                alreadyReported.add(pairKey);
+            }
+        }
+    }
+
+    if (duplicatePairs.length > 0) {
+        showDuplicateWarnings(duplicatePairs);
+    }
+}
+
+// Mostrar advertencias de duplicados
+var duplicateWarningShown = new Set();
+
+function showDuplicateWarnings(pairs) {
+    pairs.forEach(function(pair) {
+        var key = pair.a + '||' + pair.b;
+        if (duplicateWarningShown.has(key)) return;
+        duplicateWarningShown.add(key);
+
+        var simPct = Math.round(pair.sim * 100);
+        var msg = '⚠️ Posibles duplicados (' + simPct + '% similar):\n' + pair.a + '\n' + pair.b;
+
+        // Banner persistente en la UI
+        showDuplicateBanner(pair.a, pair.b, simPct);
+    });
+}
+
+function showDuplicateBanner(nameA, nameB, simPct) {
+    // Evitar banners duplicados
+    var bannerId = 'dup-' + btoa(nameA + nameB).replace(/[^a-zA-Z0-9]/g,'').substring(0,12);
+    if (document.getElementById(bannerId)) return;
+
+    var banner = document.createElement('div');
+    banner.id = bannerId;
+    banner.style.cssText = [
+        'background:#fefce8',
+        'border:1px solid #eab308',
+        'border-left:4px solid #eab308',
+        'border-radius:8px',
+        'padding:10px 14px',
+        'margin-bottom:8px',
+        'display:flex',
+        'align-items:center',
+        'justify-content:space-between',
+        'gap:12px',
+        'font-family:Inter,sans-serif',
+        'font-size:12px',
+        'color:#713f12'
+    ].join(';');
+
+    banner.innerHTML = [
+        '<div style="display:flex;align-items:center;gap:8px;">',
+        '  <span style="font-size:16px;">⚠️</span>',
+        '  <div>',
+        '    <strong>Posibles duplicados</strong> (' + simPct + '% similitud)<br>',
+        '    <span style="font-size:11px;opacity:0.85;">' + nameA + '</span>',
+        '    <span style="margin:0 6px;opacity:0.5;">↔</span>',
+        '    <span style="font-size:11px;opacity:0.85;">' + nameB + '</span>',
+        '  </div>',
+        '</div>',
+        '<div style="display:flex;gap:6px;flex-shrink:0;">',
+        '  <button onclick="preselectMerge('' + CSS.escape(nameA) + '','' + CSS.escape(nameB) + '')"',
+        '    style="background:#eab308;color:white;border:none;border-radius:6px;padding:5px 10px;',
+        '           font-size:11px;font-weight:bold;cursor:pointer;">',
+        '    Fusionar',
+        '  </button>',
+        '  <button onclick="dismissDuplicateBanner('' + bannerId + '')"',
+        '    style="background:transparent;border:1px solid #eab308;color:#713f12;border-radius:6px;',
+        '           padding:5px 8px;font-size:11px;cursor:pointer;">',
+        '    Ignorar',
+        '  </button>',
+        '</div>'
+    ].join('');
+
+    // Insertar antes del primer section (INPUT)
+    var container = document.querySelector('.max-w-7xl');
+    var sections = container.querySelectorAll('section');
+    if (sections.length > 0) {
+        // Insertar un wrapper de duplicados si no existe
+        var wrapper = document.getElementById('duplicateWarningsWrapper');
+        if (!wrapper) {
+            wrapper = document.createElement('div');
+            wrapper.id = 'duplicateWarningsWrapper';
+            container.insertBefore(wrapper, sections[0]);
+        }
+        wrapper.appendChild(banner);
+    }
+}
+
+function dismissDuplicateBanner(bannerId) {
+    var el = document.getElementById(bannerId);
+    if (el) el.remove();
+    // Si no quedan banners, quitar el wrapper
+    var wrapper = document.getElementById('duplicateWarningsWrapper');
+    if (wrapper && wrapper.children.length === 0) wrapper.remove();
+}
+
+function preselectMerge(nameA, nameB) {
+    // Abrir modal de fusión con los pacientes preseleccionados
+    openMergePatientModal();
+    setTimeout(function() {
+        var target = document.getElementById('mergeTarget');
+        var source = document.getElementById('mergeSource');
+        if (target && source) {
+            // El más reciente como destino (más registros)
+            var countA = labData[nameA] ? labData[nameA].length : 0;
+            var countB = labData[nameB] ? labData[nameB].length : 0;
+            var correct = countA >= countB ? nameA : nameB;
+            var duplicate = countA >= countB ? nameB : nameA;
+            // Seleccionar en los selects
+            for (var i = 0; i < target.options.length; i++) {
+                if (target.options[i].value === correct) target.selectedIndex = i;
+            }
+            for (var i = 0; i < source.options.length; i++) {
+                if (source.options[i].value === duplicate) source.selectedIndex = i;
+            }
+        }
+    }, 150);
+}
+
 // ============================================================
 // 12. INTERFAZ
 // ============================================================
@@ -606,6 +794,8 @@ function refreshUI() {
     Object.keys(labData).sort().forEach(p => sel.appendChild(new Option(p,p)));
     if (curr && labData[curr]) { sel.value=curr; loadPatientData(); }
     else { document.querySelector("#uciTable tbody").innerHTML=""; }
+    // Detección de duplicados cada vez que se actualizan los datos
+    detectDuplicatePatients();
 }
 
 function loadPatientData() {
