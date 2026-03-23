@@ -681,165 +681,143 @@ function copyWordTable() {
     const p = document.getElementById("patientSelector").value;
     if (!p) return;
 
-    // Obtener muestras seleccionadas
     const allSamples = getExportSamples(p);
-
-    // Modo comparación: exactamente 2 seleccionadas
     const selectedIds = getSelectedIds();
     const isCompare = selectedIds.length === 2;
 
-    // En modo comparación: newer = índice mayor de timestamp, older = el otro
     let newerSample, olderSample;
     if (isCompare) {
         const s0 = labData[p].find(s => s.id === selectedIds[0]);
         const s1 = labData[p].find(s => s.id === selectedIds[1]);
         if (!s0 || !s1) return showToast("Error al localizar muestras", "error");
-        // Ordenar por timestamp
-        [newerSample, olderSample] = s0.timestamp >= s1.timestamp ? [s0, s1] : [s1, s0];
+        if (s0.timestamp >= s1.timestamp) { newerSample = s0; olderSample = s1; }
+        else { newerSample = s1; olderSample = s0; }
     }
 
-    // Estilos base
-    const tdLabel  = \`style="padding:4px 6px;vertical-align:middle;text-align:left;font-weight:bold;min-width:110px;white-space:nowrap;background-color:#f5f5f5;"\`;
-    const tdValue  = \`style="padding:4px 6px;vertical-align:middle;text-align:center;min-width:130px;"\`;
-    const tdHeader = \`style="padding:5px 6px;vertical-align:middle;text-align:center;font-weight:bold;background-color:#e8e8e8;font-size:10.5pt;"\`;
-    const tableStyle = \`style="border-collapse:collapse;width:100%;table-layout:fixed;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:16px;"\`;
+    // Estilos como strings normales (sin template literals)
+    var tdLabel    = 'style="padding:4px 6px;vertical-align:middle;text-align:left;font-weight:bold;min-width:110px;white-space:nowrap;background-color:#f5f5f5;"';
+    var tdValue    = 'style="padding:4px 6px;vertical-align:middle;text-align:center;min-width:130px;"';
+    var tdHeader   = 'style="padding:5px 6px;vertical-align:middle;text-align:center;font-weight:bold;background-color:#e8e8e8;font-size:10.5pt;"';
+    var tableStyle = 'style="border-collapse:collapse;width:100%;table-layout:fixed;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:16px;"';
 
-    // Helper: valor con color rojo si crítico
-    const getStyled = (par, k) => {
-        const val = getSmartValue(par, k);
+    function getStyled(par, k) {
+        var val = getSmartValue(par, k);
         if (val === undefined || val === null) return null;
-        const crit = isCritical(k, val);
+        var crit = isCritical(k, val);
         return crit
-            ? \`<span style="color:#dc2626;font-weight:bold;">\${val}</span>\`
-            : \`\${val}\`;
-    };
+            ? '<span style="color:#dc2626;font-weight:bold;">' + val + '</span>'
+            : String(val);
+    }
 
-    // Helper: valor anterior entre paréntesis, letra pequeña, gris
-    const getOldStyled = (par, k) => {
-        const val = getSmartValue(par, k);
+    function getOldStyled(par, k) {
+        var val = getSmartValue(par, k);
         if (val === undefined || val === null) return null;
-        const crit = isCritical(k, val);
-        const color = crit ? '#dc2626' : '#666666';
-        return \`<span style="font-size:8pt;color:\${color};">(\${val})</span>\`;
-    };
+        var crit = isCritical(k, val);
+        var color = crit ? '#dc2626' : '#666666';
+        return '<span style="font-size:8pt;color:' + color + ';">(' + val + ')</span>';
+    }
 
-    // Helper: combina valor nuevo + viejo si modo comparación
-    const cell = (par, oldPar, k) => {
-        const newVal = getStyled(par, k);
-        const display = newVal !== null ? newVal : '-';
+    function cell(par, oldPar, k) {
+        var newVal = getStyled(par, k);
+        var display = (newVal !== null) ? newVal : '-';
         if (!isCompare || !oldPar) return display;
-        const oldVal = getOldStyled(oldPar, k);
-        return oldVal !== null ? \`\${display} \${oldVal}\` : display;
-    };
+        var oldVal = getOldStyled(oldPar, k);
+        return (oldVal !== null) ? display + ' ' + oldVal : display;
+    }
 
-    // Helper: verifica si al menos uno de los parámetros tiene dato
-    const hasAny = (par, ...keys) => keys.some(k => {
-        const v = getSmartValue(par, k);
-        return v !== undefined && v !== null;
-    });
+    function hasAny(par) {
+        var keys = Array.prototype.slice.call(arguments, 1);
+        return keys.some(function(k) {
+            var v = getSmartValue(par, k);
+            return v !== undefined && v !== null;
+        });
+    }
 
-    let finalHTML = \`<div style="width:100%;margin:0;padding:0;">\`;
+    function td(label, content, isLabel) {
+        var style = isLabel ? tdLabel : tdValue;
+        return '<td ' + style + '>' + content + '</td>';
+    }
 
-    // En modo comparación: solo renderizar la muestra más reciente con valores del pasado
-    const samplesToRender = isCompare ? [newerSample] : allSamples;
+    var finalHTML = '<div style="width:100%;margin:0;padding:0;">';
+    var samplesToRender = isCompare ? [newerSample] : allSamples;
 
-    samplesToRender.forEach(s => {
-        const par    = s.parametros || {};
-        const oldPar = isCompare ? (olderSample.parametros || {}) : null;
+    samplesToRender.forEach(function(s) {
+        var par    = s.parametros || {};
+        var oldPar = isCompare ? (olderSample.parametros || {}) : null;
 
-        // Encabezado: fecha actual + nota de comparación si aplica
-        const compareNote = isCompare
-            ? \` &nbsp;<span style="font-size:8.5pt;font-weight:normal;color:#555;">(entre paréntesis: \${formatDate(olderSample.fecha)})</span>\`
+        var compareNote = isCompare
+            ? '&nbsp;&nbsp;<span style="font-size:8.5pt;font-weight:normal;color:#555;">(entre par&eacute;ntesis: ' + formatDate(olderSample.fecha) + ')</span>'
             : '';
 
-        const hto_hb = cell(par, oldPar, 'Hto') + ' / ' + cell(par, oldPar, 'Hb');
-        const bili   = cell(par, oldPar, 'BT') + ' / ' + cell(par, oldPar, 'BD');
-        const wbc    = cell(par, oldPar, 'GB');
-        const enz    = cell(par, oldPar, 'GOT') + ' / ' + cell(par, oldPar, 'GPT') + ' / ' + cell(par, oldPar, 'FAL');
-        const plaq   = cell(par, oldPar, 'Plq');
-        const prot   = cell(par, oldPar, 'Prot') + ' / ' + cell(par, oldPar, 'Alb');
-        const ren    = cell(par, oldPar, 'Urea') + ' / ' + cell(par, oldPar, 'Crea');
-        const glu    = cell(par, oldPar, 'Glu');
-        const coag   = cell(par, oldPar, 'TP') + ' / ' + cell(par, oldPar, 'KPTT') + ' / ' + cell(par, oldPar, 'RIN');
+        // Valores
+        var hto_hb = cell(par, oldPar, 'Hto') + ' / ' + cell(par, oldPar, 'Hb');
+        var bili   = cell(par, oldPar, 'BT')  + ' / ' + cell(par, oldPar, 'BD');
+        var wbc    = cell(par, oldPar, 'GB');
+        var enz    = cell(par, oldPar, 'GOT') + ' / ' + cell(par, oldPar, 'GPT') + ' / ' + cell(par, oldPar, 'FAL');
+        var plaq   = cell(par, oldPar, 'Plq');
+        var prot   = cell(par, oldPar, 'Prot') + ' / ' + cell(par, oldPar, 'Alb');
+        var ren    = cell(par, oldPar, 'Urea') + ' / ' + cell(par, oldPar, 'Crea');
+        var glu    = cell(par, oldPar, 'Glu');
+        var coag   = cell(par, oldPar, 'TP') + ' / ' + cell(par, oldPar, 'KPTT') + ' / ' + cell(par, oldPar, 'RIN');
 
         // Ionograma dinámico
-        let ionoParts = [];
-        if (hasAny(par, 'Na'))          ionoParts.push(\`Na \${cell(par, oldPar, 'Na')}\`);
-        if (hasAny(par, 'K'))           ionoParts.push(\`K \${cell(par, oldPar, 'K')}\`);
-        if (hasAny(par, 'Cl'))          ionoParts.push(\`Cl \${cell(par, oldPar, 'Cl')}\`);
-        if (hasAny(par, 'Mg'))          ionoParts.push(\`Mg \${cell(par, oldPar, 'Mg')}\`);
-        if (hasAny(par, 'Ca_Total'))    ionoParts.push(\`Ca \${cell(par, oldPar, 'Ca_Total')}\`);
-        if (hasAny(par, 'Ca_Ionizado')) ionoParts.push(\`Ca++ \${cell(par, oldPar, 'Ca_Ionizado')}\`);
-        if (hasAny(par, 'Fosforo'))     ionoParts.push(\`P \${cell(par, oldPar, 'Fosforo')}\`);
-        const iono = ionoParts.length > 0 ? ionoParts.join(' / ') : '-';
+        var ionoParts = [];
+        if (hasAny(par, 'Na'))          ionoParts.push('Na ' + cell(par, oldPar, 'Na'));
+        if (hasAny(par, 'K'))           ionoParts.push('K ' + cell(par, oldPar, 'K'));
+        if (hasAny(par, 'Cl'))          ionoParts.push('Cl ' + cell(par, oldPar, 'Cl'));
+        if (hasAny(par, 'Mg'))          ionoParts.push('Mg ' + cell(par, oldPar, 'Mg'));
+        if (hasAny(par, 'Ca_Total'))    ionoParts.push('Ca ' + cell(par, oldPar, 'Ca_Total'));
+        if (hasAny(par, 'Ca_Ionizado')) ionoParts.push('Ca++ ' + cell(par, oldPar, 'Ca_Ionizado'));
+        if (hasAny(par, 'Fosforo'))     ionoParts.push('P ' + cell(par, oldPar, 'Fosforo'));
+        var iono = ionoParts.length > 0 ? ionoParts.join(' / ') : '-';
 
         // EAB dinámico
-        let eabParts = [];
-        if (hasAny(par, 'pH'))     eabParts.push(\`pH \${cell(par, oldPar, 'pH')}\`);
-        if (hasAny(par, 'pCO2'))   eabParts.push(\`pCO2 \${cell(par, oldPar, 'pCO2')}\`);
-        if (hasAny(par, 'pO2'))    eabParts.push(\`pO2 \${cell(par, oldPar, 'pO2')}\`);
-        if (hasAny(par, 'BEb'))    eabParts.push(\`BEb \${cell(par, oldPar, 'BEb')}\`);
-        if (hasAny(par, 'BIC'))    eabParts.push(\`BIC \${cell(par, oldPar, 'BIC')}\`);
-        if (hasAny(par, 'SatO2'))  eabParts.push(\`Sat \${cell(par, oldPar, 'SatO2')}\`);
-        if (hasAny(par, 'LAC'))    eabParts.push(\`LAC \${cell(par, oldPar, 'LAC')}\`);
-        const eab = eabParts.length > 0 ? eabParts.join(' / ') : '-';
-        const showEab = eabParts.length > 0;
+        var eabParts = [];
+        if (hasAny(par, 'pH'))     eabParts.push('pH ' + cell(par, oldPar, 'pH'));
+        if (hasAny(par, 'pCO2'))   eabParts.push('pCO2 ' + cell(par, oldPar, 'pCO2'));
+        if (hasAny(par, 'pO2'))    eabParts.push('pO2 ' + cell(par, oldPar, 'pO2'));
+        if (hasAny(par, 'BEb'))    eabParts.push('BEb ' + cell(par, oldPar, 'BEb'));
+        if (hasAny(par, 'BIC'))    eabParts.push('BIC ' + cell(par, oldPar, 'BIC'));
+        if (hasAny(par, 'SatO2'))  eabParts.push('Sat ' + cell(par, oldPar, 'SatO2'));
+        if (hasAny(par, 'LAC'))    eabParts.push('LAC ' + cell(par, oldPar, 'LAC'));
+        var eab = eabParts.length > 0 ? eabParts.join(' / ') : '';
+        var showEab = eabParts.length > 0;
 
         // Inmunosupresores
-        const hasTacro = hasAny(par, 'Tacrolimus');
-        const hasEvero = hasAny(par, 'Everolimus');
-        const showInmuno = hasTacro || hasEvero;
-        let inmuParts = [];
-        if (hasTacro) inmuParts.push(\`Tacro \${cell(par, oldPar, 'Tacrolimus')}\`);
-        if (hasEvero) inmuParts.push(\`Evero \${cell(par, oldPar, 'Everolimus')}\`);
-        const inmunoRow = showInmuno
-            ? \`<tr><td \${tdLabel}>Inmunosup.</td><td colspan="3" \${tdValue}>\${inmuParts.join(' / ')}</td></tr>\`
-            : "";
+        var hasTacro = hasAny(par, 'Tacrolimus');
+        var hasEvero = hasAny(par, 'Everolimus');
+        var showInmuno = hasTacro || hasEvero;
+        var inmuParts = [];
+        if (hasTacro) inmuParts.push('Tacro ' + cell(par, oldPar, 'Tacrolimus'));
+        if (hasEvero) inmuParts.push('Evero ' + cell(par, oldPar, 'Everolimus'));
+        var inmunoRow = showInmuno
+            ? '<tr><td ' + tdLabel + '>Inmunosup.</td><td colspan="3" ' + tdValue + '>' + inmuParts.join(' / ') + '</td></tr>'
+            : '';
 
-        finalHTML += \`
-        <table \${tableStyle} border="1">
-            <tr>
-                <td colspan="4" \${tdHeader}>
-                    LABORATORIO \${formatDate(s.fecha)} &nbsp;(\${s.hora})\${compareNote}
-                </td>
-            </tr>
-            <tr>
-                <td \${tdLabel}>Hto / Hb</td><td \${tdValue}>\${hto_hb}</td>
-                <td \${tdLabel}>Bil T / D</td><td \${tdValue}>\${bili}</td>
-            </tr>
-            <tr>
-                <td \${tdLabel}>Gl. blancos</td><td \${tdValue}>\${wbc}</td>
-                <td \${tdLabel}>GOT / GPT / FAL</td><td \${tdValue}>\${enz}</td>
-            </tr>
-            <tr>
-                <td \${tdLabel}>Plaquetas</td><td \${tdValue}>\${plaq}</td>
-                <td \${tdLabel}>Prot / Alb</td><td \${tdValue}>\${prot}</td>
-            </tr>
-            <tr>
-                <td \${tdLabel}>Urea / Crea</td><td \${tdValue}>\${ren}</td>
-                <td \${tdLabel}>Glucemia</td><td \${tdValue}>\${glu}</td>
-            </tr>
-            <tr>
-                <td \${tdLabel}>TP / KPTT / RIN</td><td \${tdValue}>\${coag}</td>
-                <td \${tdLabel}>IONOGRAMA</td><td \${tdValue}>\${iono}</td>
-            </tr>
-            \${showEab ? \`<tr>
-                <td \${tdLabel}>EAB</td>
-                <td colspan="3" \${tdValue}>\${eab}</td>
-            </tr>\` : ''}
-            \${inmunoRow}
-        </table>
-        <p style="margin:4px 0;">&nbsp;</p>\`;
+        var eabRow = showEab
+            ? '<tr><td ' + tdLabel + '>EAB</td><td colspan="3" ' + tdValue + '>' + eab + '</td></tr>'
+            : '';
+
+        finalHTML += '<table ' + tableStyle + ' border="1">';
+        finalHTML += '<tr><td colspan="4" ' + tdHeader + '>LABORATORIO ' + formatDate(s.fecha) + ' &nbsp;(' + s.hora + ')' + compareNote + '</td></tr>';
+        finalHTML += '<tr><td ' + tdLabel + '>Hto / Hb</td><td ' + tdValue + '>' + hto_hb + '</td><td ' + tdLabel + '>Bil T / D</td><td ' + tdValue + '>' + bili + '</td></tr>';
+        finalHTML += '<tr><td ' + tdLabel + '>Gl. blancos</td><td ' + tdValue + '>' + wbc + '</td><td ' + tdLabel + '>GOT / GPT / FAL</td><td ' + tdValue + '>' + enz + '</td></tr>';
+        finalHTML += '<tr><td ' + tdLabel + '>Plaquetas</td><td ' + tdValue + '>' + plaq + '</td><td ' + tdLabel + '>Prot / Alb</td><td ' + tdValue + '>' + prot + '</td></tr>';
+        finalHTML += '<tr><td ' + tdLabel + '>Urea / Crea</td><td ' + tdValue + '>' + ren + '</td><td ' + tdLabel + '>Glucemia</td><td ' + tdValue + '>' + glu + '</td></tr>';
+        finalHTML += '<tr><td ' + tdLabel + '>TP / KPTT / RIN</td><td ' + tdValue + '>' + coag + '</td><td ' + tdLabel + '>IONOGRAMA</td><td ' + tdValue + '>' + iono + '</td></tr>';
+        finalHTML += eabRow;
+        finalHTML += inmunoRow;
+        finalHTML += '</table><p style="margin:4px 0;">&nbsp;</p>';
     });
 
-    finalHTML += \`</div>\`;
+    finalHTML += '</div>';
 
-    const blob = new Blob([finalHTML], {type:'text/html'});
-    navigator.clipboard.write([new ClipboardItem({'text/html':blob})]).then(() => {
+    var blob = new Blob([finalHTML], {type: 'text/html'});
+    navigator.clipboard.write([new ClipboardItem({'text/html': blob})]).then(function() {
         if (isCompare) {
-            showToast(\`Tabla comparativa copiada (\${formatDate(newerSample.fecha)} vs \${formatDate(olderSample.fecha)})\`, "success");
+            showToast('Tabla comparativa: ' + formatDate(newerSample.fecha) + ' vs ' + formatDate(olderSample.fecha), 'success');
         } else {
-            showToast("Tablas copiadas", "success");
+            showToast('Tablas copiadas', 'success');
         }
     });
 }
