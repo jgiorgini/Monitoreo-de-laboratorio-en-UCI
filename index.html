@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor UCI - v17.11</title>
+    <title>Monitor Laboratorio - v1.0</title>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -19,7 +19,124 @@
     <!-- SheetJS para exportación Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #334155; }
+        /* ====== MONITOR LABORATORIO v1.0 — Nuevo diseño ====== */
+        body {
+            font-family: var(--font-sans), 'Inter', sans-serif;
+            background-color: #f5f4f2;
+            color: #000;
+        }
+
+        /* Header */
+        header.glass-panel {
+            background: #042C53 !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+        header.glass-panel h1 { color: #E6F1FB !important; }
+        header.glass-panel p  { color: #85B7EB !important; }
+        header.glass-panel .bg-indigo-600 { background: #185FA5 !important; }
+
+        /* Paneles */
+        .glass-panel {
+            background: white;
+            border: 0.5px solid rgba(0,0,0,0.1);
+            box-shadow: none;
+            border-radius: 12px;
+        }
+
+        /* Tabla — cebrado paleta verde-gris/lila */
+        .table-container { max-height: 600px; overflow-y: auto; scrollbar-width: thin; }
+        thead th {
+            position: sticky; top: 0; z-index: 20;
+            background: #a8b3a8 !important;
+            color: #000 !important;
+            font-size: 10px;
+            letter-spacing: 0.04em;
+        }
+        #uciTable tbody tr:nth-child(odd)  td { background: #f5f5f3; }
+        #uciTable tbody tr:nth-child(even) td { background: #f0eef3; }
+        #uciTable tbody tr:hover td { background: #e8e4ee !important; }
+        #uciTable tbody td {
+            color: #000;
+            font-family: var(--font-mono), monospace;
+            font-size: 11px;
+            border-bottom: 0.5px solid #d4d0d8;
+            padding: 5px 8px;
+        }
+        /* Sticky fecha */
+        #uciTable tbody tr:nth-child(odd)  td:nth-child(2) { background: #eceae8; }
+        #uciTable tbody tr:nth-child(even) td:nth-child(2) { background: #e8e4ee; }
+        #uciTable thead tr th:nth-child(2) { text-align: left; }
+        #uciTable tbody tr td:nth-child(2) {
+            font-family: var(--font-sans), sans-serif;
+            font-weight: 500;
+            border-right: 0.5px solid #b1aaba;
+        }
+
+        /* Valores críticos — fondo rosado en la celda */
+        .val-critical {
+            color: #A32D2D !important;
+            font-weight: 600;
+            background: #fce8e8;
+            border-radius: 3px;
+            padding: 1px 4px;
+        }
+
+        /* Delta */
+        .delta-up   { color: #A32D2D; font-size: 9px; }
+        .delta-down { color: #185FA5; font-size: 9px; }
+        .delta-neutral { color: #888; font-size: 9px; }
+
+        /* Columnas dinámicas */
+        .col-section-title {
+            font-size: 10px; font-weight: 700; color: #534AB7;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-top: 12px; margin-bottom: 4px; grid-column: 1/-1;
+        }
+
+        /* Botones de acción — nuevos estilos */
+        button.bg-emerald-50  { background: #E1F5EE !important; border-color: #5DCAA5 !important; color: #085041 !important; }
+        button.bg-purple-50   { background: #EEEDFE !important; border-color: #AFA9EC !important; color: #26215C !important; }
+        button.bg-amber-50    { background: #FAEEDA !important; border-color: #EF9F27 !important; color: #412402 !important; }
+        button.bg-blue-50     { background: #E6F1FB !important; border-color: #85B7EB !important; color: #042C53 !important; }
+        button.bg-red-50      { background: #FCEBEB !important; border-color: #F09595 !important; color: #A32D2D !important; }
+
+        /* Selector de hospital */
+        #hospitalSelector {
+            background: #0C447C;
+            border-color: #378ADD;
+            color: #85B7EB;
+            border-radius: 6px;
+            font-size: 11px;
+            padding: 5px 10px;
+        }
+
+        /* Selector de paciente y parámetro */
+        #patientSelector, #paramSelector {
+            background: #f5f4f2;
+            border: 0.5px solid rgba(0,0,0,0.15);
+            border-radius: 8px;
+        }
+
+        /* Upload area */
+        #labInput {
+            background: #f5f4f2;
+            border: 0.5px solid rgba(0,0,0,0.12);
+            font-family: var(--font-mono), monospace;
+        }
+
+        /* Botón procesar */
+        #btnProcesarIA {
+            background: #185FA5 !important;
+            border: none !important;
+        }
+
+        /* Modal */
+        .modal .bg-white { border-radius: 12px; }
+
+        /* Custom checkbox */
+        .custom-checkbox { accent-color: #185FA5; }
         .table-container { max-height: 600px; overflow-y: auto; scrollbar-width: thin; }
         thead th { position: sticky; top: 0; z-index: 20; background-color: #f1f5f9; }
         .glass-panel { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-radius: 0.75rem; }
@@ -45,8 +162,8 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
             <div>
-                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Monitor UCI <span class="text-indigo-500 text-xs border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded ml-2">v17.11</span></h1>
-                <p class="text-slate-500 text-xs mt-0.5">Columnas dinámicas · Valores críticos · Delta · Excel · Detección duplicados</p>
+                <h1 class="text-2xl font-bold tracking-tight" style="color:#E6F1FB;">Monitor Laboratorio <span style="font-size:11px;background:#1D9E75;color:#E1F5EE;padding:2px 8px;border-radius:20px;margin-left:8px;font-weight:500;">v1.0</span></h1>
+                <p style="color:#85B7EB;font-size:11px;margin-top:2px;">Multi-hospital · Valores críticos · Comparación · Excel · Detección duplicados</p>
             </div>
         </div>
         <div class="mt-4 md:mt-0 flex gap-2 flex-wrap justify-end">
@@ -309,7 +426,8 @@ const SAFETY_RANGES = { "K":{min:1.0,max:9.0},"Na":{min:100,max:180},"pH":{min:6
 // 7. ESTADO GLOBAL
 // ============================================================
 let labData = {};
-let dynamicColumns = new Set(); // columnas detectadas automáticamente fuera de CLINICAL_ORDER
+let dynamicColumns = new Set();
+let lastUploadedPatient = null; // v1.0: auto-expand al cargar // columnas detectadas automáticamente fuera de CLINICAL_ORDER
 let chartInstance = null;
 let visibleColumns = new Set(CLINICAL_ORDER);
 let visibleDynamic = new Set(); // columnas dinámicas visibles
@@ -476,6 +594,10 @@ async function processAndUpload() {
         showToast(`${ok} reporte(s) guardados`, "success");
         document.getElementById("labInput").value="";
         document.getElementById("pdfInput").value=null;
+        // v1.0: auto-expand — seleccionar automáticamente el último paciente cargado
+        if (samplesToUpload.length > 0) {
+            lastUploadedPatient = samplesToUpload[samplesToUpload.length - 1].paciente;
+        }
     } else {
         showToast("No se detectaron reportes válidos.","error");
     }
@@ -792,9 +914,18 @@ function refreshUI() {
     const curr = sel.value;
     sel.innerHTML = '<option value="">-- Seleccionar --</option>';
     Object.keys(labData).sort().forEach(p => sel.appendChild(new Option(p,p)));
-    if (curr && labData[curr]) { sel.value=curr; loadPatientData(); }
-    else { document.querySelector("#uciTable tbody").innerHTML=""; }
-    // Detección de duplicados cada vez que se actualizan los datos
+
+    // v1.0: auto-expand — prioridad al paciente recién cargado
+    if (lastUploadedPatient && labData[lastUploadedPatient]) {
+        sel.value = lastUploadedPatient;
+        lastUploadedPatient = null;
+        loadPatientData();
+    } else if (curr && labData[curr]) {
+        sel.value = curr;
+        loadPatientData();
+    } else {
+        document.querySelector("#uciTable tbody").innerHTML = "";
+    }
     detectDuplicatePatients();
 }
 
@@ -1294,7 +1425,7 @@ function downloadExcel() {
     // Metadata del archivo
     wb.Props = {
         Title: `Laboratorios - ${p}`,
-        Author: "Monitor UCI",
+        Author: "Monitor Laboratorio",
         CreatedDate: new Date()
     };
 
