@@ -177,6 +177,13 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 Fusionar
             </button>
+            <details id="configDetails" class="relative">
+                <summary class="list-none cursor-pointer bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium border border-slate-200 flex items-center gap-2">⚙️ API</summary>
+                <div class="absolute right-0 mt-2 w-72 bg-white p-4 rounded-xl shadow-2xl border border-slate-100 z-50">
+                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">OpenAI API Key</label>
+                    <input type="password" id="apiKey" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="sk-...">
+                </div>
+            </details>
         </div>
     </header>
 
@@ -550,69 +557,51 @@ function renderDelta(delta) {
 async function processAndUpload() {
     const files = document.getElementById('pdfInput').files;
     const rawText = document.getElementById("labInput").value.trim();
-
-    if (files.length === 0 && rawText.length < 10) {
-        return showToast("Seleccione PDF o pegue texto", "error");
-    }
+    const apiKey = document.getElementById("apiKey").value.trim() || localStorage.getItem("my_openai_key_v1");
+    if (files.length===0 && rawText.length<10) return showToast("Seleccione PDF o pegue texto","error");
+    if (!apiKey) { document.getElementById("configDetails").open=true; return showToast("Falta API Key","error"); }
+    localStorage.setItem("my_openai_key_v1", apiKey);
 
     const btn = document.getElementById("btnProcesarIA");
-    btn.disabled = true;
-    btn.innerText = "Procesando...";
-
+    btn.disabled=true; btn.innerText="Procesando...";
     let samplesToUpload = [];
 
-    if (files.length === 0 && rawText.length > 10) {
+    if (files.length===0 && rawText.length>10) {
         try {
-            const extracted = await extractWithAI(cleanArgerichText(rawText));
+            const extracted = await extractWithAI(cleanArgerichText(rawText), apiKey);
             samplesToUpload.push(...extracted);
-        } catch (e) {
-            showToast("Error IA: " + e.message, "error");
-        }
+        } catch(e) { showToast("Error IA: "+e.message,"error"); }
     } else {
         const txtArea = document.getElementById("labInput");
-
-        for (let i = 0; i < files.length; i++) {
+        for (let i=0; i<files.length; i++) {
             txtArea.value = `>>> LEYENDO ${files[i].name}...\n`;
-
             try {
                 const pdfText = await readPdfFile(files[i]);
                 const cleanedText = cleanArgerichText(pdfText);
                 txtArea.value += "Texto limpiado. Consultando IA...\n";
-
-                const extracted = await extractWithAI(cleanedText);
+                const extracted = await extractWithAI(cleanedText, apiKey);
                 samplesToUpload.push(...extracted);
-
                 txtArea.value += `✅ ${extracted.length} muestra(s) detectadas.\n`;
-            } catch (e) {
-                txtArea.value += `❌ ERROR: ${e.message}\n`;
-            }
+            } catch(e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
         }
     }
 
     let ok = 0;
     for (const s of samplesToUpload) {
-        try {
-            await uploadToFirebase(s);
-            ok++;
-        } catch (e) {
-            console.error(e);
-        }
+        try { await uploadToFirebase(s); ok++; } catch(e) { console.error(e); }
     }
-
-    if (ok > 0) {
+    if (ok>0) {
         showToast(`${ok} reporte(s) guardados`, "success");
-        document.getElementById("labInput").value = "";
-        document.getElementById("pdfInput").value = null;
-
+        document.getElementById("labInput").value="";
+        document.getElementById("pdfInput").value=null;
+        // v1.0: auto-expand — seleccionar automáticamente el último paciente cargado
         if (samplesToUpload.length > 0) {
             lastUploadedPatient = samplesToUpload[samplesToUpload.length - 1].paciente;
         }
     } else {
-        showToast("No se detectaron reportes válidos.", "error");
+        showToast("No se detectaron reportes válidos.","error");
     }
-
-    btn.disabled = false;
-    btn.innerText = "✨ Procesar";
+    btn.disabled=false; btn.innerText="✨ Procesar";
 }
 
 async function readPdfFile(file) {
@@ -627,26 +616,59 @@ async function readPdfFile(file) {
     return text;
 }
 
-async function extractWithAI(text) {
-    const resp = await fetch("/api/extract-lab", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ text })
+async function extractWithAI(text, apiKey) {
+    const prompt = `Medical Expert Task:
+Analyze the following laboratory text from Hospital Argerich or Hospital Alemán (Buenos Aires, Argentina).
+It may contain ONE or MULTIPLE reports from different dates/times.
+
+Return a JSON OBJECT with key "muestras" — array of report objects:
+{
+  "muestras": [{
+    "paciente": "FULL NAME UPPERCASE",
+    "fecha": "YYYY-MM-DD",
+    "hora": "HH:MM",
+    "protocolo": "string",
+    "parametros": { "KEY": value_number, ... }
+  }]
+}
+
+Targets: ${TARGET_PARAMS.join(", ")}.
+
+CRITICAL MAPPING RULES (Argerich format):
+1. "Sodio"→"Na", "Potasio"→"K", "Cloro"→"Cl"
+2. "Calcio iónico"/"Calcio normalizado"→"Ca_Ionizado"
+3. "Calcio" alone→"Ca_Total"
+4. "Magnesio"→"Mg", "Fósforo"→"Fosforo"
+5. "Aspartato Aminotransferasa (GOT)"→"AST_TGO"
+6. "Alanina Aminotransferasa (GPT)"→"ALT_TGP"
+7. "Fosfatasa Alcalina"→"Fosfatasa_Alcalina"
+8. "Albúmina"→"Albúmina"
+9. "Glucosa Plasmática"→"Glucosa"
+10. "SatO2"→"SatO2", "BEb"→"BEb"
+11. "Acido láctico"/"Lactato"→"Lactato"
+12. "LDL Colesterol"→"LDL", "Colesterol HDL"→"HDL"
+13. "Ácido Úrico"→"Acido_Urico"
+14. "Tacrolimus"→"Tacrolimus", "Everolimus"→"Everolimus"
+15. "Tirotrofina- TSH"→"TSH"
+16. Multiple protocols/dates → SEPARATE objects in array
+17. IONOGRAMA section inside EAB/GAS → extract all electrolytes
+18. Numeric only: ignore null, non-numeric, or annotation-only values
+
+Text: """${text.substring(0,35000)}"""`;
+
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
+        body: JSON.stringify({ model:"gpt-4o-mini", messages:[{role:"user",content:prompt}], temperature:0.1, response_format:{type:"json_object"} })
     });
-
     const data = await resp.json();
-
-    if (!resp.ok) {
-        throw new Error(data.error || "Error al procesar laboratorio");
-    }
-
-    if (data.muestras && Array.isArray(data.muestras)) {
-        return data.muestras;
-    }
-
-    throw new Error("El backend no devolvió muestras válidas.");
+    const content = data.choices[0].message.content.trim();
+    try {
+        const parsed = JSON.parse(content);
+        if (parsed.muestras && Array.isArray(parsed.muestras)) return parsed.muestras;
+        if (Array.isArray(parsed)) return parsed;
+        return [parsed];
+    } catch(e) { throw new Error("La IA no devolvió JSON válido."); }
 }
 
 async function uploadToFirebase(result) {
@@ -1417,6 +1439,8 @@ function downloadExcel() {
 // 16. INIT
 // ============================================================
 document.addEventListener("DOMContentLoaded", () => {
+    const k = localStorage.getItem("my_openai_key_v1");
+    if (k) document.getElementById("apiKey").value = k;
     initRealTimeListener();
 
     const input = document.getElementById("pdfInput");
