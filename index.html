@@ -594,7 +594,6 @@ async function processAndUpload() {
         showToast(`${ok} reporte(s) guardados`, "success");
         document.getElementById("labInput").value="";
         document.getElementById("pdfInput").value=null;
-        // v1.0: auto-expand — seleccionar automáticamente el último paciente cargado
         if (samplesToUpload.length > 0) {
             lastUploadedPatient = samplesToUpload[samplesToUpload.length - 1].paciente;
         }
@@ -628,13 +627,13 @@ Return a JSON OBJECT with key "muestras" — array of report objects:
     "fecha": "YYYY-MM-DD",
     "hora": "HH:MM",
     "protocolo": "string",
-    "parametros": { "KEY": value_number, ... }
+    "parametros": { "KEY": value_number }
   }]
 }
 
 Targets: ${TARGET_PARAMS.join(", ")}.
 
-CRITICAL MAPPING RULES (Argerich format):
+CRITICAL MAPPING RULES:
 1. "Sodio"→"Na", "Potasio"→"K", "Cloro"→"Cl"
 2. "Calcio iónico"/"Calcio normalizado"→"Ca_Ionizado"
 3. "Calcio" alone→"Ca_Total"
@@ -650,7 +649,7 @@ CRITICAL MAPPING RULES (Argerich format):
 13. "Ácido Úrico"→"Acido_Urico"
 14. "Tacrolimus"→"Tacrolimus", "Everolimus"→"Everolimus"
 15. "Tirotrofina- TSH"→"TSH"
-16. Multiple protocols/dates → SEPARATE objects in array
+16. Multiple protocols/dates → separate objects in array
 17. IONOGRAMA section inside EAB/GAS → extract all electrolytes
 18. Numeric only: ignore null, non-numeric, or annotation-only values
 
@@ -662,6 +661,7 @@ Text: """${text.substring(0,35000)}"""`;
         body: JSON.stringify({ model:"gpt-4o-mini", messages:[{role:"user",content:prompt}], temperature:0.1, response_format:{type:"json_object"} })
     });
     const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || "Error OpenAI");
     const content = data.choices[0].message.content.trim();
     try {
         const parsed = JSON.parse(content);
@@ -898,7 +898,7 @@ function preselectMerge(nameA, nameB) {
 // 12. INTERFAZ
 // ============================================================
 function initRealTimeListener() {
-    db.collection("muestras").orderBy("timestamp","asc").onSnapshot(snapshot => {
+    db.collection("muestras").orderBy("timestamp","desc").onSnapshot(snapshot => {
         labData = {};
         snapshot.forEach(doc => {
             const d = doc.data();
@@ -1230,7 +1230,12 @@ async function executeMergePatients() {
     if (t===s) return alert("Son iguales");
     if (!confirm("¿Fusionar?")) return;
     const b=db.batch(); labData[s].forEach(d=>b.update(db.collection("muestras").doc(d.id),{paciente:t}));
-    await b.commit(); showToast("Fusionado","success"); closeModal('mergePatientModal');
+    await b.commit();
+    showToast("Fusionado","success");
+    closeModal('mergePatientModal');
+    const wrapper = document.getElementById('duplicateWarningsWrapper');
+    if (wrapper) wrapper.remove();
+    duplicateWarningShown.clear();
 }
 async function mergeSelectedLabs() {
     const p = document.getElementById("patientSelector").value;
@@ -1439,8 +1444,8 @@ function downloadExcel() {
 // 16. INIT
 // ============================================================
 document.addEventListener("DOMContentLoaded", () => {
-    const k = localStorage.getItem("my_openai_key_v1");
-    if (k) document.getElementById("apiKey").value = k;
+    const savedKey = localStorage.getItem("my_openai_key_v1");
+    if (savedKey) document.getElementById("apiKey").value = savedKey;
     initRealTimeListener();
 
     const input = document.getElementById("pdfInput");
