@@ -24,6 +24,9 @@
             font-family: var(--font-sans), 'Inter', sans-serif;
             background-color: #f5f4f2;
             color: #000;
+            #scrollMirror::-webkit-scrollbar { height: 8px; }
+            #scrollMirror::-webkit-scrollbar-thumb { background: #a8b3a8; border-radius: 4px; }
+            #scrollMirror::-webkit-scrollbar-track { background: #f1f5f9; }
         }
 
         /* Header */
@@ -239,25 +242,26 @@
             <div class="h-64 w-full"><canvas id="evolutionChart"></canvas></div>
         </div>
     </section>
-
-    <!-- TABLE -->
-    <section class="glass-panel overflow-hidden">
-        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
-                <span class="text-xs text-slate-400 hidden md:inline">Rojo = valor crítico · △ = cambio vs anterior</span>
-            </div>
-            <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">👁️ Columnas</button>
+   <!-- TABLE -->
+<section class="glass-panel overflow-hidden">
+    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+        <div class="flex items-center gap-4">
+            <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
+            <span class="text-xs text-slate-400 hidden md:inline">Rojo = valor crítico · △ = cambio vs anterior</span>
         </div>
-        <div class="table-container">
-            <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-slate-500"></thead>
-                <tbody class="divide-y divide-slate-100 bg-white"></tbody>
-            </table>
-        </div>
-    </section>
-</div>
-
+        <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">👁️ Columnas</button>
+    </div>
+    <!-- Scroll espejo ARRIBA -->
+    <div id="scrollMirror" style="overflow-x:auto; overflow-y:hidden; height:12px; border-bottom: 1px solid #e2e8f0;">
+        <div id="scrollMirrorInner" style="height:1px;"></div>
+    </div>
+    <div class="table-container" id="tableContainer">
+        <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-slate-500"></thead>
+            <tbody class="divide-y divide-slate-100 bg-white"></tbody>
+        </table>
+    </div>
+</section>
 <!-- MODALS -->
 <div id="mergePatientModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
     <div class="bg-white w-full max-w-md mx-4 rounded-xl shadow-2xl p-6">
@@ -1476,6 +1480,58 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("paramSelector").addEventListener("change", updateGraph);
     document.getElementById("btnLimpiarEntrada").addEventListener("click", ()=>document.getElementById("labInput").value="");
     document.getElementById("hospitalSelector").addEventListener("change", loadPatientData);
+    // 16. INIT
+// ============================================================
+document.addEventListener("DOMContentLoaded", () => {
+    const savedKey = localStorage.getItem("my_openai_key_v1");
+    if (savedKey) document.getElementById("apiKey").value = savedKey;
+    initRealTimeListener();
+
+    const input = document.getElementById("pdfInput");
+    const textArea = document.getElementById("labInput");
+
+    input.addEventListener("change", async(e) => {
+        const files = e.target.files;
+        if (files.length===0) return;
+        textArea.value="⏳ Leyendo...";
+        try {
+            let fullText="";
+            for (let i=0; i<files.length; i++) {
+                textArea.value=`⏳ Leyendo ${files[i].name}...`;
+                const buffer=await files[i].arrayBuffer();
+                const pdf=await window.pdfjsLib.getDocument({data:buffer}).promise;
+                for(let j=1;j<=pdf.numPages;j++){
+                    const pg=await pdf.getPage(j), c=await pg.getTextContent();
+                    fullText+=c.items.map(x=>x.str).join(" ")+"\n";
+                }
+            }
+            textArea.value=cleanArgerichText(fullText);
+            showToast("PDF leído y limpiado","success");
+       } catch(err) { textArea.value="Error: "+err.message; showToast("Error al leer PDF","error"); }
+    });
+
+    document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
+    document.getElementById("patientSelector").addEventListener("change", loadPatientData);
+    document.getElementById("paramSelector").addEventListener("change", updateGraph);
+    document.getElementById("btnLimpiarEntrada").addEventListener("click", ()=>document.getElementById("labInput").value="");
+    document.getElementById("hospitalSelector").addEventListener("change", loadPatientData);
+
+    // Scroll espejo sincronizado
+    const mirror = document.getElementById('scrollMirror');
+    const mirrorInner = document.getElementById('scrollMirrorInner');
+    const tableContainer = document.getElementById('tableContainer');
+    function syncMirrorWidth() {
+        const table = document.getElementById('uciTable');
+        if (table) mirrorInner.style.width = table.scrollWidth + 'px';
+    }
+    mirror.addEventListener('scroll', () => {
+        tableContainer.scrollLeft = mirror.scrollLeft;
+    });
+    tableContainer.addEventListener('scroll', () => {
+        mirror.scrollLeft = tableContainer.scrollLeft;
+    });
+    const tableObserver = new MutationObserver(syncMirrorWidth);
+    tableObserver.observe(document.querySelector('#uciTable tbody'), { childList: true, subtree: false });
 });
 </script>
 </body>
