@@ -16,149 +16,50 @@
     <script>window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-    <!-- SheetJS para exportación Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        /* ====== MONITOR LABORATORIO v1.0 — Nuevo diseño ====== */
-        body {
-            font-family: var(--font-sans), 'Inter', sans-serif;
-            background-color: #f5f4f2;
-            color: #000;
-            #scrollMirror::-webkit-scrollbar { height: 8px; }
-            #scrollMirror::-webkit-scrollbar-thumb { background: #a8b3a8; border-radius: 4px; }
-            #scrollMirror::-webkit-scrollbar-track { background: #f1f5f9; }
-        }
-
-        /* Header */
-        header.glass-panel {
-            background: #042C53 !important;
-            border: none !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-        }
+        body { font-family: var(--font-sans), 'Inter', sans-serif; background-color: #f5f4f2; color: #000; }
+        header.glass-panel { background: #042C53 !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; }
         header.glass-panel h1 { color: #E6F1FB !important; }
         header.glass-panel p  { color: #85B7EB !important; }
         header.glass-panel .bg-indigo-600 { background: #185FA5 !important; }
-
-        /* Paneles */
-        .glass-panel {
-            background: white;
-            border: 0.5px solid rgba(0,0,0,0.1);
-            box-shadow: none;
-            border-radius: 12px;
-        }
-
-        /* Tabla — cebrado paleta verde-gris/lila */
-        .table-container { max-height: 600px; overflow-y: auto; scrollbar-width: thin; }
-        thead th {
-            position: sticky; top: 0; z-index: 20;
-            background: #a8b3a8 !important;
-            color: #000 !important;
-            font-size: 10px;
-            letter-spacing: 0.04em;
-        }
+        .glass-panel { background: white; border: 0.5px solid rgba(0,0,0,0.1); box-shadow: none; border-radius: 12px; }
+        .table-container { max-height: 600px; overflow-y: auto; overflow-x: auto; scrollbar-width: thin; }
+        thead th { position: sticky; top: 0; z-index: 20; background: #a8b3a8 !important; color: #000 !important; font-size: 10px; letter-spacing: 0.04em; }
         #uciTable tbody tr:nth-child(odd)  td { background: #f5f5f3; }
         #uciTable tbody tr:nth-child(even) td { background: #f0eef3; }
         #uciTable tbody tr:hover td { background: #e8e4ee !important; }
-        #uciTable tbody td {
-            color: #000;
-            font-family: var(--font-mono), monospace;
-            font-size: 11px;
-            border-bottom: 0.5px solid #d4d0d8;
-            padding: 5px 8px;
-        }
-        /* Sticky fecha */
+        #uciTable tbody td { color: #000; font-family: var(--font-mono), monospace; font-size: 11px; border-bottom: 0.5px solid #d4d0d8; padding: 5px 8px; }
         #uciTable tbody tr:nth-child(odd)  td:nth-child(2) { background: #eceae8; }
         #uciTable tbody tr:nth-child(even) td:nth-child(2) { background: #e8e4ee; }
         #uciTable thead tr th:nth-child(2) { text-align: left; }
-        #uciTable tbody tr td:nth-child(2) {
-            font-family: var(--font-sans), sans-serif;
-            font-weight: 500;
-            border-right: 0.5px solid #b1aaba;
-        }
-
-        /* Valores críticos — fondo rosado en la celda */
-        .val-critical {
-            color: #A32D2D !important;
-            font-weight: 600;
-            background: #fce8e8;
-            border-radius: 3px;
-            padding: 1px 4px;
-        }
-
-        /* Delta */
+        #uciTable tbody tr td:nth-child(2) { font-family: var(--font-sans), sans-serif; font-weight: 500; border-right: 0.5px solid #b1aaba; }
+        .val-critical { color: #A32D2D !important; font-weight: 600; background: #fce8e8; border-radius: 3px; padding: 1px 4px; }
         .delta-up   { color: #A32D2D; font-size: 9px; }
         .delta-down { color: #185FA5; font-size: 9px; }
         .delta-neutral { color: #888; font-size: 9px; }
-
-        /* Columnas dinámicas */
-        .col-section-title {
-            font-size: 10px; font-weight: 700; color: #534AB7;
-            text-transform: uppercase; letter-spacing: 0.05em;
-            margin-top: 12px; margin-bottom: 4px; grid-column: 1/-1;
-        }
-
-        /* Botones de acción — nuevos estilos */
+        .col-section-title { font-size: 10px; font-weight: 700; color: #534AB7; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 12px; margin-bottom: 4px; grid-column: 1/-1; }
         button.bg-emerald-50  { background: #E1F5EE !important; border-color: #5DCAA5 !important; color: #085041 !important; }
         button.bg-purple-50   { background: #EEEDFE !important; border-color: #AFA9EC !important; color: #26215C !important; }
         button.bg-amber-50    { background: #FAEEDA !important; border-color: #EF9F27 !important; color: #412402 !important; }
         button.bg-blue-50     { background: #E6F1FB !important; border-color: #85B7EB !important; color: #042C53 !important; }
         button.bg-red-50      { background: #FCEBEB !important; border-color: #F09595 !important; color: #A32D2D !important; }
-
-        /* Selector de hospital */
-        #hospitalSelector {
-            background: #0C447C;
-            border-color: #378ADD;
-            color: #85B7EB;
-            border-radius: 6px;
-            font-size: 11px;
-            padding: 5px 10px;
-        }
-
-        /* Selector de paciente y parámetro */
-        #patientSelector, #paramSelector {
-            background: #f5f4f2;
-            border: 0.5px solid rgba(0,0,0,0.15);
-            border-radius: 8px;
-        }
-
-        /* Upload area */
-        #labInput {
-            background: #f5f4f2;
-            border: 0.5px solid rgba(0,0,0,0.12);
-            font-family: var(--font-mono), monospace;
-        }
-
-        /* Botón procesar */
-        #btnProcesarIA {
-            background: #185FA5 !important;
-            border: none !important;
-        }
-
-        /* Modal */
+        #hospitalSelector { background: #0C447C; border-color: #378ADD; color: #85B7EB; border-radius: 6px; font-size: 11px; padding: 5px 10px; }
+        #patientSelector, #paramSelector { background: #f5f4f2; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 8px; }
+        #labInput { background: #f5f4f2; border: 0.5px solid rgba(0,0,0,0.12); font-family: var(--font-mono), monospace; }
+        #btnProcesarIA { background: #185FA5 !important; border: none !important; }
         .modal .bg-white { border-radius: 12px; }
-
-        /* Custom checkbox */
-        .custom-checkbox { accent-color: #185FA5; }
-        .table-container { max-height: 600px; overflow-y: auto; scrollbar-width: thin; }
-        thead th { position: sticky; top: 0; z-index: 20; background-color: #f1f5f9; }
-        .glass-panel { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-radius: 0.75rem; }
+        .custom-checkbox { accent-color: #185FA5; width: 20px; height: 20px; cursor: pointer; }
         .modal { transition: opacity 0.25s ease; }
-        .custom-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #dc2626; }
-        /* Valores críticos */
-        .val-critical { color: #dc2626 !important; font-weight: 700; }
-        /* Delta */
-        .delta-up { color: #dc2626; font-size: 10px; }
-        .delta-down { color: #2563eb; font-size: 10px; }
-        .delta-neutral { color: #94a3b8; font-size: 10px; }
-        /* Sección dinámica en filtro */
-        .col-section-title { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 12px; margin-bottom: 4px; grid-column: 1/-1; }
+        #scrollMirror { overflow-x: auto; overflow-y: hidden; height: 12px; border-bottom: 1px solid #e2e8f0; }
+        #scrollMirror::-webkit-scrollbar { height: 8px; }
+        #scrollMirror::-webkit-scrollbar-thumb { background: #a8b3a8; border-radius: 4px; }
+        #scrollMirror::-webkit-scrollbar-track { background: #f1f5f9; }
     </style>
 </head>
 <body class="p-4 md:p-6 lg:p-8">
 <div class="max-w-7xl mx-auto space-y-6">
 
-    <!-- HEADER -->
     <header class="glass-panel p-5 flex flex-col md:flex-row justify-between items-center bg-white">
         <div class="flex items-center gap-3">
             <div class="bg-indigo-600 text-white p-2 rounded-lg">
@@ -170,7 +71,6 @@
             </div>
         </div>
         <div class="mt-4 md:mt-0 flex gap-2 flex-wrap justify-end">
-            <!-- Selector de hospital -->
             <select id="hospitalSelector" class="bg-slate-50 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-400 outline-none">
                 <option value="argerich">🏥 Argerich</option>
                 <option value="aleman">🏥 Alemán</option>
@@ -190,7 +90,6 @@
         </div>
     </header>
 
-    <!-- INPUT -->
     <section class="glass-panel p-6">
         <div class="flex flex-col md:flex-row gap-6 items-center justify-between mb-4">
             <div>
@@ -209,7 +108,6 @@
         </div>
     </section>
 
-    <!-- DASHBOARD -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="glass-panel p-6 flex flex-col justify-between">
             <div class="space-y-5">
@@ -242,27 +140,26 @@
             <div class="h-64 w-full"><canvas id="evolutionChart"></canvas></div>
         </div>
     </section>
-   <!-- TABLE -->
-<section class="glass-panel overflow-hidden">
-    <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-        <div class="flex items-center gap-4">
-            <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
-            <span class="text-xs text-slate-400 hidden md:inline">Rojo = valor crítico · △ = cambio vs anterior</span>
+
+    <section class="glass-panel overflow-hidden">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h3 class="text-sm font-bold text-slate-700">Historial Completo</h3>
+                <span class="text-xs text-slate-400 hidden md:inline">Rojo = valor crítico · △ = cambio vs anterior</span>
+            </div>
+            <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">👁️ Columnas</button>
         </div>
-        <button onclick="openColumnFilter()" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition flex items-center gap-1">👁️ Columnas</button>
-    </div>
-    <!-- Scroll espejo ARRIBA -->
-    <div id="scrollMirror" style="overflow-x:auto; overflow-y:hidden; height:12px; border-bottom: 1px solid #e2e8f0;">
-        <div id="scrollMirrorInner" style="height:1px;"></div>
-    </div>
-    <div class="table-container" id="tableContainer">
-        <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-slate-500"></thead>
-            <tbody class="divide-y divide-slate-100 bg-white"></tbody>
-        </table>
-    </div>
-</section>
-<!-- MODALS -->
+        <div id="scrollMirror"><div id="scrollMirrorInner" style="height:1px;"></div></div>
+        <div id="dynVarPanel" style="display:none;"></div>
+        <div class="table-container" id="tableContainer">
+            <table id="uciTable" class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50 text-slate-500"></thead>
+                <tbody class="divide-y divide-slate-100 bg-white"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
 <div id="mergePatientModal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-slate-900/30">
     <div class="bg-white w-full max-w-md mx-4 rounded-xl shadow-2xl p-6">
         <h3 class="text-xl font-bold text-slate-800 mb-4">Fusionar Identidades</h3>
@@ -309,179 +206,147 @@ const db = firebase.firestore();
 // ============================================================
 // 2. CONFIGURACIÓN CLÍNICA
 // ============================================================
-const TARGET_PARAMS = ["Hemoglobina","Hematocrito","Plaquetas","Leucocitos","Na","K","Cl","Mg","Ca_Total","Ca_Ionizado","Fosforo","Glucosa","Urea","Creatinina","Acido_Urico","HbA1c","BT","BD","AST_TGO","ALT_TGP","Fosfatasa_Alcalina","Albúmina","Proteinas_Totales","CPK","PCR","Procalcitonina","Lactato","pH","pCO2","pO2","Bicarbonato","SatO2","BEb","TSH","Colesterol_Total","LDL","HDL","Triglicéridos","TP","RIN","KPTT","aPTT","Tacrolimus","Everolimus","CMV","BKV","EBV","HbA1c"];
+const TARGET_PARAMS = ["Hemoglobina","Hematocrito","Plaquetas","Leucocitos","Na","K","Cl","Mg","Ca_Total","Ca_Ionizado","Fosforo","Glucosa","Urea","Creatinina","Acido_Urico","HbA1c","BT","BD","AST_TGO","ALT_TGP","Fosfatasa_Alcalina","Albúmina","Proteinas_Totales","CPK","PCR","pH","pCO2","pO2","Bicarbonato","SatO2","BEb","TSH","Col","LDL","HDL","TG","TP","RIN","KPTT","Tacrolimus","Everolimus","CMV","BKV","EBV"];
 
 const ABBR = {
     "Hematocrito":"Hto","Hemoglobina":"Hb","Leucocitos":"GB","Plaquetas":"Plq",
-    "Urea":"Urea","Creatinina":"Crea","Glucosa":"Glu","HbA1c":"HbA1c","AU":"AU",
+    "Urea":"Urea","Creatinina":"Crea","Glucosa":"Glu","HbA1c":"HbA1c","Acido_Urico":"AU",
     "Na":"Na","K":"K","Cl":"Cl","Mg":"Mg","Ca_Total":"Ca","Ca_Ionizado":"Ca++","Fosforo":"P",
-    "BT":"BT","BD":"BD","AST_TGO":"GOT","ALT_TGP":"GPT","FAL":"FAL",
-    "Albúmina":"Alb","Prot":"Prot","CPK":"CPK","Col":"Col","LDL":"LDL","HDL":"HDL","TG":"TG",
-    "PCR":"PCR","PCT":"PCT","TSH":"TSH","LAC":"LAC",
+    "BT":"BT","BD":"BD","AST_TGO":"GOT","ALT_TGP":"GPT","Fosfatasa_Alcalina":"FAL",
+    "Albúmina":"Alb","Proteinas_Totales":"Prot","CPK":"CPK","Col":"Col","LDL":"LDL","HDL":"HDL","TG":"TG",
+    "PCR":"PCR","TSH":"TSH","LAC":"LAC",
     "pH":"pH","pCO2":"pCO2","pO2":"pO2","Bicarbonato":"BIC","SatO2":"Sat","BEb":"BEb",
-    "TP":"TP","RIN":"RIN","KPTT":"KPTT","aPTT":"KPTT",
-    // Parámetros trasplante — aparecen como columnas dinámicas con nombre propio
+    "TP":"TP","RIN":"RIN","KPTT":"KPTT",
     "Tacrolimus":"Tacro","Everolimus":"Evero","CMV":"CMV","BKV":"BKV","EBV":"EBV"
 };
 
 // ============================================================
-// 3. NORM_MAP — mapeo completo Argerich + general
+// 3. NORM_MAP
 // ============================================================
 const NORM_MAP = {
-    "Ácido Úrico":"AU","ACIDO URICO":"AU","Acido_Urico":"AU","Acido Urico":"AU","Ácido úrico":"AU","Ácido urico":"AU",
-    "Bilirrubina_Total":"BT","BILIRRUBINA_TOTAL":"BT","Bilirrubina Total":"BT","Bilirrubina total":"BT",
-    "Bilirrubina_Directa":"BD","Bilirrubina Directa":"BD","Bilirrubina directa":"BD",
-    "Creatinquinasa":"CPK","CREATINQUINASA":"CPK",
-    "Fosfatasa_Alcalina":"FAL","Fosfatasa Alcalina":"FAL","Fosfatasa alcalina":"FAL",
-    "Proteinas_Totales":"Prot","Proteínas Totales":"Prot","Proteinas Totales":"Prot","Proteínas totales":"Prot",
-    "Colesterol_Total":"Col","Colesterol":"Col","COLESTEROL":"Col",
+    "Ácido Úrico":"Acido_Urico","ACIDO URICO":"Acido_Urico","Acido_Urico":"Acido_Urico","Acido Urico":"Acido_Urico","Ácido úrico":"Acido_Urico","Acido Urico Serico":"Acido_Urico",
+    "Bilirrubina_Total":"BT","Bilirrubina Total":"BT","Bilirrubina total":"BT","BILIRRUBINA TOTAL":"BT",
+    "Bilirrubina_Directa":"BD","Bilirrubina Directa":"BD","Bilirrubina directa":"BD","BILIRRUBINA DIRECTA":"BD",
+    "Creatinquinasa":"CPK","Creatinfosfoquinasa":"CPK","CREATINQUINASA":"CPK","CREATINQUINASA (CPK)":"CPK","Creatinquinasa (CPK)":"CPK","Creatinfosfoquinasa (CPK)":"CPK","CK":"CPK",
+    "Fosfatasa_Alcalina":"Fosfatasa_Alcalina","Fosfatasa Alcalina":"Fosfatasa_Alcalina","Fosfatasa alcalina":"Fosfatasa_Alcalina","Fosfatasa Alcalina Serica":"Fosfatasa_Alcalina","Fosfatasa Alcalina Total":"Fosfatasa_Alcalina","ALP":"Fosfatasa_Alcalina","FAL":"Fosfatasa_Alcalina",
+    "Proteinas_Totales":"Proteinas_Totales","Proteínas Totales":"Proteinas_Totales","Proteinas Totales":"Proteinas_Totales","Proteínas totales":"Proteinas_Totales","PROTEINAS TOTALES":"Proteinas_Totales",
+    "Colesterol_Total":"Col","Colesterol":"Col","COLESTEROL":"Col","Colesterol Total":"Col","COLESTEROL TOTAL":"Col",
     "Triglicéridos":"TG","Trigliceridos":"TG","TRIGLICERIDOS":"TG",
     "Ácido Láctico":"LAC","Lactato":"LAC","Acido_Lactico":"LAC","Acido láctico":"LAC","Acido Lactico":"LAC","LACTATO":"LAC",
-    "Bicarbonato":"BIC","BICARBONATO":"BIC",
-    "aPTT":"KPTT","APTT":"KPTT","KPTT":"KPTT",
-    "Tiempo de Protrombina":"TP","TP (Seg)":"TP","Tiempo de Protrombina (Quick)":"TP",
-    "RIN (Razon Internacional Normalizada)":"RIN",
-    "aPTT (Tiempo Tromboplastina Parcial Activada)":"KPTT",
-    "BEb":"BEb","BASE_EXCESS":"BEb",
-    "% Saturación 02 (c)":"SatO2","% Saturacion 02 (c)":"SatO2","SatO2":"SatO2","% Saturación O2 (c)":"SatO2",
-    "Glucosa Plasmática":"Glu","Glucosa Plasmatica":"Glu","Glucosa":"Glu","GLUCOSA":"Glu",
-    // Argerich ionograma
-    "Sodio":"Na","SODIO":"Na",
-    "Potasio":"K","POTASIO":"K",
-    "Cloro":"Cl","CLORO":"Cl",
-    "Calcio iónico":"Ca_Ionizado","Calcio ionico":"Ca_Ionizado","Calcio Iónico":"Ca_Ionizado","Calcio Ionico":"Ca_Ionizado",
-    "Ca_Ionizado":"Ca_Ionizado","Calcio normalizado":"Ca_Ionizado","Calcio Normalizado":"Ca_Ionizado",
-    "Calcio":"Ca_Total","CALCIO":"Ca_Total","Calcio Total":"Ca_Total","Calcio total":"Ca_Total",
-    "Fósforo":"Fosforo","Fosforo":"Fosforo","FOSFORO":"Fosforo",
-    "Magnesio":"Mg","MAGNESIO":"Mg",
+    "Bicarbonato":"Bicarbonato","BICARBONATO":"Bicarbonato","HCO3":"Bicarbonato",
+    "aPTT":"KPTT","APTT":"KPTT","KPTT":"KPTT","TPO Parcial Tromboplastina":"KPTT","Tiempo Tromboplastina Parcial Activada":"KPTT","aPTT (Tiempo Tromboplastina Parcial Activada)":"KPTT","PTTa":"KPTT",
+    "Tiempo de Protrombina":"TP","TP (Seg)":"TP","Tiempo de Protrombina (Quick)":"TP","TP Seg":"TP",
+    "RIN (Razon Internacional Normalizada)":"RIN","INR":"RIN",
+    "BEb":"BEb","Base Excess":"BEb","Exceso de Base":"BEb",
+    "% Saturación 02 (c)":"SatO2","% Saturacion 02 (c)":"SatO2","SatO2":"SatO2","% Saturación O2 (c)":"SatO2","SpO2":"SatO2","Sat O2":"SatO2","% Saturación O2":"SatO2",
+    "Glucosa Plasmática":"Glucosa","Glucosa Plasmatica":"Glucosa","Glucosa":"Glucosa","GLUCOSA":"Glucosa","Glucemia":"Glucosa","Glucemia (basal)":"Glucosa","Glucosa en Sangre":"Glucosa",
+    "Sodio":"Na","SODIO":"Na","Sodio Serico":"Na","Sodium":"Na",
+    "Potasio":"K","POTASIO":"K","Potasio Serico":"K","Potassium":"K",
+    "Cloro":"Cl","CLORO":"Cl","Cloro Serico":"Cl","Chloride":"Cl",
+    "Calcio iónico":"Ca_Ionizado","Calcio ionico":"Ca_Ionizado","Calcio Iónico":"Ca_Ionizado","Calcio Ionico":"Ca_Ionizado","Calcio IONICO":"Ca_Ionizado","Ca_Ionizado":"Ca_Ionizado","Calcio normalizado":"Ca_Ionizado","Calcio Normalizado":"Ca_Ionizado",
+    "Calcio":"Ca_Total","CALCIO":"Ca_Total","Calcio Total":"Ca_Total","Calcio total":"Ca_Total","Calcio en Suero":"Ca_Total","Calcio Serico":"Ca_Total",
+    "Fósforo":"Fosforo","Fosforo":"Fosforo","FOSFORO":"Fosforo","Fosforo en Suero":"Fosforo","Phosphorus":"Fosforo","Phosphate":"Fosforo",
+    "Magnesio":"Mg","MAGNESIO":"Mg","Magnesio Serico":"Mg","Magnesio en Sangre":"Mg","Magnesio en Suero":"Mg","Magnesium":"Mg",
     "Hemoglobina":"Hemoglobina","HEMOGLOBINA":"Hemoglobina",
     "Hematocrito":"Hematocrito","HEMATOCRITO":"Hematocrito",
-    "Leucocitos":"Leucocitos","LEUCOCITOS":"Leucocitos",
-    "Recuento de plaquetas":"Plaquetas","Plaquetas":"Plaquetas","PLAQUETAS":"Plaquetas",
+    "Leucocitos":"Leucocitos","LEUCOCITOS":"Leucocitos","Recuento de Globulos Blancos":"Leucocitos","GB":"Leucocitos","WBC":"Leucocitos","Glóbulos Blancos":"Leucocitos",
+    "Recuento de plaquetas":"Plaquetas","Plaquetas":"Plaquetas","PLAQUETAS":"Plaquetas","PLT":"Plaquetas","Recuento de Plaquetas":"Plaquetas",
     "pO2":"pO2","pCO2":"pCO2","pH":"pH",
-    "Aspartato Aminotransferasa (GOT)":"AST_TGO","Aspartato Aminotransferasa":"AST_TGO","GOT":"AST_TGO",
-    "Alanina Aminotransferasa (GPT)":"ALT_TGP","Alanina Aminotransferasa":"ALT_TGP","GPT":"ALT_TGP",
+    "Aspartato Aminotransferasa (GOT)":"AST_TGO","Aspartato Aminotransferasa":"AST_TGO","GOT":"AST_TGO","ASAT-GOT":"AST_TGO","AST":"AST_TGO","TGO":"AST_TGO","TGO - Transaminasa Glutamico Oxalacetica":"AST_TGO","SGOT":"AST_TGO","Aspartato Aminotransferasa (ASAT-GOT)":"AST_TGO",
+    "Alanina Aminotransferasa (GPT)":"ALT_TGP","Alanina Aminotransferasa":"ALT_TGP","GPT":"ALT_TGP","ALAT-GPT":"ALT_TGP","ALT":"ALT_TGP","TGP":"ALT_TGP","TGP - Transaminasa Glutamico Piruvica":"ALT_TGP","SGPT":"ALT_TGP","Alanina Aminotransferasa (ALAT-GPT)":"ALT_TGP",
     "Albúmina":"Albúmina","Albumina":"Albúmina","ALBUMINA":"Albúmina",
-    "LDL Colesterol":"LDL","LDL colesterol":"LDL","LDL":"LDL",
-    "Colesterol HDL":"HDL","Colesterol hdl":"HDL","HDL":"HDL",
-    "Urea":"Urea","UREA":"Urea",
-    "Creatinina":"Creatinina","CREATININA":"Creatinina",
-    "Tirotrofina- TSH":"TSH","Tirotrofina TSH":"TSH","TSH":"TSH",
-    "Tacrolimus":"Tacrolimus","TACROLIMUS":"Tacrolimus",
-    "Everolimus":"Everolimus","EVEROLIMUS":"Everolimus",
-    "Acido Urico":"AU"
+    "LDL Colesterol":"LDL","LDL colesterol":"LDL","LDL":"LDL","LDL-C":"LDL","Colesterol LDL":"LDL","C-LDL":"LDL",
+    "Colesterol HDL":"HDL","Colesterol hdl":"HDL","HDL":"HDL","HDL-C":"HDL","HDL Colesterol":"HDL","C-HDL":"HDL",
+    "Urea":"Urea","UREA":"Urea","Urea en Sangre":"Urea","Urea Serica":"Urea","Urea Serico":"Urea",
+    "Creatinina":"Creatinina","CREATININA":"Creatinina","Creatinina en Suero":"Creatinina","Creatinina en Sangre":"Creatinina",
+    "Tirotrofina- TSH":"TSH","Tirotrofina TSH":"TSH","TSH":"TSH","Tirotrofina":"TSH","Tirotropina":"TSH","TSH - Tirotrofina":"TSH","Tirotrofina (TSH)":"TSH","TIROTROFINA (TSH)":"TSH",
+    "HbA1c":"HbA1c","Hemoglobina Glicosilada":"HbA1c","Hemoglobina Glicada":"HbA1c","% HbA1c":"HbA1c",
+    "Tacrolimus":"Tacrolimus","TACROLIMUS":"Tacrolimus","FK506":"Tacrolimus",
+    "Everolimus":"Everolimus","EVEROLIMUS":"Everolimus","RAD001":"Everolimus",
+    "PCR":"PCR","Proteína C Reactiva":"PCR","Proteina C Reactiva":"PCR","CRP":"PCR"
 };
 
 // ============================================================
-// 4. CLINICAL ORDER (predefinidos)
+// 4. CLINICAL ORDER
 // ============================================================
-const CLINICAL_ORDER = ["Hematocrito","Hemoglobina","Leucocitos","Plaquetas","Urea","Creatinina","Glucosa","HbA1c","AU","BT","BD","AST_TGO","ALT_TGP","FAL","Albúmina","Prot","Col","LDL","HDL","TG","Na","K","Cl","Mg","Ca_Total","Ca_Ionizado","Fosforo","TSH","CPK","PCR","PCT","pH","pCO2","pO2","BEb","BIC","SatO2","LAC","TP","RIN","KPTT"];
+const CLINICAL_ORDER = ["Hematocrito","Hemoglobina","Leucocitos","Plaquetas","Urea","Creatinina","Glucosa","HbA1c","Acido_Urico","BT","BD","AST_TGO","ALT_TGP","Fosfatasa_Alcalina","Albúmina","Proteinas_Totales","Col","LDL","HDL","TG","Na","K","Cl","Mg","Ca_Total","Ca_Ionizado","Fosforo","TSH","CPK","PCR","pH","pCO2","pO2","BEb","Bicarbonato","SatO2","LAC","TP","RIN","KPTT"];
 
 // ============================================================
-// 5. RANGOS CRÍTICOS por hospital
+// 5. RANGOS CRÍTICOS
 // ============================================================
 const CRITICAL_RANGES = {
     argerich: {
-        "K":       { min: 3.0,    max: 6.0   },
-        "Na":      { min: 125,    max: 155   },
-        "pH":      { min: 7.20,   max: 7.55  },
-        "Hb":      { min: 7.0,    max: 20    },
-        "Hemoglobina": { min: 7.0, max: 20   },
-        "Glu":     { min: 60,     max: 400   },
-        "Glucosa": { min: 60,     max: 400   },
-        "Crea":    { min: null,   max: 5.0   },
-        "Creatinina": { min: null, max: 5.0  },
-        "LAC":     { min: null,   max: 21    }, // mg/dL
-        "Plq":     { min: 50000, max: 1000000},
-        "Plaquetas": { min: 50000, max: 1000000 }
+        "K":{ min:3.0, max:6.0 },"Na":{ min:125, max:155 },"pH":{ min:7.20, max:7.55 },
+        "Hb":{ min:7.0, max:20 },"Hemoglobina":{ min:7.0, max:20 },
+        "Glu":{ min:60, max:400 },"Glucosa":{ min:60, max:400 },
+        "Crea":{ min:null, max:5.0 },"Creatinina":{ min:null, max:5.0 },
+        "LAC":{ min:null, max:21 },"Plq":{ min:50, max:1000 },"Plaquetas":{ min:50, max:1000 }
     },
     aleman: {
-        "K":       { min: 3.0,    max: 6.0   },
-        "Na":      { min: 125,    max: 155   },
-        "pH":      { min: 7.20,   max: 7.55  },
-        "Hb":      { min: 7.0,    max: 20    },
-        "Hemoglobina": { min: 7.0, max: 20   },
-        "Glu":     { min: 60,     max: 400   },
-        "Glucosa": { min: 60,     max: 400   },
-        "Crea":    { min: null,   max: 5.0   },
-        "Creatinina": { min: null, max: 5.0  },
-        "LAC":     { min: null,   max: 2.2   }, // mmol/L
-        "Plq":     { min: 50000, max: 1000000},
-        "Plaquetas": { min: 50000, max: 1000000 }
+        "K":{ min:3.0, max:6.0 },"Na":{ min:125, max:155 },"pH":{ min:7.20, max:7.55 },
+        "Hb":{ min:7.0, max:20 },"Hemoglobina":{ min:7.0, max:20 },
+        "Glu":{ min:60, max:400 },"Glucosa":{ min:60, max:400 },
+        "Crea":{ min:null, max:5.0 },"Creatinina":{ min:null, max:5.0 },
+        "LAC":{ min:null, max:2.2 },"Plq":{ min:50, max:1000 },"Plaquetas":{ min:50, max:1000 }
     },
     otro: {
-        "K":       { min: 3.0,    max: 6.0   },
-        "Na":      { min: 125,    max: 155   },
-        "pH":      { min: 7.20,   max: 7.55  },
-        "Hb":      { min: 7.0,    max: 20    },
-        "Glu":     { min: 60,     max: 400   },
-        "Crea":    { min: null,   max: 5.0   },
-        "LAC":     { min: null,   max: 4.0   },
-        "Plq":     { min: 50000, max: 1000000}
+        "K":{ min:3.0, max:6.0 },"Na":{ min:125, max:155 },"pH":{ min:7.20, max:7.55 },
+        "Hb":{ min:7.0, max:20 },"Glu":{ min:60, max:400 },
+        "Crea":{ min:null, max:5.0 },"LAC":{ min:null, max:4.0 },
+        "Plq":{ min:50, max:1000 },"Plaquetas":{ min:50, max:1000 }
     }
 };
 
-// ============================================================
-// 6. SAFETY RANGES (para filtrar errores de carga, no alertas)
-// ============================================================
 const SAFETY_RANGES = { "K":{min:1.0,max:9.0},"Na":{min:100,max:180},"pH":{min:6.5,max:8.0},"Hb":{min:2,max:25} };
 
 // ============================================================
-// 7. ESTADO GLOBAL
+// 6. ESTADO GLOBAL
 // ============================================================
 let labData = {};
 let dynamicColumns = new Set();
-let lastUploadedPatient = null; // v1.0: auto-expand al cargar // columnas detectadas automáticamente fuera de CLINICAL_ORDER
+let lastUploadedPatient = null;
 let chartInstance = null;
 let visibleColumns = new Set(CLINICAL_ORDER);
-let visibleDynamic = new Set(); // columnas dinámicas visibles
+let visibleDynamic = new Set();
 
 // ============================================================
-// 8. UTILS
+// 7. UTILS
 // ============================================================
 function showToast(msg, type="info") {
     const bg = type==="error"?"#ef4444":type==="success"?"#10b981":"#3b82f6";
     Toastify({ text:msg, duration:3000, gravity:"top", position:"center", style:{background:bg,borderRadius:"8px"} }).showToast();
 }
-
 function formatDate(d) {
     if(!d) return "-";
     const p = d.split("-");
     return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
 }
-
 function getHospital() { return document.getElementById("hospitalSelector").value; }
-
 function isCritical(key, value) {
-    const hospital = getHospital();
-    const ranges = CRITICAL_RANGES[hospital] || CRITICAL_RANGES.otro;
+    const ranges = CRITICAL_RANGES[getHospital()] || CRITICAL_RANGES.otro;
     const num = parseFloat(value);
     if (isNaN(num)) return false;
-    // Buscar por key o por abreviatura
     const range = ranges[key] || ranges[getDisplayLabel(key)];
     if (!range) return false;
     if (range.min !== null && num < range.min) return true;
     if (range.max !== null && num > range.max) return true;
     return false;
 }
-
 function getCanonicalKey(dirtyKey) {
     const clean = dirtyKey.trim();
+    if (clean.startsWith('_label_')) return clean;
     if (NORM_MAP[clean]) return NORM_MAP[clean];
     if (NORM_MAP[clean.toUpperCase()]) return NORM_MAP[clean.toUpperCase()];
     if (ABBR[clean]) return clean;
-    return clean; // mantener nombre original para columnas dinámicas
+    return clean;
 }
-
 function getDisplayLabel(key) { return ABBR[key] || key; }
-
 function getSmartValue(params, key) {
     if (params[key] !== undefined) return params[key];
     const longKey = Object.keys(ABBR).find(k => ABBR[k] === key);
     if (longKey && params[longKey] !== undefined) return params[longKey];
     return undefined;
 }
-
 function isValidValue(key, value) {
     const num = parseFloat(value);
     if (isNaN(num)) return true;
@@ -496,47 +361,47 @@ function isValidValue(key, value) {
     }
     return true;
 }
-
 function getSelectedIds() { return Array.from(document.querySelectorAll('.row-select:checked')).map(cb => cb.dataset.id); }
 function getExportSamples(p) { const ids = getSelectedIds(); return ids.length>0 ? labData[p].filter(s=>ids.includes(s.id)) : labData[p]; }
-
-// Limpieza de texto del Argerich
 function cleanArgerichText(text) {
     return text
         .replace(/(\d+[\.,]?\d*)\s*!/g, '$1')
-        .replace(/Valor confirmado/gi, '')
-        .replace(/Muestra insuficiente/gi, '')
-        .replace(/Muestra mal enrasada/gi, '')
-        .replace(/Muestra mal remitida/gi, '')
-        .replace(/Problemas técnicos/gi, '')
-        .replace(/(\d),(\d)/g, '$1.$2')
+        .replace(/Valor confirmado/gi, '').replace(/Muestra insuficiente/gi, '')
+        .replace(/Muestra mal enrasada/gi, '').replace(/Muestra mal remitida/gi, '')
+        .replace(/Problemas técnicos/gi, '').replace(/(\d),(\d)/g, '$1.$2')
         .replace(/•/g, '')
         .replace(/% Saturaci[oó]n O2 \(c\)/gi, 'SatO2')
         .replace(/% Saturaci[oó]n 02 \(c\)/gi, 'SatO2');
 }
 
 // ============================================================
-// 9. DETECCIÓN DE COLUMNAS DINÁMICAS
+// 8. COLUMNAS DINÁMICAS
 // ============================================================
 function detectDynamicColumns(samples) {
     dynamicColumns = new Set();
     samples.forEach(s => {
         Object.keys(s.parametros || {}).forEach(k => {
+            if (k.startsWith('_label_')) return;
             if (!CLINICAL_ORDER.includes(k) && !CLINICAL_ORDER.map(c=>getDisplayLabel(c)).includes(k)) {
                 dynamicColumns.add(k);
-                // Agregar al set visible si es primera vez
                 if (!visibleDynamic.has(k)) visibleDynamic.add(k);
             }
         });
     });
 }
-
 function getAllVisibleColumns() {
     return [...CLINICAL_ORDER.filter(k=>visibleColumns.has(k)), ...Array.from(dynamicColumns).filter(k=>visibleDynamic.has(k))];
 }
+function getDynLabel(samples, abbr) {
+    const labelKey = '_label_' + abbr;
+    for (const s of samples) {
+        if (s.parametros && s.parametros[labelKey]) return s.parametros[labelKey];
+    }
+    return abbr;
+}
 
 // ============================================================
-// 10. DELTA — variación respecto al laboratorio anterior
+// 9. DELTA
 // ============================================================
 function getDelta(samples, idx, key) {
     if (idx === 0) return null;
@@ -547,16 +412,14 @@ function getDelta(samples, idx, key) {
     const pct = Math.abs((diff/prev)*100).toFixed(0);
     return { diff: diff.toFixed(2), pct, dir: diff > 0 ? "up" : diff < 0 ? "down" : "neutral" };
 }
-
 function renderDelta(delta) {
     if (!delta) return "";
     const arrow = delta.dir==="up" ? "▲" : delta.dir==="down" ? "▼" : "–";
-    const cls = `delta-${delta.dir}`;
-    return `<span class="${cls}"> ${arrow}${delta.pct}%</span>`;
+    return `<span class="delta-${delta.dir}"> ${arrow}${delta.pct}%</span>`;
 }
 
 // ============================================================
-// 11. PROCESAMIENTO Y UPLOAD
+// 10. PROCESAMIENTO Y UPLOAD
 // ============================================================
 async function processAndUpload() {
     const files = document.getElementById('pdfInput').files;
@@ -565,31 +428,25 @@ async function processAndUpload() {
     if (files.length===0 && rawText.length<10) return showToast("Seleccione PDF o pegue texto","error");
     if (!apiKey) { document.getElementById("configDetails").open=true; return showToast("Falta API Key","error"); }
     localStorage.setItem("my_openai_key_v1", apiKey);
-
     const btn = document.getElementById("btnProcesarIA");
     btn.disabled=true; btn.innerText="Procesando...";
     let samplesToUpload = [];
-
     if (files.length===0 && rawText.length>10) {
-        try {
-            const extracted = await extractWithAI(cleanArgerichText(rawText), apiKey);
-            samplesToUpload.push(...extracted);
-        } catch(e) { showToast("Error IA: "+e.message,"error"); }
+        try { const extracted = await extractWithAI(cleanArgerichText(rawText), apiKey); samplesToUpload.push(...extracted); }
+        catch(e) { showToast("Error IA: "+e.message,"error"); }
     } else {
         const txtArea = document.getElementById("labInput");
         for (let i=0; i<files.length; i++) {
             txtArea.value = `>>> LEYENDO ${files[i].name}...\n`;
             try {
                 const pdfText = await readPdfFile(files[i]);
-                const cleanedText = cleanArgerichText(pdfText);
                 txtArea.value += "Texto limpiado. Consultando IA...\n";
-                const extracted = await extractWithAI(cleanedText, apiKey);
+                const extracted = await extractWithAI(cleanArgerichText(pdfText), apiKey);
                 samplesToUpload.push(...extracted);
                 txtArea.value += `✅ ${extracted.length} muestra(s) detectadas.\n`;
             } catch(e) { txtArea.value += `❌ ERROR: ${e.message}\n`; }
         }
     }
-
     let ok = 0;
     for (const s of samplesToUpload) {
         try { await uploadToFirebase(s); ok++; } catch(e) { console.error(e); }
@@ -598,9 +455,7 @@ async function processAndUpload() {
         showToast(`${ok} reporte(s) guardados`, "success");
         document.getElementById("labInput").value="";
         document.getElementById("pdfInput").value=null;
-        if (samplesToUpload.length > 0) {
-            lastUploadedPatient = samplesToUpload[samplesToUpload.length - 1].paciente;
-        }
+        if (samplesToUpload.length > 0) lastUploadedPatient = samplesToUpload[samplesToUpload.length - 1].paciente;
     } else {
         showToast("No se detectaron reportes válidos.","error");
     }
@@ -621,7 +476,7 @@ async function readPdfFile(file) {
 
 async function extractWithAI(text, apiKey) {
     const prompt = `Medical Expert Task:
-Analyze the following laboratory text from Hospital Argerich or Hospital Alemán (Buenos Aires, Argentina).
+Analyze the following laboratory text from Argentina (hospitals/labs: Argerich, Alemán, Domecq & Lafage, Clínica Adventista, Deragopyan, or other).
 It may contain ONE or MULTIPLE reports from different dates/times.
 
 Return a JSON OBJECT with key "muestras" — array of report objects:
@@ -635,27 +490,96 @@ Return a JSON OBJECT with key "muestras" — array of report objects:
   }]
 }
 
-Targets: ${TARGET_PARAMS.join(", ")}.
+TARGET PARAMETERS (extract ONLY these, plus dynamic variables described at end):
+Hemoglobina, Hematocrito, Leucocitos, Plaquetas, Urea, Creatinina, Glucosa, HbA1c, Acido_Urico, BT, BD, AST_TGO, ALT_TGP, Fosfatasa_Alcalina, Albúmina, Proteinas_Totales, CPK, Col, LDL, HDL, TG, Na, K, Cl, Mg, Ca_Total, Ca_Ionizado, Fosforo, TSH, PCR, pH, pCO2, pO2, BEb, Bicarbonato, SatO2, LAC, TP, RIN, KPTT, Tacrolimus, Everolimus
 
-CRITICAL MAPPING RULES:
-1. "Sodio"→"Na", "Potasio"→"K", "Cloro"→"Cl"
-2. "Calcio iónico"/"Calcio normalizado"→"Ca_Ionizado"
-3. "Calcio" alone→"Ca_Total"
-4. "Magnesio"→"Mg", "Fósforo"→"Fosforo"
-5. "Aspartato Aminotransferasa (GOT)"→"AST_TGO"
-6. "Alanina Aminotransferasa (GPT)"→"ALT_TGP"
-7. "Fosfatasa Alcalina"→"Fosfatasa_Alcalina"
-8. "Albúmina"→"Albúmina"
-9. "Glucosa Plasmática"→"Glucosa"
-10. "SatO2"→"SatO2", "BEb"→"BEb"
-11. "Acido láctico"/"Lactato"→"Lactato"
-12. "LDL Colesterol"→"LDL", "Colesterol HDL"→"HDL"
-13. "Ácido Úrico"→"Acido_Urico"
-14. "Tacrolimus"→"Tacrolimus", "Everolimus"→"Everolimus"
-15. "Tirotrofina- TSH"→"TSH"
-16. Multiple protocols/dates → separate objects in array
-17. IONOGRAMA section inside EAB/GAS → extract all electrolytes
-18. Numeric only: ignore null, non-numeric, or annotation-only values
+MAPPING RULES:
+
+ELECTROLYTES:
+1. "Sodio"/"Sodio Serico"/"Sodium"/"SODIO" → "Na" (mmol/L or mEq/L equivalent, store as-is)
+2. "Potasio"/"Potasio Serico"/"Potassium"/"POTASIO" → "K"
+3. "Cloro"/"Cloro Serico"/"Chloride"/"CLORO" → "Cl"
+4. "Magnesio"/"Magnesio Serico"/"Magnesio en Sangre"/"Magnesio en Suero"/"MAGNESIO" → "Mg"
+5. "Fósforo"/"Fosforo"/"Fosforo en Suero"/"Phosphorus"/"FOSFORO" → "Fosforo"
+6. "Calcio iónico"/"Calcio ionico"/"Calcio IONICO"/"Calcio normalizado"/"Calcio Normalizado" → "Ca_Ionizado"
+   (if value > 3.0 → mg/dL; if < 3.0 → mmol/L; store as-is)
+7. "Calcio"/"Calcio Total"/"Calcio en Suero"/"Calcio Serico"/"CALCIO" (WITHOUT "iónico"/"ionico"/"normalizado") → "Ca_Total"
+
+LIVER / ENZYMES:
+8. "Aspartato Aminotransferasa"/"ASAT-GOT"/"AST"/"GOT"/"TGO"/"TGO - Transaminasa Glutamico Oxalacetica"/"SGOT"/"Aspartato Aminotransferasa (ASAT-GOT)" → "AST_TGO"
+9. "Alanina Aminotransferasa"/"ALAT-GPT"/"ALT"/"GPT"/"TGP"/"TGP - Transaminasa Glutamico Piruvica"/"SGPT"/"Alanina Aminotransferasa (ALAT-GPT)" → "ALT_TGP"
+10. "Fosfatasa Alcalina"/"Fosfatasa Alcalina Serica"/"Fosfatasa Alcalina Total"/"ALP"/"FAL" → "Fosfatasa_Alcalina"
+11. "Bilirrubina Total"/"BILIRRUBINA TOTAL" → "BT"
+12. "Bilirrubina Directa"/"BILIRRUBINA DIRECTA" → "BD"
+13. "Albúmina"/"Albumina"/"ALBUMINA" → "Albúmina"
+14. "Proteínas Totales"/"Proteinas Totales"/"PROTEINAS TOTALES" → "Proteinas_Totales"
+
+RENAL / METABOLIC:
+15. "Glucosa"/"Glucosa Plasmática"/"Glucosa en Sangre"/"Glucemia"/"Glucemia (basal)"/"GLUCOSA" → "Glucosa"
+    IGNORE: "Glucemia (120 minutos)"/"TTOG post-carga" — do NOT extract
+16. "Urea"/"Urea en Sangre"/"Urea Serica"/"UREA" → "Urea"
+    NOTE: if labeled "BUN"/"Nitrógeno Ureico" → multiply × 2.14 before storing
+17. "Creatinina"/"Creatinina en Suero"/"Creatinina en Sangre"/"CREATININA" → "Creatinina"
+    IGNORE: "Estimacion de Filtrado Glomerular"/"TFG"/"eGFR"/"CKD-EPI" — not a target
+18. "HbA1c"/"Hemoglobina Glicosilada"/"Hemoglobina Glicada"/"% HbA1c" → "HbA1c"
+19. "Ácido Úrico"/"Acido Urico"/"Acido Urico Serico"/"AU" → "Acido_Urico"
+20. "CPK"/"Creatinquinasa"/"Creatinfosfoquinasa"/"CREATINQUINASA (CPK)"/"CK" → "CPK"
+
+LIPIDS:
+21. "Colesterol Total"/"Colesterol"/"COLESTEROL TOTAL" → "Col"
+22. "LDL Colesterol"/"LDL-C"/"Colesterol LDL"/"C-LDL" → "LDL"
+23. "Colesterol HDL"/"HDL-C"/"HDL Colesterol"/"C-HDL" → "HDL"
+    IGNORE: "Colesterol No HDL" — not a target
+24. "Triglicéridos"/"Trigliceridos"/"TRIGLICERIDOS" → "TG"
+
+THYROID:
+25. "TSH"/"Tirotrofina"/"Tirotrofina - TSH"/"Tirotropina"/"TIROTROFINA (TSH)"/"Tirotrofina (TSH)" → "TSH"
+
+COAGULATION:
+26. "Tiempo de Protrombina"/"TP (Seg)"/"TP Seg" → "TP" — store SECONDS only, NEVER % activity
+27. "RIN"/"INR"/"RIN (Razon Internacional Normalizada)" → "RIN"
+28. "aPTT"/"KPTT"/"PTTa"/"TPO Parcial Tromboplastina"/"Tiempo Tromboplastina Parcial Activada" → "KPTT" — store SECONDS
+
+BLOOD GAS:
+29. "pH" → "pH"
+30. "pCO2" → "pCO2"
+31. "pO2" → "pO2"
+32. "BEb"/"Base Excess"/"Exceso de Base" → "BEb"
+33. "Bicarbonato"/"HCO3" → "Bicarbonato"
+34. "% Saturación O2"/"SatO2"/"SpO2"/"Sat O2"/"% Saturación O2 (c)" → "SatO2"
+35. "Acido láctico"/"Ácido láctico"/"Lactato"/"LAC" → "LAC" (store as-is)
+
+INFLAMMATION:
+36. "PCR"/"Proteína C Reactiva"/"CRP" → "PCR"
+
+TRANSPLANT:
+37. "Tacrolimus"/"FK506" → "Tacrolimus"
+38. "Everolimus"/"RAD001" → "Everolimus"
+
+PLATELET RULE (CRITICAL):
+39. "Plaquetas"/"Recuento de Plaquetas"/"PLT" → "Plaquetas"
+    - If value > 1000: divide by 1000 (e.g. 239000 → store 239)
+    - If 50 ≤ value ≤ 1000: store as-is
+    - If value < 50: DISCARD — this is fL (Volumen Plaquetario Medio), NOT a platelet count
+
+HEMOGRAM RULES:
+40. "Hemoglobina"/"Hb"/"HEMOGLOBINA" → "Hemoglobina" (g/dL, valid 5-20; discard if outside)
+41. "Hematocrito"/"Hto"/"HEMATOCRITO" → "Hematocrito" (%, valid 15-65; discard if outside)
+42. "Leucocitos"/"Recuento de Globulos Blancos"/"GB"/"WBC" → "Leucocitos"
+    - If value > 50: divide by 1000 (e.g. 6670 → store 6.67)
+    - If 1 ≤ value ≤ 50: store as-is
+    NEVER extract: VCM, HCM, CHCM, RDW, fórmula leucocitaria %, valores absolutos leucocitarios
+
+GENERAL RULES:
+43. Multiple protocols/dates → separate objects in array
+44. IONOGRAMA or EAB inside GAS → extract all available electrolytes
+45. Numeric values only — ignore qualitative results (NO REACTIVO, REACTIVO, NEGATIVO)
+46. IGNORE: orina completa, sedimento, serologías (HIV/HBsAg/HCV/VDRL), proteinograma, ferremia, transferrina, ferritina, vitaminas (B12/D/folato), hormonas excepto TSH (prolactina/DHEA/T4), homocisteína, zinc, PSA, inmunoglobulinas, eritrosedimentación, glucemia post-carga TTOG
+
+DYNAMIC VARIABLES:
+47. For any parameter NOT in the target list that seems clinically relevant, include it with a SHORT abbreviation as key (max 8 chars, no spaces, no accents, uppercase) AND store the full original name in a parallel key named "_label_ABBREVIATION".
+    Example: { "GGT": 18, "_label_GGT": "Gamma Glutamiltranspeptidasa", "FERRIT": 147, "_label_FERRIT": "Ferritina" }
+    Apply same ignore list from rule 46.
 
 Text: """${text.substring(0,35000)}"""`;
 
@@ -677,26 +601,46 @@ Text: """${text.substring(0,35000)}"""`;
 
 async function uploadToFirebase(result) {
     if (!result.paciente || result.paciente==="DESCONOCIDO") return;
-
-    // FIX v17.7: timestamp robusto
     let ts;
     try {
         const dateStr = result.fecha || new Date().toISOString().split('T')[0];
         const timeStr = (result.hora && result.hora.match(/^\d{2}:\d{2}/)) ? result.hora : "12:00";
         ts = new Date(`${dateStr}T${timeStr}:00`).getTime();
         if (isNaN(ts)) throw new Error();
-    } catch(e) {
-        ts = Date.now();
-    }
+    } catch(e) { ts = Date.now(); }
 
     const cleanParams = {};
     for (const k in result.parametros) {
-        if (result.parametros[k] !== null) {
-            const canonical = getCanonicalKey(k);
-            if (isValidValue(canonical, result.parametros[k])) {
-                cleanParams[canonical] = result.parametros[k];
-            }
+        if (result.parametros[k] === null) continue;
+
+        // Preservar metadatos _label_
+        if (k.startsWith('_label_')) {
+            cleanParams[k] = result.parametros[k];
+            continue;
         }
+
+        const canonical = getCanonicalKey(k);
+        const val = result.parametros[k];
+
+        // Plaquetas: descartar fL, convertir si viene en valor crudo
+        if (canonical === 'Plaquetas') {
+            let num = parseFloat(val);
+            if (isNaN(num) || num < 50) continue;
+            if (num > 1000) num = parseFloat((num / 1000).toFixed(1));
+            cleanParams[canonical] = num;
+            continue;
+        }
+
+        // Leucocitos: convertir si viene en valor crudo /mm3
+        if (canonical === 'Leucocitos') {
+            let num = parseFloat(val);
+            if (isNaN(num)) continue;
+            if (num > 50) num = parseFloat((num / 1000).toFixed(2));
+            cleanParams[canonical] = num;
+            continue;
+        }
+
+        if (isValidValue(canonical, val)) cleanParams[canonical] = val;
     }
 
     await db.collection("muestras").add({
@@ -710,196 +654,83 @@ async function uploadToFirebase(result) {
     });
 }
 
-
 // ============================================================
-// DETECCIÓN DE DUPLICADOS — Algoritmo de similitud de nombres
-// Compara todos los pacientes entre sí al cargar datos
+// DETECCIÓN DE DUPLICADOS
 // ============================================================
-
-// Distancia de Levenshtein normalizada (0 = idéntico, 1 = completamente diferente)
 function levenshteinSimilarity(a, b) {
-    a = a.toUpperCase().trim();
-    b = b.toUpperCase().trim();
+    a = a.toUpperCase().trim(); b = b.toUpperCase().trim();
     if (a === b) return 1.0;
-    if (a.length === 0 || b.length === 0) return 0.0;
-
-    var matrix = [];
-    for (var i = 0; i <= b.length; i++) matrix[i] = [i];
-    for (var j = 0; j <= a.length; j++) matrix[0][j] = j;
-
-    for (var i = 1; i <= b.length; i++) {
-        for (var j = 1; j <= a.length; j++) {
-            if (b.charAt(i-1) === a.charAt(j-1)) {
-                matrix[i][j] = matrix[i-1][j-1];
-            } else {
-                matrix[i][j] = Math.min(
-                    matrix[i-1][j-1] + 1,
-                    matrix[i][j-1] + 1,
-                    matrix[i-1][j] + 1
-                );
-            }
-        }
-    }
-    var dist = matrix[b.length][a.length];
-    var maxLen = Math.max(a.length, b.length);
-    return 1 - (dist / maxLen);
+    if (!a.length || !b.length) return 0.0;
+    var m = [];
+    for (var i = 0; i <= b.length; i++) m[i] = [i];
+    for (var j = 0; j <= a.length; j++) m[0][j] = j;
+    for (var i = 1; i <= b.length; i++)
+        for (var j = 1; j <= a.length; j++)
+            m[i][j] = b[i-1]===a[j-1] ? m[i-1][j-1] : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
+    return 1 - (m[b.length][a.length] / Math.max(a.length, b.length));
 }
-
-// Similitud por tokens: "RITA SANTILLAN" vs "SANTILLAN RITA VANESA"
-// Verifica si todos los tokens de A están contenidos en B o viceversa
 function tokenSimilarity(a, b) {
-    var tokA = a.toUpperCase().trim().split(/\s+/);
-    var tokB = b.toUpperCase().trim().split(/\s+/);
-    var shorter = tokA.length <= tokB.length ? tokA : tokB;
-    var longer  = tokA.length <= tokB.length ? tokB : tokA;
-    var matches = shorter.filter(function(t) { return longer.indexOf(t) !== -1; });
-    return matches.length / shorter.length;
+    var tA=a.toUpperCase().trim().split(/\s+/), tB=b.toUpperCase().trim().split(/\s+/);
+    var sh=tA.length<=tB.length?tA:tB, lo=tA.length<=tB.length?tB:tA;
+    return sh.filter(t=>lo.includes(t)).length / sh.length;
 }
-
-// Función principal: detectar pares duplicados
 function detectDuplicatePatients() {
     var names = Object.keys(labData);
     if (names.length < 2) return;
-
-    var SIMILARITY_THRESHOLD = 0.75; // 75% de similitud mínima
-    var duplicatePairs = [];
-    var alreadyReported = new Set();
-
-    for (var i = 0; i < names.length; i++) {
-        for (var j = i + 1; j < names.length; j++) {
-            var a = names[i];
-            var b = names[j];
-            var pairKey = a + '||' + b;
-            if (alreadyReported.has(pairKey)) continue;
-
-            var lev  = levenshteinSimilarity(a, b);
-            var tok  = tokenSimilarity(a, b);
-            var maxSim = Math.max(lev, tok);
-
-            if (maxSim >= SIMILARITY_THRESHOLD) {
-                duplicatePairs.push({ a: a, b: b, sim: maxSim });
-                alreadyReported.add(pairKey);
-            }
+    var seen = new Set(), pairs = [];
+    for (var i=0; i<names.length; i++)
+        for (var j=i+1; j<names.length; j++) {
+            var key = names[i]+'||'+names[j];
+            if (seen.has(key)) continue;
+            var sim = Math.max(levenshteinSimilarity(names[i],names[j]), tokenSimilarity(names[i],names[j]));
+            if (sim >= 0.75) { pairs.push({a:names[i],b:names[j],sim}); seen.add(key); }
         }
-    }
-
-    if (duplicatePairs.length > 0) {
-        showDuplicateWarnings(duplicatePairs);
-    }
+    if (pairs.length) showDuplicateWarnings(pairs);
 }
-
-// Mostrar advertencias de duplicados
 var duplicateWarningShown = new Set();
-
 function showDuplicateWarnings(pairs) {
-    pairs.forEach(function(pair) {
-        var key = pair.a + '||' + pair.b;
+    pairs.forEach(p => {
+        var key = p.a+'||'+p.b;
         if (duplicateWarningShown.has(key)) return;
         duplicateWarningShown.add(key);
-
-        var simPct = Math.round(pair.sim * 100);
-        var msg = '⚠️ Posibles duplicados (' + simPct + '% similar):\n' + pair.a + '\n' + pair.b;
-
-        // Banner persistente en la UI
-        showDuplicateBanner(pair.a, pair.b, simPct);
+        showDuplicateBanner(p.a, p.b, Math.round(p.sim*100));
     });
 }
-
 function showDuplicateBanner(nameA, nameB, simPct) {
-    // Evitar banners duplicados
-    var bannerId = 'dup-' + btoa(nameA + nameB).replace(/[^a-zA-Z0-9]/g,'').substring(0,12);
-    if (document.getElementById(bannerId)) return;
-
+    var id = 'dup-'+btoa(nameA+nameB).replace(/[^a-zA-Z0-9]/g,'').substring(0,12);
+    if (document.getElementById(id)) return;
     var banner = document.createElement('div');
-    banner.id = bannerId;
-    banner.style.cssText = [
-        'background:#fefce8',
-        'border:1px solid #eab308',
-        'border-left:4px solid #eab308',
-        'border-radius:8px',
-        'padding:10px 14px',
-        'margin-bottom:8px',
-        'display:flex',
-        'align-items:center',
-        'justify-content:space-between',
-        'gap:12px',
-        'font-family:Inter,sans-serif',
-        'font-size:12px',
-        'color:#713f12'
-    ].join(';');
-
-    banner.innerHTML = [
-        '<div style="display:flex;align-items:center;gap:8px;">',
-        '  <span style="font-size:16px;">⚠️</span>',
-        '  <div>',
-        '    <strong>Posibles duplicados</strong> (' + simPct + '% similitud)<br>',
-        '    <span style="font-size:11px;opacity:0.85;">' + nameA + '</span>',
-        '    <span style="margin:0 6px;opacity:0.5;">↔</span>',
-        '    <span style="font-size:11px;opacity:0.85;">' + nameB + '</span>',
-        '  </div>',
-        '</div>',
-        '<div style="display:flex;gap:6px;flex-shrink:0;">',
-        '  <button onclick="preselectMerge(\'' + CSS.escape(nameA) + '\',\'' + CSS.escape(nameB) + '\')"',
-        '    style="background:#eab308;color:white;border:none;border-radius:6px;padding:5px 10px;',
-        '           font-size:11px;font-weight:bold;cursor:pointer;">',
-        '    Fusionar',
-        '  </button>',
-        '  <button onclick="dismissDuplicateBanner(\'' + bannerId + '\')"',
-        '    style="background:transparent;border:1px solid #eab308;color:#713f12;border-radius:6px;',
-        '           padding:5px 8px;font-size:11px;cursor:pointer;">',
-        '    Ignorar',
-        '  </button>',
-        '</div>'
-    ].join('');
-
-    // Insertar antes del primer section (INPUT)
-    var container = document.querySelector('.max-w-7xl');
-    var sections = container.querySelectorAll('section');
-    if (sections.length > 0) {
-        // Insertar un wrapper de duplicados si no existe
-        var wrapper = document.getElementById('duplicateWarningsWrapper');
-        if (!wrapper) {
-            wrapper = document.createElement('div');
-            wrapper.id = 'duplicateWarningsWrapper';
-            container.insertBefore(wrapper, sections[0]);
-        }
+    banner.id = id;
+    banner.style.cssText='background:#fefce8;border:1px solid #eab308;border-left:4px solid #eab308;border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#713f12';
+    banner.innerHTML='<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">⚠️</span><div><strong>Posibles duplicados</strong> ('+simPct+'% similitud)<br><span style="font-size:11px;opacity:0.85;">'+nameA+'</span><span style="margin:0 6px;opacity:0.5;">↔</span><span style="font-size:11px;opacity:0.85;">'+nameB+'</span></div></div>'
+        +'<div style="display:flex;gap:6px;flex-shrink:0;"><button onclick="preselectMerge(\''+CSS.escape(nameA)+'\',\''+CSS.escape(nameB)+'\')" style="background:#eab308;color:white;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">Fusionar</button>'
+        +'<button onclick="dismissDuplicateBanner(\''+id+'\')" style="background:transparent;border:1px solid #eab308;color:#713f12;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;">Ignorar</button></div>';
+    var container=document.querySelector('.max-w-7xl');
+    var sections=container.querySelectorAll('section');
+    if (sections.length>0) {
+        var wrapper=document.getElementById('duplicateWarningsWrapper');
+        if (!wrapper) { wrapper=document.createElement('div'); wrapper.id='duplicateWarningsWrapper'; container.insertBefore(wrapper,sections[0]); }
         wrapper.appendChild(banner);
     }
 }
-
-function dismissDuplicateBanner(bannerId) {
-    var el = document.getElementById(bannerId);
-    if (el) el.remove();
-    // Si no quedan banners, quitar el wrapper
-    var wrapper = document.getElementById('duplicateWarningsWrapper');
-    if (wrapper && wrapper.children.length === 0) wrapper.remove();
+function dismissDuplicateBanner(id) {
+    var el=document.getElementById(id); if(el)el.remove();
+    var w=document.getElementById('duplicateWarningsWrapper'); if(w&&!w.children.length)w.remove();
 }
-
 function preselectMerge(nameA, nameB) {
-    // Abrir modal de fusión con los pacientes preseleccionados
     openMergePatientModal();
-    setTimeout(function() {
-        var target = document.getElementById('mergeTarget');
-        var source = document.getElementById('mergeSource');
-        if (target && source) {
-            // El más reciente como destino (más registros)
-            var countA = labData[nameA] ? labData[nameA].length : 0;
-            var countB = labData[nameB] ? labData[nameB].length : 0;
-            var correct = countA >= countB ? nameA : nameB;
-            var duplicate = countA >= countB ? nameB : nameA;
-            // Seleccionar en los selects
-            for (var i = 0; i < target.options.length; i++) {
-                if (target.options[i].value === correct) target.selectedIndex = i;
-            }
-            for (var i = 0; i < source.options.length; i++) {
-                if (source.options[i].value === duplicate) source.selectedIndex = i;
-            }
-        }
+    setTimeout(()=>{
+        var t=document.getElementById('mergeTarget'), s=document.getElementById('mergeSource');
+        if (!t||!s) return;
+        var cA=labData[nameA]?.length||0, cB=labData[nameB]?.length||0;
+        var correct=cA>=cB?nameA:nameB, dup=cA>=cB?nameB:nameA;
+        for(var i=0;i<t.options.length;i++) if(t.options[i].value===correct) t.selectedIndex=i;
+        for(var i=0;i<s.options.length;i++) if(s.options[i].value===dup) s.selectedIndex=i;
     }, 150);
 }
 
 // ============================================================
-// 12. INTERFAZ
+// 11. INTERFAZ
 // ============================================================
 function initRealTimeListener() {
     db.collection("muestras").orderBy("timestamp","desc").onSnapshot(snapshot => {
@@ -918,29 +749,24 @@ function refreshUI() {
     const curr = sel.value;
     sel.innerHTML = '<option value="">-- Seleccionar --</option>';
     Object.keys(labData).sort().forEach(p => sel.appendChild(new Option(p,p)));
-
-    // v1.0: auto-expand — prioridad al paciente recién cargado
     if (lastUploadedPatient && labData[lastUploadedPatient]) {
-        sel.value = lastUploadedPatient;
-        lastUploadedPatient = null;
-        loadPatientData();
+        sel.value = lastUploadedPatient; lastUploadedPatient = null; loadPatientData();
     } else if (curr && labData[curr]) {
-        sel.value = curr;
-        loadPatientData();
+        sel.value = curr; loadPatientData();
     } else {
         document.querySelector("#uciTable tbody").innerHTML = "";
+        document.getElementById('dynVarPanel').style.display='none';
     }
     detectDuplicatePatients();
 }
 
 function loadPatientData() {
     const p = document.getElementById("patientSelector").value;
-    if (!p || !labData[p]) return;
+    const dynPanel = document.getElementById('dynVarPanel');
+    if (!p || !labData[p]) { dynPanel.style.display='none'; dynPanel.innerHTML=''; return; }
+
     const samples = labData[p];
-
-    // Detectar columnas dinámicas para este paciente
     detectDynamicColumns(samples);
-
     const allCols = getAllVisibleColumns();
 
     // Cabecera
@@ -971,6 +797,23 @@ function loadPatientData() {
     });
     document.querySelector("#uciTable tbody").innerHTML = b;
 
+    // Panel variables dinámicas
+    if (dynamicColumns.size > 0) {
+        const entries = [];
+        dynamicColumns.forEach(abbr => {
+            const label = getDynLabel(samples, abbr);
+            if (!entries.find(e => e.abbr === abbr)) entries.push({ abbr, label });
+        });
+        dynPanel.innerHTML = `
+            <div style="padding:7px 16px;background:#EEEDFE;border-bottom:1px solid #AFA9EC;font-size:11px;color:#26215C;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+                <span style="font-weight:700;color:#534AB7;white-space:nowrap;">✦ Variables adicionales:</span>
+                ${entries.map(e=>`<span><strong>${e.abbr}</strong> = ${e.label}</span>`).join('<span style="opacity:0.4;margin:0 2px;">·</span>')}
+            </div>`;
+        dynPanel.style.display = 'block';
+    } else {
+        dynPanel.innerHTML = ''; dynPanel.style.display = 'none';
+    }
+
     // Selector de parámetro para gráfico
     const pSel = document.getElementById("paramSelector");
     const currP = pSel.value; pSel.innerHTML="";
@@ -1000,151 +843,66 @@ function updateGraph() {
 }
 
 // ============================================================
-// 13. EXPORTACIONES
+// 12. EXPORTACIONES
 // ============================================================
 function copyWordTable() {
     const p = document.getElementById("patientSelector").value;
     if (!p) return;
-
     const allSamples = getExportSamples(p);
     const selectedIds = getSelectedIds();
     const isCompare = selectedIds.length === 2;
-
     let newerSample, olderSample;
     if (isCompare) {
-        const s0 = labData[p].find(s => s.id === selectedIds[0]);
-        const s1 = labData[p].find(s => s.id === selectedIds[1]);
-        if (!s0 || !s1) return showToast("Error al localizar muestras", "error");
-        if (s0.timestamp >= s1.timestamp) { newerSample = s0; olderSample = s1; }
-        else { newerSample = s1; olderSample = s0; }
+        const s0=labData[p].find(s=>s.id===selectedIds[0]), s1=labData[p].find(s=>s.id===selectedIds[1]);
+        if (!s0||!s1) return showToast("Error al localizar muestras","error");
+        if (s0.timestamp>=s1.timestamp){newerSample=s0;olderSample=s1;}else{newerSample=s1;olderSample=s0;}
     }
-
-    // Estilos como strings normales (sin template literals)
-    var tdLabel    = 'style="padding:4px 6px;vertical-align:middle;text-align:left;font-weight:bold;min-width:110px;white-space:nowrap;background-color:#f5f5f5;"';
-    var tdValue    = 'style="padding:4px 6px;vertical-align:middle;text-align:center;min-width:130px;"';
-    var tdHeader   = 'style="padding:5px 6px;vertical-align:middle;text-align:center;font-weight:bold;background-color:#e8e8e8;font-size:10.5pt;"';
-    var tableStyle = 'style="border-collapse:collapse;width:100%;table-layout:fixed;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:16px;"';
-
-    function getStyled(par, k) {
-        var val = getSmartValue(par, k);
-        if (val === undefined || val === null) return null;
-        var crit = isCritical(k, val);
-        return crit
-            ? '<span style="color:#dc2626;font-weight:bold;">' + val + '</span>'
-            : String(val);
-    }
-
-    function getOldStyled(par, k) {
-        var val = getSmartValue(par, k);
-        if (val === undefined || val === null) return null;
-        var crit = isCritical(k, val);
-        var color = crit ? '#dc2626' : '#666666';
-        return '<span style="font-size:8pt;color:' + color + ';">(' + val + ')</span>';
-    }
-
-    function cell(par, oldPar, k) {
-        var newVal = getStyled(par, k);
-        var display = (newVal !== null) ? newVal : '-';
-        if (!isCompare || !oldPar) return display;
-        var oldVal = getOldStyled(oldPar, k);
-        return (oldVal !== null) ? display + ' ' + oldVal : display;
-    }
-
-    function hasAny(par) {
-        var keys = Array.prototype.slice.call(arguments, 1);
-        return keys.some(function(k) {
-            var v = getSmartValue(par, k);
-            return v !== undefined && v !== null;
-        });
-    }
-
-    function td(label, content, isLabel) {
-        var style = isLabel ? tdLabel : tdValue;
-        return '<td ' + style + '>' + content + '</td>';
-    }
-
-    var finalHTML = '<div style="width:100%;margin:0;padding:0;">';
-    var samplesToRender = isCompare ? [newerSample] : allSamples;
-
-    samplesToRender.forEach(function(s) {
-        var par    = s.parametros || {};
-        var oldPar = isCompare ? (olderSample.parametros || {}) : null;
-
-        var compareNote = isCompare
-            ? '&nbsp;&nbsp;<span style="font-size:8.5pt;font-weight:normal;color:#555;">(entre par&eacute;ntesis: ' + formatDate(olderSample.fecha) + ')</span>'
-            : '';
-
-        // Valores
-        var hto_hb = cell(par, oldPar, 'Hto') + ' / ' + cell(par, oldPar, 'Hb');
-        var bili   = cell(par, oldPar, 'BT')  + ' / ' + cell(par, oldPar, 'BD');
-        var wbc    = cell(par, oldPar, 'GB');
-        var enz    = cell(par, oldPar, 'GOT') + ' / ' + cell(par, oldPar, 'GPT') + ' / ' + cell(par, oldPar, 'FAL');
-        var plaq   = cell(par, oldPar, 'Plq');
-        var prot   = cell(par, oldPar, 'Prot') + ' / ' + cell(par, oldPar, 'Alb');
-        var ren    = cell(par, oldPar, 'Urea') + ' / ' + cell(par, oldPar, 'Crea');
-        var glu    = cell(par, oldPar, 'Glu');
-        var coag   = cell(par, oldPar, 'TP') + ' / ' + cell(par, oldPar, 'KPTT') + ' / ' + cell(par, oldPar, 'RIN');
-
-        // Ionograma dinámico
-        var ionoParts = [];
-        if (hasAny(par, 'Na'))          ionoParts.push('Na ' + cell(par, oldPar, 'Na'));
-        if (hasAny(par, 'K'))           ionoParts.push('K ' + cell(par, oldPar, 'K'));
-        if (hasAny(par, 'Cl'))          ionoParts.push('Cl ' + cell(par, oldPar, 'Cl'));
-        if (hasAny(par, 'Mg'))          ionoParts.push('Mg ' + cell(par, oldPar, 'Mg'));
-        if (hasAny(par, 'Ca_Total'))    ionoParts.push('Ca ' + cell(par, oldPar, 'Ca_Total'));
-        if (hasAny(par, 'Ca_Ionizado')) ionoParts.push('Ca++ ' + cell(par, oldPar, 'Ca_Ionizado'));
-        if (hasAny(par, 'Fosforo'))     ionoParts.push('P ' + cell(par, oldPar, 'Fosforo'));
-        var iono = ionoParts.length > 0 ? ionoParts.join(' / ') : '-';
-
-        // EAB dinámico
-        var eabParts = [];
-        if (hasAny(par, 'pH'))     eabParts.push('pH ' + cell(par, oldPar, 'pH'));
-        if (hasAny(par, 'pCO2'))   eabParts.push('pCO2 ' + cell(par, oldPar, 'pCO2'));
-        if (hasAny(par, 'pO2'))    eabParts.push('pO2 ' + cell(par, oldPar, 'pO2'));
-        if (hasAny(par, 'BEb'))    eabParts.push('BEb ' + cell(par, oldPar, 'BEb'));
-        if (hasAny(par, 'BIC'))    eabParts.push('BIC ' + cell(par, oldPar, 'BIC'));
-        if (hasAny(par, 'SatO2'))  eabParts.push('Sat ' + cell(par, oldPar, 'SatO2'));
-        if (hasAny(par, 'LAC'))    eabParts.push('LAC ' + cell(par, oldPar, 'LAC'));
-        var eab = eabParts.length > 0 ? eabParts.join(' / ') : '';
-        var showEab = eabParts.length > 0;
-
-        // Inmunosupresores
-        var hasTacro = hasAny(par, 'Tacrolimus');
-        var hasEvero = hasAny(par, 'Everolimus');
-        var showInmuno = hasTacro || hasEvero;
-        var inmuParts = [];
-        if (hasTacro) inmuParts.push('Tacro ' + cell(par, oldPar, 'Tacrolimus'));
-        if (hasEvero) inmuParts.push('Evero ' + cell(par, oldPar, 'Everolimus'));
-        var inmunoRow = showInmuno
-            ? '<tr><td ' + tdLabel + '>Inmunosup.</td><td colspan="3" ' + tdValue + '>' + inmuParts.join(' / ') + '</td></tr>'
-            : '';
-
-        var eabRow = showEab
-            ? '<tr><td ' + tdLabel + '>EAB</td><td colspan="3" ' + tdValue + '>' + eab + '</td></tr>'
-            : '';
-
-        finalHTML += '<table ' + tableStyle + ' border="1">';
-        finalHTML += '<tr><td colspan="4" ' + tdHeader + '>LABORATORIO ' + formatDate(s.fecha) + ' &nbsp;(' + s.hora + ')' + compareNote + '</td></tr>';
-        finalHTML += '<tr><td ' + tdLabel + '>Hto / Hb</td><td ' + tdValue + '>' + hto_hb + '</td><td ' + tdLabel + '>Bil T / D</td><td ' + tdValue + '>' + bili + '</td></tr>';
-        finalHTML += '<tr><td ' + tdLabel + '>Gl. blancos</td><td ' + tdValue + '>' + wbc + '</td><td ' + tdLabel + '>GOT / GPT / FAL</td><td ' + tdValue + '>' + enz + '</td></tr>';
-        finalHTML += '<tr><td ' + tdLabel + '>Plaquetas</td><td ' + tdValue + '>' + plaq + '</td><td ' + tdLabel + '>Prot / Alb</td><td ' + tdValue + '>' + prot + '</td></tr>';
-        finalHTML += '<tr><td ' + tdLabel + '>Urea / Crea</td><td ' + tdValue + '>' + ren + '</td><td ' + tdLabel + '>Glucemia</td><td ' + tdValue + '>' + glu + '</td></tr>';
-        finalHTML += '<tr><td ' + tdLabel + '>TP / KPTT / RIN</td><td ' + tdValue + '>' + coag + '</td><td ' + tdLabel + '>IONOGRAMA</td><td ' + tdValue + '>' + iono + '</td></tr>';
-        finalHTML += eabRow;
-        finalHTML += inmunoRow;
-        finalHTML += '</table><p style="margin:4px 0;">&nbsp;</p>';
+    var tdL='style="padding:4px 6px;vertical-align:middle;text-align:left;font-weight:bold;min-width:110px;white-space:nowrap;background-color:#f5f5f5;"';
+    var tdV='style="padding:4px 6px;vertical-align:middle;text-align:center;min-width:130px;"';
+    var tdH='style="padding:5px 6px;vertical-align:middle;text-align:center;font-weight:bold;background-color:#e8e8e8;font-size:10.5pt;"';
+    var tblS='style="border-collapse:collapse;width:100%;table-layout:fixed;font-family:Arial,sans-serif;font-size:10pt;margin-bottom:16px;"';
+    function getStyled(par,k){var v=getSmartValue(par,k);if(v==null)return null;return isCritical(k,v)?'<span style="color:#dc2626;font-weight:bold;">'+v+'</span>':String(v);}
+    function getOldStyled(par,k){var v=getSmartValue(par,k);if(v==null)return null;return '<span style="font-size:8pt;color:'+(isCritical(k,v)?'#dc2626':'#666666')+';"> ('+v+')</span>';}
+    function cell(par,oldPar,k){var nv=getStyled(par,k);var d=nv??'-';if(!isCompare||!oldPar)return d;var ov=getOldStyled(oldPar,k);return ov?d+ov:d;}
+    function hasAny(par){var ks=Array.from(arguments).slice(1);return ks.some(k=>{var v=getSmartValue(par,k);return v!=null;});}
+    var html='<div style="width:100%;margin:0;padding:0;">';
+    (isCompare?[newerSample]:allSamples).forEach(s=>{
+        var par=s.parametros||{}, oldPar=isCompare?(olderSample.parametros||{}):null;
+        var cn=isCompare?'&nbsp;&nbsp;<span style="font-size:8.5pt;font-weight:normal;color:#555;">(entre par&eacute;ntesis: '+formatDate(olderSample.fecha)+')</span>':'';
+        var io=[];
+        if(hasAny(par,'Na'))io.push('Na '+cell(par,oldPar,'Na'));
+        if(hasAny(par,'K'))io.push('K '+cell(par,oldPar,'K'));
+        if(hasAny(par,'Cl'))io.push('Cl '+cell(par,oldPar,'Cl'));
+        if(hasAny(par,'Mg'))io.push('Mg '+cell(par,oldPar,'Mg'));
+        if(hasAny(par,'Ca_Total'))io.push('Ca '+cell(par,oldPar,'Ca_Total'));
+        if(hasAny(par,'Ca_Ionizado'))io.push('Ca++ '+cell(par,oldPar,'Ca_Ionizado'));
+        if(hasAny(par,'Fosforo'))io.push('P '+cell(par,oldPar,'Fosforo'));
+        var iono=io.length?io.join(' / '):'-';
+        var ea=[];
+        if(hasAny(par,'pH'))ea.push('pH '+cell(par,oldPar,'pH'));
+        if(hasAny(par,'pCO2'))ea.push('pCO2 '+cell(par,oldPar,'pCO2'));
+        if(hasAny(par,'pO2'))ea.push('pO2 '+cell(par,oldPar,'pO2'));
+        if(hasAny(par,'BEb'))ea.push('BEb '+cell(par,oldPar,'BEb'));
+        if(hasAny(par,'Bicarbonato'))ea.push('BIC '+cell(par,oldPar,'Bicarbonato'));
+        if(hasAny(par,'SatO2'))ea.push('Sat '+cell(par,oldPar,'SatO2'));
+        if(hasAny(par,'LAC'))ea.push('LAC '+cell(par,oldPar,'LAC'));
+        var eabRow=ea.length?'<tr><td '+tdL+'>EAB</td><td colspan="3" '+tdV+'>'+ea.join(' / ')+'</td></tr>':'';
+        var im=[];
+        if(hasAny(par,'Tacrolimus'))im.push('Tacro '+cell(par,oldPar,'Tacrolimus'));
+        if(hasAny(par,'Everolimus'))im.push('Evero '+cell(par,oldPar,'Everolimus'));
+        var imRow=im.length?'<tr><td '+tdL+'>Inmunosup.</td><td colspan="3" '+tdV+'>'+im.join(' / ')+'</td></tr>':'';
+        html+='<table '+tblS+' border="1">';
+        html+='<tr><td colspan="4" '+tdH+'>LABORATORIO '+formatDate(s.fecha)+' &nbsp;('+s.hora+')'+cn+'</td></tr>';
+        html+='<tr><td '+tdL+'>Hto / Hb</td><td '+tdV+'>'+cell(par,oldPar,'Hto')+' / '+cell(par,oldPar,'Hb')+'</td><td '+tdL+'>Bil T / D</td><td '+tdV+'>'+cell(par,oldPar,'BT')+' / '+cell(par,oldPar,'BD')+'</td></tr>';
+        html+='<tr><td '+tdL+'>Gl. blancos</td><td '+tdV+'>'+cell(par,oldPar,'GB')+'</td><td '+tdL+'>GOT / GPT / FAL</td><td '+tdV+'>'+cell(par,oldPar,'GOT')+' / '+cell(par,oldPar,'GPT')+' / '+cell(par,oldPar,'FAL')+'</td></tr>';
+        html+='<tr><td '+tdL+'>Plaquetas</td><td '+tdV+'>'+cell(par,oldPar,'Plq')+'</td><td '+tdL+'>Prot / Alb</td><td '+tdV+'>'+cell(par,oldPar,'Prot')+' / '+cell(par,oldPar,'Alb')+'</td></tr>';
+        html+='<tr><td '+tdL+'>Urea / Crea</td><td '+tdV+'>'+cell(par,oldPar,'Urea')+' / '+cell(par,oldPar,'Crea')+'</td><td '+tdL+'>Glucemia</td><td '+tdV+'>'+cell(par,oldPar,'Glu')+'</td></tr>';
+        html+='<tr><td '+tdL+'>TP / KPTT / RIN</td><td '+tdV+'>'+cell(par,oldPar,'TP')+' / '+cell(par,oldPar,'KPTT')+' / '+cell(par,oldPar,'RIN')+'</td><td '+tdL+'>IONOGRAMA</td><td '+tdV+'>'+iono+'</td></tr>';
+        html+=eabRow+imRow;
+        html+='</table><p style="margin:4px 0;">&nbsp;</p>';
     });
-
-    finalHTML += '</div>';
-
-    var blob = new Blob([finalHTML], {type: 'text/html'});
-    navigator.clipboard.write([new ClipboardItem({'text/html': blob})]).then(function() {
-        if (isCompare) {
-            showToast('Tabla comparativa: ' + formatDate(newerSample.fecha) + ' vs ' + formatDate(olderSample.fecha), 'success');
-        } else {
-            showToast('Tablas copiadas', 'success');
-        }
-    });
+    html+='</div>';
+    navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'})})]).then(()=>showToast(isCompare?'Tabla comparativa copiada':'Tablas copiadas','success'));
 }
 
 function copyHCLAB() {
@@ -1154,8 +912,7 @@ function copyHCLAB() {
     let text = "";
     samples.forEach(samp => {
         let parts = [];
-        const allCols = getAllVisibleColumns();
-        allCols.forEach(k => {
+        getAllVisibleColumns().forEach(k => {
             const val = getSmartValue(samp.parametros||{}, k);
             if (val !== undefined) parts.push(`${getDisplayLabel(k)} ${val}`);
         });
@@ -1171,38 +928,17 @@ function downloadPDF() {
     const doc = new jsPDF('l','mm','a4');
     const samples = getExportSamples(p);
     const allCols = getAllVisibleColumns();
-
-    // FIX v17.9: filtrar columnas que no tienen NINGÚN valor en ninguna fila
-    const colsWithData = allCols.filter(k =>
-        samples.some(s => {
-            const v = getSmartValue(s.parametros, k);
-            return v !== undefined && v !== null && v !== "";
-        })
-    );
-
+    const colsWithData = allCols.filter(k => samples.some(s=>{const v=getSmartValue(s.parametros,k);return v!=null&&v!==""}));
     const head = ['Fecha','Hora',...colsWithData.map(k=>getDisplayLabel(k))];
-    const body = samples.map(s => {
-        let r = [formatDate(s.fecha), s.hora];
-        colsWithData.forEach(k => r.push(getSmartValue(s.parametros,k)??'-'));
-        return r;
-    });
+    const body = samples.map(s=>{let r=[formatDate(s.fecha),s.hora];colsWithData.forEach(k=>r.push(getSmartValue(s.parametros,k)??'-'));return r;});
     doc.setFontSize(11);
     doc.text(`Historial: ${p}`, 14, 12);
-    doc.autoTable({
-        startY: 20,
-        head: [head],
-        body: body,
-        theme: 'grid',
-        styles: { fontSize: 6.5, halign: 'center', valign: 'middle', cellPadding: 1.5 },
-        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 6.5 },
-        columnStyles: { 0: { halign: 'left', cellWidth: 18 }, 1: { cellWidth: 10 } },
-        margin: { left: 8, right: 8 }
-    });
+    doc.autoTable({ startY:20, head:[head], body, theme:'grid', styles:{fontSize:6.5,halign:'center',valign:'middle',cellPadding:1.5}, headStyles:{fillColor:[37,99,235],textColor:255,fontStyle:'bold',fontSize:6.5}, columnStyles:{0:{halign:'left',cellWidth:18},1:{cellWidth:10}}, margin:{left:8,right:8} });
     doc.save(`Reporte_${p}.pdf`);
 }
 
 // ============================================================
-// 14. ACCIONES (borrar, fusionar, etc.)
+// 13. ACCIONES
 // ============================================================
 async function smartDelete() {
     const ids = getSelectedIds();
@@ -1210,46 +946,40 @@ async function smartDelete() {
     if (!patient) return showToast("Seleccione un paciente","error");
     if (ids.length>0) {
         if (!confirm(`¿Borrar las ${ids.length} filas seleccionadas?`)) return;
-        const batch = db.batch(); ids.forEach(id=>batch.delete(db.collection("muestras").doc(id)));
+        const batch=db.batch(); ids.forEach(id=>batch.delete(db.collection("muestras").doc(id)));
         await batch.commit(); showToast("Filas eliminadas","success");
     } else {
         if (!confirm(`⚠️ ¿Borrar TODO el historial de ${patient}?`)) return;
-        const q = await db.collection("muestras").where("paciente","==",patient).get();
-        const b = db.batch(); q.forEach(d=>b.delete(d.ref));
+        const q=await db.collection("muestras").where("paciente","==",patient).get();
+        const b=db.batch(); q.forEach(d=>b.delete(d.ref));
         await b.commit(); showToast("Paciente eliminado","success");
         document.getElementById("patientSelector").value=""; refreshUI();
     }
 }
-
 function openMergePatientModal() {
     document.getElementById('mergePatientModal').classList.remove('opacity-0','pointer-events-none');
-    const names = Object.keys(labData).sort();
+    const names=Object.keys(labData).sort();
     const s1=document.getElementById('mergeTarget'), s2=document.getElementById('mergeSource');
     s1.innerHTML=""; s2.innerHTML="";
-    names.forEach(n=>{ s1.add(new Option(n,n)); s2.add(new Option(n,n)); });
+    names.forEach(n=>{s1.add(new Option(n,n));s2.add(new Option(n,n));});
 }
-function closeModal(id) { document.getElementById(id).classList.add('opacity-0','pointer-events-none'); }
+function closeModal(id){document.getElementById(id).classList.add('opacity-0','pointer-events-none');}
 async function executeMergePatients() {
     const t=document.getElementById('mergeTarget').value, s=document.getElementById('mergeSource').value;
     if (t===s) return alert("Son iguales");
     if (!confirm("¿Fusionar?")) return;
     const b=db.batch(); labData[s].forEach(d=>b.update(db.collection("muestras").doc(d.id),{paciente:t}));
-    await b.commit();
-    showToast("Fusionado","success");
-    closeModal('mergePatientModal');
-    const wrapper = document.getElementById('duplicateWarningsWrapper');
-    if (wrapper) wrapper.remove();
-    duplicateWarningShown.clear();
+    await b.commit(); showToast("Fusionado","success"); closeModal('mergePatientModal');
+    const w=document.getElementById('duplicateWarningsWrapper'); if(w)w.remove(); duplicateWarningShown.clear();
 }
 async function mergeSelectedLabs() {
-    const p = document.getElementById("patientSelector").value;
-    const ids = getSelectedIds();
-    if (!p || ids.length<2) return showToast("Seleccione 2+ filas","error");
-    const samples = labData[p].filter(s=>ids.includes(s.id));
-    let master = samples[0];
-    let newParams = {...master.parametros};
-    for (let i=1; i<samples.length; i++) newParams = {...newParams,...samples[i].parametros};
-    await db.collection("muestras").doc(master.id).update({parametros:newParams});
+    const p=document.getElementById("patientSelector").value;
+    const ids=getSelectedIds();
+    if (!p||ids.length<2) return showToast("Seleccione 2+ filas","error");
+    const samples=labData[p].filter(s=>ids.includes(s.id));
+    let newParams={...samples[0].parametros};
+    for(let i=1;i<samples.length;i++) newParams={...newParams,...samples[i].parametros};
+    await db.collection("muestras").doc(samples[0].id).update({parametros:newParams});
     const batch=db.batch(); for(let i=1;i<samples.length;i++) batch.delete(db.collection("muestras").doc(samples[i].id));
     await batch.commit(); showToast("Unificado","success");
 }
@@ -1260,192 +990,72 @@ async function deleteDatabase() {
 }
 
 // ============================================================
-// 15. FILTRO DE COLUMNAS — incluye sección dinámica
+// 14. FILTRO DE COLUMNAS
 // ============================================================
 function openColumnFilter() {
-    const grid = document.getElementById("columnsGrid");
-    grid.innerHTML = "";
-
-    // Columnas predefinidas
-    grid.innerHTML += `<div class="col-section-title col-span-3 md:col-span-5">Parámetros estándar</div>`;
-    CLINICAL_ORDER.forEach(k => {
-        const checked = visibleColumns.has(k) ? "checked" : "";
-        grid.innerHTML += `<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-slate-50 p-1 rounded">
-            <input type="checkbox" class="col-check custom-checkbox" value="${k}" data-type="standard" ${checked}>
-            <span>${getDisplayLabel(k)}</span></label>`;
+    const grid=document.getElementById("columnsGrid"); grid.innerHTML="";
+    grid.innerHTML+=`<div class="col-section-title col-span-3 md:col-span-5">Parámetros estándar</div>`;
+    CLINICAL_ORDER.forEach(k=>{
+        const checked=visibleColumns.has(k)?"checked":"";
+        grid.innerHTML+=`<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" class="col-check custom-checkbox" value="${k}" ${checked}><span>${getDisplayLabel(k)}</span></label>`;
     });
-
-    // Columnas dinámicas
-    if (dynamicColumns.size > 0) {
-        grid.innerHTML += `<div class="col-section-title col-span-3 md:col-span-5 text-indigo-500">Variables adicionales ✦</div>`;
-        dynamicColumns.forEach(k => {
-            const checked = visibleDynamic.has(k) ? "checked" : "";
-            grid.innerHTML += `<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-indigo-50 p-1 rounded">
-                <input type="checkbox" class="col-check-dyn custom-checkbox" value="${k}" data-type="dynamic" ${checked}>
-                <span class="text-indigo-600">${getDisplayLabel(k)}</span></label>`;
+    if (dynamicColumns.size>0) {
+        grid.innerHTML+=`<div class="col-section-title col-span-3 md:col-span-5 text-indigo-500">Variables adicionales ✦</div>`;
+        dynamicColumns.forEach(k=>{
+            const checked=visibleDynamic.has(k)?"checked":"";
+            grid.innerHTML+=`<label class="flex items-center gap-2 text-xs cursor-pointer hover:bg-indigo-50 p-1 rounded"><input type="checkbox" class="col-check-dyn custom-checkbox" value="${k}" ${checked}><span class="text-indigo-600">${getDisplayLabel(k)}</span></label>`;
         });
     }
-
     document.getElementById('columnFilterModal').classList.remove('opacity-0','pointer-events-none');
 }
-function toggleAllColumns(state) {
+function toggleAllColumns(state){
     document.querySelectorAll('.col-check').forEach(cb=>cb.checked=state);
     document.querySelectorAll('.col-check-dyn').forEach(cb=>cb.checked=state);
 }
-function applyColumnFilter() {
-    visibleColumns = new Set();
-    document.querySelectorAll('.col-check:checked').forEach(cb=>visibleColumns.add(cb.value));
-    visibleDynamic = new Set();
-    document.querySelectorAll('.col-check-dyn:checked').forEach(cb=>visibleDynamic.add(cb.value));
-    closeModal('columnFilterModal');
-    loadPatientData();
+function applyColumnFilter(){
+    visibleColumns=new Set(); document.querySelectorAll('.col-check:checked').forEach(cb=>visibleColumns.add(cb.value));
+    visibleDynamic=new Set(); document.querySelectorAll('.col-check-dyn:checked').forEach(cb=>visibleDynamic.add(cb.value));
+    closeModal('columnFilterModal'); loadPatientData();
 }
 
-
 // ============================================================
-// EXCEL EXPORT — SheetJS
-// Genera un archivo .xlsx con una fila por fecha, una columna
-// por parámetro, valores críticos en rojo, columnas con ancho
-// automático y fila de encabezado con fondo azul.
+// EXCEL EXPORT
 // ============================================================
 function downloadExcel() {
-    const p = document.getElementById("patientSelector").value;
-    if (!p) return showToast("Seleccione paciente", "error");
-
-    const samples = getExportSamples(p);
-    const allCols = getAllVisibleColumns();
-    const hospital = getHospital();
-
-    // Fila de encabezados
-    const headers = ["Fecha", "Hora", ...allCols.map(k => getDisplayLabel(k))];
-
-    // Filas de datos
-    const rows = samples.map(s => {
-        const row = [formatDate(s.fecha), s.hora];
-        allCols.forEach(k => {
-            const val = getSmartValue(s.parametros, k);
-            // SheetJS: guardar como número cuando sea posible
-            const num = parseFloat(val);
-            row.push(!isNaN(num) && val !== undefined ? num : (val ?? ""));
-        });
+    const p=document.getElementById("patientSelector").value;
+    if(!p) return showToast("Seleccione paciente","error");
+    const samples=getExportSamples(p);
+    const allCols=getAllVisibleColumns();
+    const headers=["Fecha","Hora",...allCols.map(k=>getDisplayLabel(k))];
+    const rows=samples.map(s=>{
+        const row=[formatDate(s.fecha),s.hora];
+        allCols.forEach(k=>{const val=getSmartValue(s.parametros,k);const num=parseFloat(val);row.push(!isNaN(num)&&val!=null?num:(val??""));});
         return row;
     });
-
-    // Construir worksheet
-    const wsData = [headers, ...rows];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Estilos de encabezado (fondo azul, texto blanco, negrita)
-    const headerStyle = {
-        fill: { fgColor: { rgb: "2563EB" } },
-        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10 },
-        alignment: { horizontal: "center", vertical: "center", wrapText: true },
-        border: {
-            top:    { style: "thin", color: { rgb: "1E40AF" } },
-            bottom: { style: "thin", color: { rgb: "1E40AF" } },
-            left:   { style: "thin", color: { rgb: "1E40AF" } },
-            right:  { style: "thin", color: { rgb: "1E40AF" } }
+    const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+    const hS={fill:{fgColor:{rgb:"2563EB"}},font:{bold:true,color:{rgb:"FFFFFF"},sz:10},alignment:{horizontal:"center",vertical:"center",wrapText:true},border:{top:{style:"thin",color:{rgb:"1E40AF"}},bottom:{style:"thin",color:{rgb:"1E40AF"}},left:{style:"thin",color:{rgb:"1E40AF"}},right:{style:"thin",color:{rgb:"1E40AF"}}}};
+    const cS={font:{bold:true,color:{rgb:"DC2626"},sz:10},alignment:{horizontal:"center"},border:{top:{style:"thin",color:{rgb:"E2E8F0"}},bottom:{style:"thin",color:{rgb:"E2E8F0"}},left:{style:"thin",color:{rgb:"E2E8F0"}},right:{style:"thin",color:{rgb:"E2E8F0"}}}};
+    const nS={font:{sz:10},alignment:{horizontal:"center"},border:{top:{style:"thin",color:{rgb:"E2E8F0"}},bottom:{style:"thin",color:{rgb:"E2E8F0"}},left:{style:"thin",color:{rgb:"E2E8F0"}},right:{style:"thin",color:{rgb:"E2E8F0"}}}};
+    const dS={font:{bold:true,sz:10},alignment:{horizontal:"left"},border:{top:{style:"thin",color:{rgb:"E2E8F0"}},bottom:{style:"thin",color:{rgb:"E2E8F0"}},left:{style:"thin",color:{rgb:"E2E8F0"}},right:{style:"thin",color:{rgb:"E2E8F0"}}}};
+    const range=XLSX.utils.decode_range(ws["!ref"]);
+    for(let R=range.s.r;R<=range.e.r;R++)
+        for(let C=range.s.c;C<=range.e.c;C++){
+            const ref=XLSX.utils.encode_cell({r:R,c:C}); if(!ws[ref])continue;
+            if(R===0) ws[ref].s=hS;
+            else if(C===0||C===1) ws[ref].s=dS;
+            else{const colKey=allCols[C-2];const val=ws[ref].v;ws[ref].s=(val!==""&&val!=null&&isCritical(colKey,val))?cS:nS;}
         }
-    };
-
-    // Estilo para valores críticos (rojo negrita)
-    const criticalStyle = {
-        font: { bold: true, color: { rgb: "DC2626" }, sz: 10 },
-        alignment: { horizontal: "center" },
-        border: {
-            top:    { style: "thin", color: { rgb: "E2E8F0" } },
-            bottom: { style: "thin", color: { rgb: "E2E8F0" } },
-            left:   { style: "thin", color: { rgb: "E2E8F0" } },
-            right:  { style: "thin", color: { rgb: "E2E8F0" } }
-        }
-    };
-
-    // Estilo normal para celdas de datos
-    const normalStyle = {
-        font: { sz: 10 },
-        alignment: { horizontal: "center" },
-        border: {
-            top:    { style: "thin", color: { rgb: "E2E8F0" } },
-            bottom: { style: "thin", color: { rgb: "E2E8F0" } },
-            left:   { style: "thin", color: { rgb: "E2E8F0" } },
-            right:  { style: "thin", color: { rgb: "E2E8F0" } }
-        }
-    };
-
-    // Estilo para celdas de fecha/hora
-    const dateStyle = {
-        font: { bold: true, sz: 10 },
-        alignment: { horizontal: "left" },
-        border: {
-            top:    { style: "thin", color: { rgb: "E2E8F0" } },
-            bottom: { style: "thin", color: { rgb: "E2E8F0" } },
-            left:   { style: "thin", color: { rgb: "E2E8F0" } },
-            right:  { style: "thin", color: { rgb: "E2E8F0" } }
-        }
-    };
-
-    // Aplicar estilos celda por celda
-    const range = XLSX.utils.decode_range(ws["!ref"]);
-    for (let R = range.s.r; R <= range.e.r; R++) {
-        for (let C = range.s.c; C <= range.e.c; C++) {
-            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-            if (!ws[cellRef]) continue;
-
-            if (R === 0) {
-                // Fila de encabezado
-                ws[cellRef].s = headerStyle;
-            } else if (C === 0 || C === 1) {
-                // Fecha y hora
-                ws[cellRef].s = dateStyle;
-            } else {
-                // Datos — detectar si es crítico
-                const colKey = allCols[C - 2];
-                const val = ws[cellRef].v;
-                const crit = val !== "" && val !== undefined && isCritical(colKey, val);
-                ws[cellRef].s = crit ? criticalStyle : normalStyle;
-            }
-        }
-    }
-
-    // Ancho de columnas automático
-    const colWidths = headers.map((h, i) => {
-        if (i === 0) return { wch: 12 }; // Fecha
-        if (i === 1) return { wch: 7 };  // Hora
-        // Calcular ancho máximo entre encabezado y valores
-        let maxLen = String(h).length;
-        rows.forEach(row => {
-            const v = String(row[i] ?? "");
-            if (v.length > maxLen) maxLen = v.length;
-        });
-        return { wch: Math.max(maxLen + 2, 6) };
-    });
-    ws["!cols"] = colWidths;
-
-    // Altura de fila de encabezado
-    ws["!rows"] = [{ hpt: 40 }];
-
-    // Freeze primera fila (encabezados) y primera columna (fecha)
-    ws["!freeze"] = { xSplit: 2, ySplit: 1, topLeftCell: "C2", activePane: "bottomRight", state: "frozen" };
-
-    // Crear workbook
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Laboratorios");
-
-    // Metadata del archivo
-    wb.Props = {
-        Title: `Laboratorios - ${p}`,
-        Author: "Monitor Laboratorio",
-        CreatedDate: new Date()
-    };
-
-    // Exportar
-    const filename = `Lab_${p.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx`;
-    XLSX.writeFile(wb, filename);
-    showToast("Excel descargado", "success");
+    ws["!cols"]=headers.map((h,i)=>{if(i===0)return{wch:12};if(i===1)return{wch:7};let ml=String(h).length;rows.forEach(r=>{const v=String(r[i]??"");if(v.length>ml)ml=v.length;});return{wch:Math.max(ml+2,6)};});
+    ws["!rows"]=[{hpt:40}];
+    ws["!freeze"]={xSplit:2,ySplit:1,topLeftCell:"C2",activePane:"bottomRight",state:"frozen"};
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Laboratorios");
+    wb.Props={Title:`Laboratorios - ${p}`,Author:"Monitor Laboratorio",CreatedDate:new Date()};
+    XLSX.writeFile(wb,`Lab_${p.replace(/\s+/g,"_")}_${new Date().toISOString().split("T")[0]}.xlsx`);
+    showToast("Excel descargado","success");
 }
 
 // ============================================================
-// 16. INIT
+// 15. INIT
 // ============================================================
 document.addEventListener("DOMContentLoaded", () => {
     const savedKey = localStorage.getItem("my_openai_key_v1");
@@ -1489,12 +1099,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const table = document.getElementById('uciTable');
         if (table) mirrorInner.style.width = table.scrollWidth + 'px';
     }
-    mirror.addEventListener('scroll', () => {
-        tableContainer.scrollLeft = mirror.scrollLeft;
-    });
-    tableContainer.addEventListener('scroll', () => {
-        mirror.scrollLeft = tableContainer.scrollLeft;
-    });
+    mirror.addEventListener('scroll', () => { tableContainer.scrollLeft = mirror.scrollLeft; });
+    tableContainer.addEventListener('scroll', () => { mirror.scrollLeft = tableContainer.scrollLeft; });
     const tableObserver = new MutationObserver(syncMirrorWidth);
     tableObserver.observe(document.querySelector('#uciTable tbody'), { childList: true, subtree: false });
 });
