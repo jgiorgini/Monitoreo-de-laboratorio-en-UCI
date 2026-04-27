@@ -1480,41 +1480,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("paramSelector").addEventListener("change", updateGraph);
     document.getElementById("btnLimpiarEntrada").addEventListener("click", ()=>document.getElementById("labInput").value="");
     document.getElementById("hospitalSelector").addEventListener("change", loadPatientData);
-    // 16. INIT
-// ============================================================
-document.addEventListener("DOMContentLoaded", () => {
-    const savedKey = localStorage.getItem("my_openai_key_v1");
-    if (savedKey) document.getElementById("apiKey").value = savedKey;
-    initRealTimeListener();
-
-    const input = document.getElementById("pdfInput");
-    const textArea = document.getElementById("labInput");
-
-    input.addEventListener("change", async(e) => {
-        const files = e.target.files;
-        if (files.length===0) return;
-        textArea.value="⏳ Leyendo...";
-        try {
-            let fullText="";
-            for (let i=0; i<files.length; i++) {
-                textArea.value=`⏳ Leyendo ${files[i].name}...`;
-                const buffer=await files[i].arrayBuffer();
-                const pdf=await window.pdfjsLib.getDocument({data:buffer}).promise;
-                for(let j=1;j<=pdf.numPages;j++){
-                    const pg=await pdf.getPage(j), c=await pg.getTextContent();
-                    fullText+=c.items.map(x=>x.str).join(" ")+"\n";
-                }
-            }
-            textArea.value=cleanArgerichText(fullText);
-            showToast("PDF leído y limpiado","success");
-       } catch(err) { textArea.value="Error: "+err.message; showToast("Error al leer PDF","error"); }
-    });
-
-    document.getElementById("btnProcesarIA").addEventListener("click", processAndUpload);
-    document.getElementById("patientSelector").addEventListener("change", loadPatientData);
-    document.getElementById("paramSelector").addEventListener("change", updateGraph);
-    document.getElementById("btnLimpiarEntrada").addEventListener("click", ()=>document.getElementById("labInput").value="");
-    document.getElementById("hospitalSelector").addEventListener("change", loadPatientData);
 
     // Scroll espejo sincronizado
     const mirror = document.getElementById('scrollMirror');
