@@ -572,12 +572,13 @@ HEMOGRAM RULES:
 
 GENERAL RULES:
 43. Multiple protocols/dates → separate objects in array
-44. IONOGRAMA or EAB inside GAS → extract all available electrolytes
-45. Numeric values only — ignore qualitative results (NO REACTIVO, REACTIVO, NEGATIVO)
-46. IGNORE: orina completa, sedimento, serologías (HIV/HBsAg/HCV/VDRL), proteinograma, ferremia, transferrina, ferritina, vitaminas (B12/D/folato), hormonas excepto TSH (prolactina/DHEA/T4), homocisteína, zinc, PSA, inmunoglobulinas, eritrosedimentación, glucemia post-carga TTOG
+44. IONOGRAMA sections: When you see section headers like "Ionograma", "Ionograma Serico", "Ionograma en Plasma", "Ionograma en Sangre", "IONOGRAMA", "ELECTROLITOS", or "ELECTRÓLITOS", extract ALL electrolyte values that follow (Na, K, Cl, Mg, Ca_Total, Ca_Ionizado, Fosforo). These sections are CRITICAL — do not skip them even if they appear embedded in other sections.
+45. EAB/GAS sections: When you see "EAB", "Estado Ácido-Base", "Gases en Sangre", "Gasometria", "GAS", extract pH, pCO2, pO2, BEb, Bicarbonato, SatO2, LAC from those sections. ALSO extract any electrolytes (Na, K, Cl, Ca_Ionizado) that appear within the gas section.
+46. Numeric values only — ignore qualitative results (NO REACTIVO, REACTIVO, NEGATIVO)
+47. IGNORE: orina completa, sedimento, serologías (HIV/HBsAg/HCV/VDRL), proteinograma, ferremia, transferrina, ferritina, vitaminas (B12/D/folato), hormonas excepto TSH (prolactina/DHEA/T4), homocisteína, zinc, PSA, inmunoglobulinas, eritrosedimentación, glucemia post-carga TTOG
 
 DYNAMIC VARIABLES:
-47. For any parameter NOT in the target list that seems clinically relevant, include it with a SHORT abbreviation as key (max 8 chars, no spaces, no accents, uppercase) AND store the full original name in a parallel key named "_label_ABBREVIATION".
+48. For any parameter NOT in the target list that seems clinically relevant, include it with a SHORT abbreviation as key (max 8 chars, no spaces, no accents, uppercase) AND store the full original name in a parallel key named "_label_ABBREVIATION".
     Example: { "GGT": 18, "_label_GGT": "Gamma Glutamiltranspeptidasa", "FERRIT": 147, "_label_FERRIT": "Ferritina" }
     Apply same ignore list from rule 46.
 
