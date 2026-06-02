@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor Laboratorio - v1.2</title>
+    <title>Monitor Laboratorio - v1.3</title>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -66,7 +66,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
             <div>
-                <h1 class="text-2xl font-bold tracking-tight" style="color:#E6F1FB;">Monitor Laboratorio <span style="font-size:11px;background:#1D9E75;color:#E1F5EE;padding:2px 8px;border-radius:20px;margin-left:8px;font-weight:500;">v1.2</span></h1>
+                <h1 class="text-2xl font-bold tracking-tight" style="color:#E6F1FB;">Monitor Laboratorio <span style="font-size:11px;background:#1D9E75;color:#E1F5EE;padding:2px 8px;border-radius:20px;margin-left:8px;font-weight:500;">v1.3</span></h1>
                 <p style="color:#85B7EB;font-size:11px;margin-top:2px;">Multi-hospital · Valores críticos · Comparación · Excel · Detección duplicados</p>
             </div>
         </div>
@@ -452,10 +452,14 @@ async function processAndUpload() {
         try { await uploadToFirebase(s); ok++; } catch(e) { console.error(e); }
     }
     if (ok>0) {
-        showToast(`${ok} reporte(s) guardados`, "success");
+        const names = [...new Set(samplesToUpload.map(s=>s.paciente))].join(', ');
+        const paramCounts = samplesToUpload.map(s=>Object.keys(s.parametros||{}).filter(k=>!k.startsWith('_label_')).length);
+        showToast(`✅ ${ok} reporte(s) guardados\nPaciente: ${names}\nParáms: ${paramCounts.join(', ')}`, "success");
         document.getElementById("labInput").value="";
         document.getElementById("pdfInput").value=null;
         if (samplesToUpload.length > 0) lastUploadedPatient = samplesToUpload[samplesToUpload.length - 1].paciente;
+    } else if (samplesToUpload.length > 0) {
+        showToast(`⚠️ IA extrajo datos pero no se guardaron (paciente: ${samplesToUpload.map(s=>s.paciente).join(', ')})`, "error");
     } else {
         showToast("No se detectaron reportes válidos.","error");
     }
@@ -659,6 +663,11 @@ async function uploadToFirebase(result) {
         if (isValidValue(canonical, val)) cleanParams[canonical] = val;
     }
 
+    const paramCount = Object.keys(cleanParams).filter(k=>!k.startsWith('_label_')).length;
+    if (paramCount === 0) {
+        showToast(`⚠️ ${result.paciente} ${result.fecha} ${result.hora}: la IA no extrajo parámetros válidos`, "error");
+        return;
+    }
     await db.collection("muestras").add({
         paciente: result.paciente,
         fecha: result.fecha || new Date().toISOString().split('T')[0],
