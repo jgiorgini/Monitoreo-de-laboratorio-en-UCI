@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor Laboratorio - v1.6</title>
+    <title>Monitor Laboratorio - v1.7-A</title>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -66,7 +66,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
             </div>
             <div>
-                <h1 class="text-2xl font-bold tracking-tight" style="color:#E6F1FB;">Monitor Laboratorio <span style="font-size:11px;background:#1D9E75;color:#E1F5EE;padding:2px 8px;border-radius:20px;margin-left:8px;font-weight:500;">v1.6</span></h1>
+                <h1 class="text-2xl font-bold tracking-tight" style="color:#E6F1FB;">Monitor Laboratorio <span style="font-size:11px;background:#1D9E75;color:#E1F5EE;padding:2px 8px;border-radius:20px;margin-left:8px;font-weight:500;">v1.7-A</span></h1>
                 <p style="color:#85B7EB;font-size:11px;margin-top:2px;">Multi-hospital · Valores críticos · Comparación · Excel · Detección duplicados</p>
             </div>
         </div>
@@ -624,6 +624,9 @@ DYNAMIC VARIABLES:
     Apply same ignore list from rule 46.
 
 Text: """${text.substring(0,35000)}"""`;
+    if (text.length > 35000) {
+        showToast("⚠️ Texto largo (" + Math.round(text.length/1000) + "k caracteres): se procesaron los primeros 35.000. Si faltan datos, divida el PDF.", "error");
+    }
 
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
@@ -1033,11 +1036,34 @@ async function mergeSelectedLabs() {
     const ids=getSelectedIds();
     if (!p||ids.length<2) return showToast("Seleccione 2+ filas","error");
     const samples=labData[p].filter(s=>ids.includes(s.id));
+    // Detectar conflictos: mismo parámetro con valores distintos entre muestras
+    const allKeys = new Set();
+    samples.forEach(s => Object.keys(s.parametros||{}).filter(k=>!k.startsWith('_label_')).forEach(k=>allKeys.add(k)));
+    const conflicts = [];
+    allKeys.forEach(k => {
+        const vals = samples.map(s => getSmartValue(s.parametros, k)).filter(v => v !== undefined);
+        const unique = [...new Set(vals.map(String))];
+        if (unique.length > 1) conflicts.push(k);
+    });
+    if (conflicts.length > 0) {
+        // Hay conflictos: separar por horario en lugar de fusionar
+        // Ordenar las muestras por hora y actualizar timestamps para que queden como registros separados
+        const sorted = [...samples].sort((a,b) => (a.hora||'00:00').localeCompare(b.hora||'00:00'));
+        const batch = db.batch();
+        sorted.forEach((s, idx) => {
+            // Mantener cada muestra como registro independiente, solo actualizar orden si hace falta
+            // No hacer nada destructivo: avisar al usuario
+        });
+        const conflictNames = conflicts.map(k => getDisplayLabel(k)).join(', ');
+        showToast(`⚠️ Conflicto en: ${conflictNames}. Las muestras tienen valores distintos para estos parámetros y se mantienen separadas por horario (${sorted.map(s=>s.hora).join(' / ')}).`, "error");
+        return;
+    }
+    // Sin conflictos: fusión normal
     let newParams={...samples[0].parametros};
     for(let i=1;i<samples.length;i++) newParams={...newParams,...samples[i].parametros};
     await db.collection("muestras").doc(samples[0].id).update({parametros:newParams});
     const batch=db.batch(); for(let i=1;i<samples.length;i++) batch.delete(db.collection("muestras").doc(samples[i].id));
-    await batch.commit(); showToast("Unificado","success");
+    await batch.commit(); showToast("Unificado sin conflictos","success");
 }
 async function deleteDatabase() {
     if (prompt("Clave:")!=="D3l.e@TE$alL") return alert("Incorrecto");
